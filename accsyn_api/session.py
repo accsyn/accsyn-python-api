@@ -8,8 +8,8 @@ except:
 
 logging.basicConfig(format="(%(thread)d@%(asctime)-15s) %(message)s", level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
 
-
-ACCSYN_CLOUD_REGISTRY_HOSTNAME="registry.accsyn.com"
+ACCSYN_CLOUD_DOMAIN="accsyn.com"
+ACCSYN_CLOUD_REGISTRY_HOSTNAME="registry.%s"%ACCSYN_CLOUD_DOMAIN
 ACCSYN_PORT=443
 DEFAULT_EVENT_PAYLOAD_COMPRESS_SIZE_TRESHOLD=100*1024;  # Compress event data payloads above 100k
 
@@ -58,7 +58,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-	__version__ = "1.2.1-1"
+	__version__ = "1.2.1-2"
 
 	def __init__(self, domain=None, username=None, api_key=None, pwd=None, hostname=None, port=None, proxy=None, verbose=False, dev=False):
 		''' Setup; store credentials, authenticate, get a session key '''
@@ -268,7 +268,7 @@ class Session(object):
 		if port is None:
 			port = self._port or ACCSYN_PORT
 		if hostname is None:
-			hostname = "%s.%s"%(self._domain, ACCSYN_CLOUD_REGISTRY_HOSTNAME)
+			hostname = "%s.%s"%(self._domain, ACCSYN_DOMAIN)
 		# Proxy set?
 		proxy = self._proxy or os.environ.get('ACCSYN_PROXY')
 		if 0<len(proxy or ""):
