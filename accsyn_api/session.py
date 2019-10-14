@@ -58,7 +58,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-	__version__ = "1.2.1-2"
+	__version__ = "1.2.2-6"
 
 	def __init__(self, domain=None, username=None, api_key=None, pwd=None, hostname=None, port=None, proxy=None, verbose=False, dev=False):
 		''' Setup; store credentials, authenticate, get a session key '''
@@ -71,20 +71,20 @@ class Session(object):
 		self._clearance = CLEARANCE_NONE
 		self.verbose("Creating AccSyn Python API session (v%s)"%Session.__version__)
 		# Migrate
+		# Migrate
 		for key in os.environ:
 			if key.startswith("FILMHUB_"):
-				warning("Found old product environment variable '%s', please migrate!"%key)
-				os.environ[key.replace("FILMHUB_","ACCSYN_")] = os.environ[key]
+				Session.warning("Found old FilmHUB product environment variable '%s', please migrate!"%key)
 		if domain is None:
-			assert ('ACCSYN_DOMAIN' in os.environ or 'ACCSYN_ORG' in os.environ),("Please supply your AccSyn domain/organization or set ACCSYN_DOMAIN environment!")
-		self._domain = domain or (os.environ['ACCSYN_DOMAIN'] if 'ACCSYN_DOMAIN' in os.environ else os.environ['ACCSYN_ORG'])
+			assert ('ACCSYN_DOMAIN' in os.environ or 'ACCSYN_ORG' in os.environ or 'FILMUB_DOMAIN' in os.environ or 'FILMHUB_ORG' in os.environ),("Please supply your AccSyn domain/organization or set ACCSYN_DOMAIN environment!")
+		self._domain = domain or (os.environ['ACCSYN_DOMAIN'] if 'ACCSYN_DOMAIN' in os.environ else os.environ.get('ACCSYN_ORG', os.environ.get('FILMHUB_DOMAIN', os.environ.get('FILMHUB_ORG'))))
 		if username is None:
-			assert ('ACCSYN_API_USER' in os.environ),("Please supply your AccSyn user name (E-mail) or set ACCSYN_API_USER environment!")
-		self._username = username or os.environ['ACCSYN_API_USER']
+			assert ('ACCSYN_API_USER' in os.environ or 'FILMHUB_API_USER' in os.environ),("Please supply your AccSyn user name (E-mail) or set ACCSYN_API_USER environment!")
+		self._username = username or os.environ.get('ACCSYN_API_USER') or os.environ['FILMHUB_API_USER']
 		if api_key:
 			self._api_key = api_key
 		else:
-			self._api_key = os.environ.get('ACCSYN_API_KEY')
+			self._api_key = os.environ.get('ACCSYN_API_KEY') or os.environ.get('FILMHUB_API_KEY')
 		if len(self._api_key or "") == 0:
 			if 0<len(pwd or ""):
 				# Store it temporarily
@@ -101,7 +101,7 @@ class Session(object):
 				result = self.rest("PUT", ACCSYN_CLOUD_REGISTRY_HOSTNAME, "registry/organization/domain", {'organization':self._domain})
 				# Store hostname
 				assert ('domain' in result),("No domain were provided for us!")
-				self._hostname = "%s.%s"%(result['domain'], ACCSYN_CLOUD_REGISTRY_HOSTNAME) 
+				self._hostname = "%s.%s"%(result['domain'], ACCSYN_CLOUD_DOMAIN) 
 		self._last_message = None
 		self.login()
 
@@ -223,6 +223,7 @@ class Session(object):
 			'uri':uri,
 			'ident':self._username,
 			'created':datetime.datetime.now(),
+			'hostname':Session.get_hostname()
 		}
 		did_compress_payload = False
 		if not data is None and 0<len(data):
