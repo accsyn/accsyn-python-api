@@ -10,6 +10,11 @@ Please use freely!
 Changelog:
 ----------
 
+v1.2-2
+
+   BUG FIXES
+   * b1; Fixed bug in rename.
+
 v1.2-1
 
    FEATURES 
@@ -31,7 +36,7 @@ v1.1-4
 
 
 Henrik Norin, HDR AB, 2019
-AccSyn - fast data delivery and worklflow sync
+AccSyn - secure data delivery and workflow sync
 https://support.accsyn.com
-http://accsyn.com 
+https://accsyn.com 
 
