@@ -58,7 +58,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-	__version__ = "1.2.3-1"
+	__version__ = "1.2.4-1"
 
 	def __init__(self, domain=None, username=None, api_key=None, pwd=None, hostname=None, port=None, proxy=None, verbose=False, dev=False):
 		''' Setup; store credentials, authenticate, get a session key '''
@@ -263,25 +263,52 @@ class Session(object):
 		return retval
 
 	def rest(self, method, hostname, uri, data, timeout=None, ssl=True, port=None, quiet=False, headers=None):
-		''' Talk REST with FIlmHUB Cloud '''
+		''' Talk REST with Accsyn Cloud '''
 		if port is None:
 			port = self._port or ACCSYN_PORT
 		if hostname is None:
-			hostname = "%s.%s"%(self._domain, ACCSYN_DOMAIN)
+			hostname = "%s.%s"%(self._domain, ACCSYN_CLOUD_DOMAIN)
 		# Proxy set?
-		proxy = self._proxy or os.environ.get('ACCSYN_PROXY')
-		if 0<len(proxy or ""):
-			if 0<proxy.find(":"):
-				parts = proxy.split(":")
-				hostname = parts[0]
-				port = int(parts[1])
+		proxy_type = None
+		proxy_hostname = None
+		proxy_port = -1
+		proxy_setting = self._proxy or os.environ.get('ACCSYN_PROXY')
+		if 0<len(proxy_setting or ""):
+			if 0<proxy_setting.find(":"):
+				parts = proxy_setting.split(":")
+				if len(parts) == 3:
+					proxy_type = parts[0]
+					proxy_hostname = parts[1]
+					proxy_port = int(parts[2])
+				elif len(parts) == 2:
+					proxy_type = "accsyn"
+					proxy_hostname = parts[0]
+					proxy_port = int(parts[1])
 			else:
-				hostname = proxy
-				port = 80
+				proxy_type = "accsyn"
+				proxy_hostname = proxy
+				proxy_port = 80
 			ssl = False
-		elif self._dev and (uri or "").find("registry") != 0:
+		if self._dev and (uri or "").find("registry") != 0:
 			ssl = False
 			port = 80
+		if proxy_type == "accsyn":
+			if proxy_port == -1:
+				proxy_port = 80
+			self.verbose("Using Accsyn proxy @ %s:%s"%(proxy_hostname, proxy_port))
+			hostname = proxy_hostname
+			port = proxy_port
+		elif proxy_type in ["socks","socks5"]:
+			try:
+				self.verbose("Using SOCKS5 proxy @ %s:%s"%(proxy_hostname, proxy_port))
+				import socks
+				socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, proxy_hostname, proxy_port)
+				socket.socket = socks.socksocket
+			except ImportError as ie:
+				Session.warning("Python lacks SOCKS support, please install 'pysocks' and try again...")
+				raise ie
+		elif not proxy_type is None:
+			raise Exception("Unknown proxy type '%s'!"%proxy_type)
 		url = "http%s://%s:%d/api/v1.0%s"%("s" if ssl else "", hostname, port,("/" if not uri.startswith("/") else "")+uri)
 		if timeout is None:
 			timeout = 999999
