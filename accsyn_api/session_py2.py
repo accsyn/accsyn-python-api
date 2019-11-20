@@ -59,7 +59,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-	__version__ = "1.2.2-6"
+	__version__ = "1.2.3-1"
 
 	def __init__(self, domain=None, username=None, api_key=None, pwd=None, hostname=None, port=None, proxy=None, verbose=False, dev=False):
 		''' Setup; store credentials, authenticate, get a session key '''
@@ -70,16 +70,16 @@ class Session(object):
 		self._proxy = proxy
 		self._dev = dev
 		self._clearance = CLEARANCE_NONE
-		self.verbose("Creating AccSyn Python API session (v%s)"%Session.__version__)
+		self.verbose("Creating Accsyn Python API session (v%s)"%Session.__version__)
 		# Migrate
 		for key in os.environ:
 			if key.startswith("FILMHUB_"):
 				Session.warning("Found old FilmHUB product environment variable '%s', please migrate!"%key)
 		if domain is None:
-			assert ('ACCSYN_DOMAIN' in os.environ or 'ACCSYN_ORG' in os.environ or 'FILMUB_DOMAIN' in os.environ or 'FILMHUB_ORG' in os.environ),("Please supply your AccSyn domain/organization or set ACCSYN_DOMAIN environment!")
+			assert ('ACCSYN_DOMAIN' in os.environ or 'ACCSYN_ORG' in os.environ or 'FILMUB_DOMAIN' in os.environ or 'FILMHUB_ORG' in os.environ),("Please supply your Accsyn domain/organization or set ACCSYN_DOMAIN environment!")
 		self._domain = domain or (os.environ['ACCSYN_DOMAIN'] if 'ACCSYN_DOMAIN' in os.environ else os.environ.get('ACCSYN_ORG', os.environ.get('FILMHUB_DOMAIN', os.environ.get('FILMHUB_ORG'))))
 		if username is None:
-			assert ('ACCSYN_API_USER' in os.environ or 'FILMHUB_API_USER' in os.environ),("Please supply your AccSyn user name (E-mail) or set ACCSYN_API_USER environment!")
+			assert ('ACCSYN_API_USER' in os.environ or 'FILMHUB_API_USER' in os.environ),("Please supply your Accsyn user name (E-mail) or set ACCSYN_API_USER environment!")
 		self._username = username or os.environ.get('ACCSYN_API_USER') or os.environ['FILMHUB_API_USER']
 		if api_key:
 			self._api_key = api_key
@@ -90,7 +90,7 @@ class Session(object):
 				# Store it temporarily
 				self._pwd = pwd
 			else:
-				raise Exception("Please supply your AccSyn API KEY or set ACCSYN_API_KEY environment!")
+				raise Exception("Please supply your Accsyn API KEY or set ACCSYN_API_KEY environment!")
 		self._hostname = hostname
 		self._port = port or ACCSYN_PORT
 		if self._hostname is None:
@@ -208,7 +208,7 @@ class Session(object):
 	# REST get
 
 	def event(self, method, uri, data, query=None, entityid=None, timeout=None, ssl=True, quiet=False):
-		''' Generate an Event and send using REST to AccSyn cloud '''
+		''' Generate an Event and send using REST to Accsyn cloud '''
 		assert (self._session_key),("Please login before attempting to post event!")
 		event = {
 			'audience':"api",
@@ -288,11 +288,11 @@ class Session(object):
 		#r = requests.post(github_url, data, auth=('user', '*****'))
 		CONNECT_TO, READ_TO = (10, 2*60)  # Wait 10s to reach machine, 2min for it to send back data
 		r = None
-		#data = AccSyn.prepare_rest_serialize(data)
+		#data = Accsyn.prepare_rest_serialize(data)
 		initial_timeout = timeout
 		if headers is None:
 			if uri.find("registry/")!=0:
-				assert (not self._session_key is None),("Need to be authenticated when communicating with AccSyn!")
+				assert (not self._session_key is None),("Need to be authenticated when communicating with Accsyn!")
 				headers = {'Authorization':"ASSession %s"%(base64.b64encode('{"domain":"%s","username":"%s","session_key":"%s"}'%(self._domain, self._username, self._session_key)))}
 			else:
 				headers = {}
@@ -324,7 +324,7 @@ class Session(object):
 				time.sleep(sleep_time)
 
 			try:
-				#retval = AccSyn.prepare_rest_deserialize(r.json())
+				#retval = Accsyn.prepare_rest_deserialize(r.json())
 				retval = json.loads(r.text, cls=JSONDecoder)
 				if not quiet:
 					self.verbose("%s/%s REST %s result of %s: %s (~%sms)"%(
