@@ -58,7 +58,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-	__version__ = "1.2.4-1"
+	__version__ = "1.2.4-2"
 
 	def __init__(self, domain=None, username=None, api_key=None, pwd=None, hostname=None, port=None, proxy=None, verbose=False, dev=False):
 		''' Setup; store credentials, authenticate, get a session key '''
@@ -557,9 +557,20 @@ class Session(object):
 		assert (0<len(entitytype or "") and (isinstance(entitytype, str) or isinstance(entitytype, str))),("Invalid entity type supplied, must be of string type!")
 		assert (0<len(entityid or "") and (isinstance(entityid, str) or isinstance(entityid, str))),("Invalid entity ID supplied, must be of string type!")
 		assert (0<len(data or {}) and isinstance(data, dict)),("Invalid data supplied, must be dict and have content!")
-		d = self.event("PUT", "%s/edit"%Session.get_base_uri(entitytype), data, entityid=entityid)
-		if d:
-			return d['result']
+		response = self.event("PUT", "%s/edit"%Session.get_base_uri(entitytype), data, entityid=entityid)
+		if response:
+			return response['result']
+
+	def update_many(self, entitytype, data, entityid=None):
+		''' Update many entities '''
+		assert (0<len(entitytype or "") and (isinstance(entitytype, str) or isinstance(entitytype, str))),("Invalid entity type supplied, must be of string type!")
+		assert (entitytype.lower() == "task"),("Only multiple 'task' entities can be updated!")		
+		if entitytype.lower() == "task":
+			assert (0<len(entityid or "") and (isinstance(entityid, str) or isinstance(entityid, str))),("Invalid entity ID supplied, must be of string type!")
+		assert (0<len(data or []) and isinstance(data, list)),("Invalid data supplied, must be a list!")
+		response = self.event("PUT", "%s/edit"%Session.get_base_uri(entitytype), data, entityid=entityid)
+		if response:
+			return response['result']
 
 	# Delete an entity
 
@@ -567,9 +578,9 @@ class Session(object):
 		''' Update an entity '''
 		assert (0<len(entitytype or "") and (isinstance(entitytype, str) or isinstance(entitytype, str))),("Invalid entity type supplied, must be of string type!")
 		assert (0<len(entityid or "") and (isinstance(entityid, str) or isinstance(entityid, str))),("Invalid entity ID supplied, must be of string type!")
-		d = self.event("DELETE", "%s/delete"%Session.get_base_uri(entitytype), {}, entityid=entityid)
-		if d:
-			return d['result'][0]
+		response = self.event("DELETE", "%s/delete"%Session.get_base_uri(entitytype), {}, entityid=entityid)
+		if response:
+			return response['result'][0]
 
 	# File operations
 	def ls(self, p, recursive=False, maxdepth=None, files_only=False, directories_only=False):
@@ -586,9 +597,9 @@ class Session(object):
 			data['directories_only'] = directories_only
 		if files_only:
 			data['files_only'] = files_only
-		d = self.event("GET", "organization/file", data)
-		if d:
-			return d['result']
+		response = self.event("GET", "organization/file", data)
+		if response:
+			return response['result']
 
 	def getsize(self, p):
 		assert (0<len(p or "") and (isinstance(p, str) or isinstance(p, str) or isinstance(p, dict) or isinstance(p, list))),("No path supplied, or not a string/list!")
@@ -596,9 +607,9 @@ class Session(object):
 			'op':"getsize",
 			'path':p,
 		}
-		d = self.event("GET", "organization/file", data)
-		if d:
-			return d['result']
+		response = self.event("GET", "organization/file", data)
+		if response:
+			return response['result']
 
 	def exists(self, p):
 		assert (0<len(p or "") and (isinstance(p, str) or isinstance(p, str) or isinstance(p, dict) or isinstance(p, list))),("No path supplied, or not a string/list!")
@@ -606,9 +617,28 @@ class Session(object):
 			'op':"exists",
 			'path':p,
 		}
-		d = self.event("GET", "organization/file", data)
-		if d:
-			return d['result']
+		response = self.event("GET", "organization/file", data)
+		if response:
+			return response['result']
+
+	# Pre publish
+	def prepublish(self, data):
+		if data is None or not isinstance(data, list):
+			raise Exception("None or empty data supplied!")
+		# Check entries, calculate size
+		def recursive_get_size(files):
+			result = 0
+			for d in files:
+				if not 'size' in d:
+					d['size'] = 0 if not d.get('is_dir') is True or d.get('files') is None else recursive_get_size(d['files'])
+				result += d['size']
+			return result
+		event_data = {
+			'files':data,
+			'size':recursive_get_size(data)
+		}
+		response = self.event("PUT", "organization/publish/preprocess", event_data)
+		return response['result']
 
 	# Misc
 	def get_api_key(self):

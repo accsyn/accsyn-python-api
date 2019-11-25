@@ -4,11 +4,14 @@ Official AccSyn fast film delivery Python API
 Complete Python API reference can be found [here](https://support.accsyn.com/python-api/).
 
 
-Please use freely!
-
-
 Changelog:
 ----------
+
+v1.2-4
+
+  FEATURES
+  * b1; Pre-publish support.
+  * b2; Query and update job tasks support.
 
 v1.2-2
 
@@ -36,7 +39,7 @@ v1.1-4
 
 
 Henrik Norin, HDR AB, 2019
-AccSyn - secure data delivery and workflow sync
-https://support.accsyn.com
+Accsyn(r) - secure data delivery and workflow sync
 https://accsyn.com 
+https://support.accsyn.com
 
