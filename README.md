@@ -1,17 +1,29 @@
 # accsyn-python-api
 Official AccSyn fast film delivery Python API
 
-Complete Python API reference can be found [here](https://support.accsyn.com/python-api/).
+Complete Python API reference can be found [here](https://support.accsyn.com/python-api).
 
 
 Changelog:
 ----------
+
+
+v1.2-7
+
+  * (Session init) Support for logging to file.
+  * (Session init) Tell Accsyn to log JSON indentented in verbose mode.
+  * (find attributes) Choose which type of attributes to query: find(default), create (allowed when creating an antity) and update (allowed when updating).
+
+v1.2-5
+
+  * b4; Create task; If another tasks exists with same source and destination, it is retried instead of added as dupliace. If argument 'allow_duplicates' is supplied as False, an exception will be thrown.
 
 v1.2-4
 
   FEATURES
   * b1; Pre-publish support.
   * b2; Query and update job tasks support.
+  * b3; Bug fixes.
 
 v1.2-2
 
@@ -20,12 +32,12 @@ v1.2-2
 
 v1.2-1
 
-   FEATURES 
-   (b=build)
-   * b1; Renamed from FilmHUB.
+  FEATURES 
+  (b=build)
+  * b1; Renamed from FilmHUB.
 
-    BUG FIXES
-   * b2; Fixed bug in rename.
+  BUG FIXES
+  * b2; Fixed bug in rename.
 
 
 v1.1-4

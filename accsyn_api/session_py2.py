@@ -27,7 +27,6 @@ class JSONEncoder(json.JSONEncoder):
 		else:
 			try:
 				from bson.objectid import ObjectId
-
 				if isinstance(obj, ObjectId):
 					return str(obj)
 			except:
@@ -59,27 +58,30 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-	__version__ = "1.2.4-2"
+	__version__ = "1.2.7-1"
 
-	def __init__(self, domain=None, username=None, api_key=None, pwd=None, hostname=None, port=None, proxy=None, verbose=False, dev=False):
+	def __init__(self, domain=None, username=None, api_key=None, pwd=None, hostname=None, port=None, proxy=None, verbose=False, pretty_json=False, dev=False, path_logfile=None):
 		''' Setup; store credentials, authenticate, get a session key '''
 		# Generate a session ID
 		self._session_id = str(uuid.uuid4())
 		self._session_key = None # Have no session ID yet
 		self._verbose = verbose
+		self._pretty_json = pretty_json
 		self._proxy = proxy
 		self._dev = dev
+		Session._p_logfile = path_logfile
 		self._clearance = CLEARANCE_NONE
 		self.verbose("Creating Accsyn Python API session (v%s)"%Session.__version__)
-		# Migrate
 		for key in os.environ:
 			if key.startswith("FILMHUB_"):
 				Session.warning("Found old FilmHUB product environment variable '%s', please migrate!"%key)
 		if domain is None:
-			assert ('ACCSYN_DOMAIN' in os.environ or 'ACCSYN_ORG' in os.environ or 'FILMUB_DOMAIN' in os.environ or 'FILMHUB_ORG' in os.environ),("Please supply your Accsyn domain/organization or set ACCSYN_DOMAIN environment!")
+			if not ('ACCSYN_DOMAIN' in os.environ or 'ACCSYN_ORG' in os.environ or 'FILMHUB_DOMAIN' in os.environ or 'FILMHUB_ORG' in os.environ):
+				raise AccsynException("Please supply your Accsyn domain/organization or set ACCSYN_DOMAIN environment!")
 		self._domain = domain or (os.environ['ACCSYN_DOMAIN'] if 'ACCSYN_DOMAIN' in os.environ else os.environ.get('ACCSYN_ORG', os.environ.get('FILMHUB_DOMAIN', os.environ.get('FILMHUB_ORG'))))
 		if username is None:
-			assert ('ACCSYN_API_USER' in os.environ or 'FILMHUB_API_USER' in os.environ),("Please supply your Accsyn user name (E-mail) or set ACCSYN_API_USER environment!")
+			if not ('ACCSYN_API_USER' in os.environ or 'FILMHUB_API_USER' in os.environ):
+				raise AccsynException("Please supply your Accsyn user name (E-mail) or set ACCSYN_API_USER environment!")
 		self._username = username or os.environ.get('ACCSYN_API_USER') or os.environ['FILMHUB_API_USER']
 		if api_key:
 			self._api_key = api_key
@@ -90,7 +92,7 @@ class Session(object):
 				# Store it temporarily
 				self._pwd = pwd
 			else:
-				raise Exception("Please supply your Accsyn API KEY or set ACCSYN_API_KEY environment!")
+				raise AccsynException("Please supply your Accsyn API KEY or set ACCSYN_API_KEY environment!")
 		self._hostname = hostname
 		self._port = port or ACCSYN_PORT
 		if self._hostname is None:
@@ -109,46 +111,40 @@ class Session(object):
 	def get_hostname():
 		return socket.gethostname()
 
-	def login(self, revive_session_key=None):
-		# TODO: Load session key from safe disk storage/key chain?
-		assert (self._session_key is None),("Already logged in!")
-		d = {
-			'session':self._session_id,
-		}
-		if revive_session_key:
-			d['session_key_reuse'] = revive_session_key
-		if self._api_key:
-			headers = {
-				"Authorization":"ASCredentials %s"%base64.b64encode('{"domain":"%s","username":"%s","api_key":"%s"}'%(self._domain, self._username, self._api_key))
-			}
-		else:
-			headers = {
-				"Authorization":"ASCredentials %s"%base64.b64encode('{"domain":"%s","username":"%s","pwd":"%s"}'%(self._domain, self._username, base64.b64encode(self._pwd)))
-			}
-			self._pwd = None # Forget this now
-		result = self.rest("PUT", self._hostname, "/user/login/auth", d, headers=headers, port=self._port)
-		# Store session key
-		assert ('session_key' in result),("No session key were provided for us!")
-		self._session_key = result['session_key']
-		self._clearance = result['clearance'] or CLEARANCE_NONE
-		self._uid = result['id']
-		return True
-
 	@staticmethod
 	def info(s, standout=False):
-		if standout:
-			logging.info("-"*80)
-		logging.info(s)
-		if standout:
-			logging.info("-"*80)
+		if Session._p_logfile:
+			with open(Session._p_logfile, "a") as f:
+				try:
+					if standout:
+						f.write("-"*80+"\n")
+					f.write(s+"\n")
+					if standout:
+						f.write("-"*80+"\n")
+				finally:
+					f.flush()
+		else:
+			if standout:
+				logging.info("-"*80)
+			logging.info(s)
+			if standout:
+				logging.info("-"*80)
 
 	@staticmethod
 	def warning(s, standout=True):
-		if standout:
-			logging.warning("-"*80)
-		logging.warning(s)
-		if standout:
-			logging.warning("-"*80)
+		if Session._p_logfile:
+			with open(Session._p_logfile, "a") as f:
+				if standout:
+					f.write("[WARNING]"+"-"*80+"\n")
+				f.write("[WARNING]"+s+"\n")
+				if standout:
+					f.write("[WARNING]"+"-"*80+"\n")
+		else:
+			if standout:
+				logging.warning("-"*80)
+			logging.warning(s)
+			if standout:
+				logging.warning("-"*80)
 
 	def verbose(self, s):
 		if self._verbose:
@@ -160,7 +156,7 @@ class Session(object):
 
 	@staticmethod
 	def safely_printable(s):
-		#return unicodedata.normalize('NFKD', unicode(s)).encode('ascii', 'ignore')
+		# FILLER
 		if isinstance(s, str):
 			try:
 				u = unicode(s)
@@ -175,7 +171,6 @@ class Session(object):
 	@staticmethod
 	def json_serial(obj):
 		"""JSON serializer for objects not serializable by default json code"""
-
 		if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
 			return obj.isoformat()
 		raise TypeError ("Type %s not serializable" % type(obj))
@@ -187,6 +182,35 @@ class Session(object):
 
 	def get_last_message(self):
 		return self._last_message
+
+	@staticmethod
+	def base64_encode(s):
+		return base64.b64encode(s)
+
+	def login(self, revive_session_key=None):
+		# TODO: Load session key from safe disk storage/key chain?
+		assert (self._session_key is None),("Already logged in!")
+		d = {
+			'session':self._session_id,
+		}
+		if revive_session_key:
+			d['session_key_reuse'] = revive_session_key
+		if self._api_key:
+			headers = {
+				"Authorization":"ASCredentials %s"%Session.base64_encode('{"domain":"%s","username":"%s","api_key":"%s"}'%(self._domain, self._username, self._api_key))
+			}
+		else:
+			headers = {
+				"Authorization":"ASCredentials %s"%Session.base64_encode('{"domain":"%s","username":"%s","pwd":"%s"}'%(self._domain, self._username, Session.base64_encode(self._pwd)))
+			}
+			self._pwd = None # Forget this now
+		result = self.rest("PUT", self._hostname, "/user/login/auth", d, headers=headers, port=self._port)
+		# Store session key
+		assert ('session_key' in result),("No session key were provided for us!")
+		self._session_key = result['session_key']
+		self._clearance = result['clearance'] or CLEARANCE_NONE
+		self._uid = result['id']
+		return True
 
 	@staticmethod
 	def obscure_dict_string(s):
@@ -305,7 +329,7 @@ class Session(object):
 				Session.warning("Python lacks SOCKS support, please install 'pysocks' and try again...")
 				raise ie
 		elif not proxy_type is None:
-			raise Exception("Unknown proxy type '%s'!"%proxy_type)
+			raise AccsynException("Unknown proxy type '%s'!"%proxy_type)
 		url = "http%s://%s:%d/api/v1.0%s"%("s" if ssl else "", hostname, port,("/" if not uri.startswith("/") else "")+uri)
 		if timeout is None:
 			timeout = 999999
@@ -328,7 +352,7 @@ class Session(object):
 #			while True:
 			t_start = long(round(time.time() * 1000))
 			try:
-				self.verbose("REST %s %s, data: %s"%(method, url, data))
+				self.verbose("REST %s %s, data: %s"%(method, url, data if not self._pretty_json else Session.str(data)))
 				if method.lower() == "get":
 					r = requests.get(url, params = urllib.quote(Session.safe_dumps(data)), timeout=(CONNECT_TO, READ_TO), verify=False, headers=headers)
 				elif method.lower() == "put":
@@ -345,7 +369,7 @@ class Session(object):
 				timeout -= int((t_end-t_start)/1000)
 				timeout -= sleep_time
 				if timeout<=0 or True:
-					raise Exception("Could not reach %s:%d! Make sure cloud server(%s) can be reached from you location and no firewall is blocking outgoing traffic at port %s. Details: %s"%(hostname, port, port ,hostname,traceback.format_exc() if not quiet else "(quiet)"))
+					raise AccsynException("Could not reach %s:%d! Make sure cloud server(%s) can be reached from you location and no firewall is blocking outgoing traffic at port %s. Details: %s"%(hostname, port, port ,hostname,traceback.format_exc() if not quiet else "(quiet)"))
 					
 				Session.warning("Could not reach %s:%d! Waited %ds/%s, will try again in %ds... Details: %s"%(hostname, port, initial_timeout-timeout, "%ss"%initial_timeout if initial_timeout<99999999 else "INF", sleep_time, traceback.format_exc()))
 				time.sleep(sleep_time)
@@ -354,12 +378,11 @@ class Session(object):
 				#retval = Accsyn.prepare_rest_deserialize(r.json())
 				retval = json.loads(r.text, cls=JSONDecoder)
 				if not quiet:
-					self.verbose("%s/%s REST %s result of %s: %s (~%sms)"%(
+					self.verbose("%s/%s REST %s result: %s (~%sms)"%(
 						hostname, 
 						uri, 
 						method, 
-						Session.obscure_dict_string(Session.safely_printable(str(data)).replace("'",'"')), 
-						Session.obscure_dict_string(Session.safely_printable(str(retval)).replace("'",'"')), 
+						Session.obscure_dict_string(Session.safely_printable(str(retval) if not self._pretty_json else Session.str(retval)).replace("'",'"')), 
 						t_start-t_end+1))
 				do_retry = False
 				if not retval.get('message') is None:
@@ -379,17 +402,17 @@ class Session(object):
 			except:
 				message = "The %s:%d/%s REST %s %s operation failed! Details: %s %s"%(hostname, port, uri, method, Session.obscure_dict_string(Session.safely_printable(str(data)).replace("'",'"')), r.text, traceback.format_exc())
 				Session.warning(message)
-				raise Exception(message)
+				raise AccsynException(message)
 		if 'exception' in retval:
 			message = "%s caused an exception! Please contact %s admin for more further support."%(uri, self._domain)
 			Session.warning(message)
 			if self._clearance in [CLEARANCE_ADMIN, CLEARANCE_CLOUDADMIN]:
 				Session.warning(retval['exception'])
-			raise Exception(message)
+			raise AccsynException(message)
 		elif 'message' in retval:
 			message_effective = retval.get('message_hr') or retval['message'] 
 			Session.warning(message_effective)
-			raise Exception(message_effective)
+			raise AccsynException(message_effective)
 		return retval
 
 	def decode_query(self, query):
@@ -422,8 +445,8 @@ class Session(object):
 							idx_part_start = idx + 1
 			else:
 				is_at_whitespace = False
-				if query[idx] == '"' and is_escaped:
-					is_at_whitespace = False
+				if query[idx] == '"':
+					is_escaped = not is_escaped
 				elif query[idx] == "(":
 					if not is_escaped:
 						paranthesis_depth += 1
@@ -463,9 +486,10 @@ class Session(object):
 
 	# Create
 
-	def create(self, entitytype, data, entitytype_id=None):
+	def create(self, entitytype, data, entitytype_id=None, allow_duplicates=True):
 		''' Create an entity '''
 		assert (0<len((entitytype or "").strip())),("You must provide the entity type!")		
+		entitytype = entitytype.lower().strip()
 		if isinstance(data, str) or isinstance(data, unicode):
 			assert (0<len((data or "").strip())),("You must provide the data to create!")
 			# Is it JSON as a string or JSON in a file pointed to?
@@ -476,10 +500,13 @@ class Session(object):
 				if os.path.exists(data):
 					data = json.load(open(data, "r"))
 				else:
-					raise Exception("Cannot build JSON payload data, not a valid JSON string or path to a JSON file!")
+					raise AccsynException("Cannot build JSON payload data, not a valid JSON string or path to a JSON file!")
 		else:
+			if isinstance(data, list):
+				data = {'tasks':data}
 			assert (not data is None and 0<len(data)),("Empty create data submitted!")
-
+		if entitytype in ["job","task"]:
+			data['allow_duplicates'] = allow_duplicates
 		d = self.event("POST", "%s/create"%Session.get_base_uri(entitytype), data, query=entitytype_id)
 		if d:
 			if 'result' in d:
@@ -489,9 +516,9 @@ class Session(object):
 
 	# Query
 
-	def find(self, query, attributes=None, archived=False, limit=None, skip=None):
+	def find(self, query, attributes=None, finished=None, limit=None, skip=None, create=False, update=False):
 		''' Return a list of something '''
-		assert (0<len(query or "") and (isinstance(query, str) or isinstance(query, unicode))),("Invalid query type supplied, must be of string type!")
+		assert (0<len(query or "") and (isinstance(query, str) or isinstance(query, str) or isinstance(query, unicode))),("Invalid query type supplied, must be of string type!")
 		retval = None
 		d = self.decode_query(query)
 		data = {}
@@ -506,7 +533,7 @@ class Session(object):
 			parts = d['expression'].split("=")
 			assert (len(parts)==2 and parts[0].strip() == "entitytype"),("Please query attributes by expressions on the form 'attributes WHERE entitytype=job'")
 			entitytype = parts[1].strip().replace("'","").replace('"',"")
-			d = self.event("GET", "attributes", {'entitytype':entitytype})
+			d = self.event("GET", "attributes", {'entitytype':entitytype, 'create':create, 'update':update})
 			if d:
 				retval = d['result']
 		else:
@@ -516,8 +543,8 @@ class Session(object):
 				data = {'type':2}
 			elif d['entitytype'] == "job":
 				data = {'type':1}
-			if archived:
-				data['archive']=True
+			if not finished is None:
+				data['finished']=finished
 			if limit:
 				data['limit'] = limit
 			if skip:
@@ -556,14 +583,14 @@ class Session(object):
 		assert (0<len(data or {}) and isinstance(data, dict)),("Invalid data supplied, must be dict and have content!")
 		response = self.event("PUT", "%s/edit"%Session.get_base_uri(entitytype), data, entityid=entityid)
 		if response:
-			return response['result']
+			return response['result'][0]
 
 	def update_many(self, entitytype, data, entityid=None):
 		''' Update many entities '''
-		assert (0<len(entitytype or "") and (isinstance(entitytype, str) or isinstance(entitytype, str))),("Invalid entity type supplied, must be of string type!")
+		assert (0<len(entitytype or "") and (isinstance(entitytype, str) or isinstance(entitytype, str) or isinstance(entitytype, unicode))),("Invalid entity type supplied, must be of string type!")
 		assert (entitytype.lower() == "task"),("Only multiple 'task' entities can be updated!")		
 		if entitytype.lower() == "task":
-			assert (0<len(entityid or "") and (isinstance(entityid, str) or isinstance(entityid, str))),("Invalid entity ID supplied, must be of string type!")
+			assert (0<len(entityid or "") and (isinstance(entityid, str) or isinstance(entityid, str) or isinstance(entityid, unicode))),("Invalid entity ID supplied, must be of string type!")
 		assert (0<len(data or []) and isinstance(data, list)),("Invalid data supplied, must be a list!")
 		response = self.event("PUT", "%s/edit"%Session.get_base_uri(entitytype), data, entityid=entityid)
 		if response:
@@ -577,7 +604,7 @@ class Session(object):
 		assert (0<len(entityid or "") and (isinstance(entityid, str) or isinstance(entityid, unicode))),("Invalid entity ID supplied, must be of string type!")
 		response = self.event("DELETE", "%s/delete"%Session.get_base_uri(entitytype), {}, entityid=entityid)
 		if response:
-			return response['result'][0]
+			return response['result']
 
 	# File operations
 	def ls(self, p, recursive=False, maxdepth=None, files_only=False, directories_only=False):
@@ -621,7 +648,7 @@ class Session(object):
 	# Pre publish
 	def prepublish(self, data):
 		if data is None or not isinstance(data, list):
-			raise Exception("None or empty data supplied!")
+			raise AccsynException("None or empty data supplied!")
 		# Check entries, calculate size
 		def recursive_get_size(files):
 			result = 0
@@ -663,8 +690,8 @@ class Session(object):
 
 	# Help
 	def help(self):
-		print "Please have a look at the Python API reference: https://sites.google.com/accsyn.com/python-api"
+		print "Please have a look at the Python API reference: https://support.accsyn.com/python-api"
 
-
-
-
+class AccsynException(Exception):
+	def __init__(self, message):
+		super(AccsynException, self).__init__(message)
