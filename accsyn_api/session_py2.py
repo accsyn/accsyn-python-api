@@ -58,7 +58,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-	__version__ = "1.2.7-1"
+	__version__ = "1.3.1-1"
 
 	def __init__(self, domain=None, username=None, api_key=None, pwd=None, hostname=None, port=None, proxy=None, verbose=False, pretty_json=False, dev=False, path_logfile=None):
 		''' Setup; store credentials, authenticate, get a session key '''
@@ -607,13 +607,14 @@ class Session(object):
 			return response['result']
 
 	# File operations
-	def ls(self, p, recursive=False, maxdepth=None, files_only=False, directories_only=False):
+	def ls(self, p, recursive=False, maxdepth=None, getsize=False, files_only=False, directories_only=False):
 		assert (0<len(p or "") and (isinstance(p, str) or isinstance(p, unicode) or isinstance(p, dict) or isinstance(p, list))),("No path supplied, or not a string/list!")
 		data = {
 			'op':"ls",
 			'path':p,
 			'download':True,
-			'recursive':recursive
+			'recursive':recursive,
+			'getsize':getsize
 		}
 		if maxdepth:
 			data['maxdepth'] = maxdepth

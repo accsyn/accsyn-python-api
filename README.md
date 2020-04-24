@@ -7,6 +7,8 @@ Complete Python API reference can be found [here](https://support.accsyn.com/pyt
 Changelog:
 ----------
 
+v1.3-1
+  * (ls) Now supports getsize attribute. If true, sizes will be calculated and returned for folders within file listings. Have no effect if 'files_only' attribute is set.
 
 v1.2-7
 
@@ -50,7 +52,7 @@ v1.1-4
    * b2; Not retrying twice if timeout, could cause for example two jobs to be created.
 
 
-Henrik Norin, HDR AB, 2019
+Henrik Norin, HDR AB, 2020
 Accsyn(r) - secure data delivery and workflow sync
 https://accsyn.com 
 https://support.accsyn.com
