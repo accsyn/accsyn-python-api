@@ -1,4 +1,4 @@
-import sys, os, logging, traceback, time, datetime, subprocess, socket, json, uuid, hashlib, copy, unicodedata, _thread, urllib.request, urllib.parse, urllib.error, base64, io, gzip, binascii
+import sys, os, logging, traceback, time, datetime, subprocess, socket, json, uuid, hashlib, copy, unicodedata, _thread, urllib.request, urllib.parse, urllib.error, base64, io, gzip, binascii, re
 import requests
 
 try:
@@ -22,11 +22,11 @@ CLEARANCE_NONE="none"
 class JSONEncoder(json.JSONEncoder):
 	def default(self, obj):
 		if isinstance(obj, datetime.date) or isinstance(obj, datetime.datetime):
-			return "{USD::date}%s"%obj.strftime("%Y%m%d %H:%M:%S")
+			return obj.strftime("%Y-%m-%dT%H:%M:%S")
+			#return "{USD::date}%s"%obj.strftime("%Y%m%d %H:%M:%S") DEPRECATED
 		else:
 			try:
 				from bson.objectid import ObjectId
-
 				if isinstance(obj, ObjectId):
 					return str(obj)
 			except:
@@ -38,7 +38,7 @@ class JSONDecoder(json.JSONDecoder):
 		json_data = json.loads(json_string)
 		def recursive_decode(d):
 			if isinstance(d, dict):
-				for key in list(d.keys()):
+				for key in d.keys():
 					if isinstance(d[key], dict):
 						d[key] = recursive_decode(d[key])	
 					elif isinstance(d[key], list):
@@ -46,11 +46,21 @@ class JSONDecoder(json.JSONDecoder):
 						for i in d[key]:
 							newlist.append(recursive_decode(i))
 						d[key] = newlist
-					elif isinstance(d[key], str) or isinstance(d[key], str):
+					elif isinstance(d[key], str) or isinstance(d[key], unicode):
 						if key == "_id":
 							from bson.objectid import ObjectId
 							d[key] = ObjectId(d[key])
-						elif str(Session.safely_printable(d[key])).find("{USD::date}")>-1:
+						if re.match("^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$",str(Session.safely_printable(d[key]))):
+							if len(d[key].split("-")[0]) == 4:
+								d[key] = datetime.datetime.strptime(d[key],"%Y-%m-%dT%H:%M:%S")
+							else:
+								d[key] = datetime.datetime.strptime(d[key],"%y-%m-%dT%H:%M:%S")
+						elif re.match("^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}$",str(Session.safely_printable(d[key]))): # With millis
+							if len(d[key].split("-")[0]) == 4:
+								d[key] = datetime.datetime.strptime(d[key],"%Y-%m-%dT%H:%M:%S.%f")
+							else:
+								d[key] = datetime.datetime.strptime(d[key],"%y-%m-%dT%H:%M:%S.%f")
+						elif str(Session.safely_printable(d[key])).find("{USD::date}")>-1: # DEPRECATED
 							s = d[key][d[key].find("}")+1:]
 							d[key] = datetime.datetime.strptime(s,"%Y%m%d %H:%M:%S" if s.find("+")==-1 else "%Y%m%d+%H:%M:%S")
 			return d
@@ -58,13 +68,15 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-	__version__ = "1.3.1-1"
+	__version__ = "1.3.4-1"
 
-	def __init__(self, domain=None, username=None, api_key=None, pwd=None, hostname=None, port=None, proxy=None, verbose=False, pretty_json=False, dev=False, path_logfile=None):
+	def __init__(self, domain=None, username=None, api_key=None, pwd=None, session_key=None, hostname=None, port=None, proxy=None, verbose=False, pretty_json=False, dev=False, path_logfile=None):
 		''' Setup; store credentials, authenticate, get a session key '''
 		# Generate a session ID
+		self._pwd = None
 		self._session_id = str(uuid.uuid4())
-		self._session_key = None # Have no session ID yet
+		self._session_key = None
+		self._session_key_provided = None
 		self._verbose = verbose
 		self._pretty_json = pretty_json
 		self._proxy = proxy
@@ -87,13 +99,14 @@ class Session(object):
 			self._api_key = api_key
 		else:
 			self._api_key = os.environ.get('ACCSYN_API_KEY') or os.environ.get('FILMHUB_API_KEY')
-		if len(self._api_key or "") == 0:
+				if 0<len(session_key or ""):
+			self._session_key_provided = session_key # User has a session key for us to use, validate at login, store it temporarily
+		elif len(self._api_key or "") == 0:
 			if 0<len(pwd or ""):
 				# Store it temporarily
 				self._pwd = pwd
 			else:
-				raise AccsynException("Please supply your Accsyn API KEY or set ACCSYN_API_KEY environment!")
-		self._hostname = hostname
+				raise AccsynException("Please supply your Accsyn API KEY or set ACCSYN_API_KEY environment!")		self._hostname = hostname
 		self._port = port or ACCSYN_PORT
 		if self._hostname is None:
 			if self._dev:
@@ -197,13 +210,20 @@ class Session(object):
 			d['session_key_reuse'] = revive_session_key
 		if self._api_key:
 			headers = {
-				"Authorization":"ASCredentials %s"%(Session.base64_encode('{"domain":"%s","username":"%s","api_key":"%s"}'%(self._domain, self._username, self._api_key)))  
+				"Authorization":"ASCredentials %s"%Session.base64_encode('{"domain":"%s","username":"%s","api_key":"%s"}'%(self._domain, self._username, self._api_key))
 			}
-		else:
+		elif self._pwd:
 			headers = {
-				"Authorization":"ASCredentials %s"%(Session.base64_encode('{"domain":"%s","username":"%s","pwd":"%s"}'%(self._domain, self._username, Session.base64_encode(self._pwd))))
+				"Authorization":"ASCredentials %s"%Session.base64_encode('{"domain":"%s","username":"%s","pwd":"%s"}'%(self._domain, self._username, Session.base64_encode(self._pwd)))
 			}
 			self._pwd = None # Forget this now
+		elif self._session_key_provided:
+			headers = {
+				"Authorization":"ASSession %s"%Session.base64_encode('{"domain":"%s","username":"%s","session_key":"%s"}'%(self._domain, self._username, self._session_key_provided))
+			}
+			self._session_key_provided = None # Forget this now
+		else:
+			raise Exception("No means of authentication available!")
 		result = self.rest("PUT", self._hostname, "/user/login/auth", d, headers=headers, port=self._port)
 		# Store session key
 		assert ('session_key' in result),("No session key were provided for us!")
@@ -445,7 +465,7 @@ class Session(object):
 							idx_part_start = idx + 1
 			else:
 				is_at_whitespace = False
-				if query[idx] == '"' and is_escaped:
+				if query[idx] == '"':
 					is_escaped = not is_escaped
 				elif query[idx] == "(":
 					if not is_escaped:
@@ -459,7 +479,7 @@ class Session(object):
 			parts.append(query[idx_part_start:])
 		self.verbose("Query: '%s', parts: '%s'"%(query, parts))
 		# ['Job', 'WHERE', '(dest="lars@edit.com" OR id=...)]
-		assert (len(parts) in [1,3]),("Query has invalid syntax; statements supported can either be single ('entities') or with a WHERE statement ('job WHERE id=..')")
+		assert (len(parts) == 1 or 3<=len(parts)),("Query has invalid syntax; statements can either be single ('<entity>') or with a WHERE statement ('<(sub)entity> WHERE {<entity>.}id=..{ AND ..}')")
 		if len(parts) == 1:
 			if parts[0].lower() == "user":
 				return {'entitytype':parts[0].lower(),'expression':"code=%s"%self._username}
@@ -468,7 +488,7 @@ class Session(object):
 		else:
 			assert (parts[1].strip().lower() == "where"),("Invalid query '%s', should be on the form '<entitytype> where <expression>'.")
 			# Decode expression
-			return {'entitytype':parts[0].lower(),'expression':parts[2].lower()}
+			return {'entitytype':parts[0].lower(),'expression':(" ".join(parts[2:])).lower()}
 
 	@staticmethod
 	def get_base_uri(entitytype):
@@ -666,8 +686,13 @@ class Session(object):
 		return response['result']
 
 	# Misc
-	def get_api_key(self):
-		return self.event("GET", "user/api_key", {})['api_key']
+	#def get_api_key(self):
+	#	''' DEPRECATED as of 1.3-4 '''
+	#	return self.event("GET", "user/api_key", {})['api_key']
+
+	def get_session_key(self):
+		''' Return the session key. '''
+		return self._session_key
 
 	def gui_is_running(self):
 		result = self.event("GET", "client/find", {}, query="user={0} AND code={1} AND type={2}".format(self._uid, Session.get_hostname(), 0))['result']
