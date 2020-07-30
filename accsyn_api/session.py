@@ -68,7 +68,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-	__version__ = "1.3.4-1"
+	__version__ = "1.3.4-2"
 
 	def __init__(self, domain=None, username=None, api_key=None, pwd=None, session_key=None, hostname=None, port=None, proxy=None, verbose=False, pretty_json=False, dev=False, path_logfile=None):
 		''' Setup; store credentials, authenticate, get a session key '''
@@ -99,14 +99,15 @@ class Session(object):
 			self._api_key = api_key
 		else:
 			self._api_key = os.environ.get('ACCSYN_API_KEY') or os.environ.get('FILMHUB_API_KEY')
-				if 0<len(session_key or ""):
+		if 0<len(session_key or ""):
 			self._session_key_provided = session_key # User has a session key for us to use, validate at login, store it temporarily
 		elif len(self._api_key or "") == 0:
 			if 0<len(pwd or ""):
 				# Store it temporarily
 				self._pwd = pwd
 			else:
-				raise AccsynException("Please supply your Accsyn API KEY or set ACCSYN_API_KEY environment!")		self._hostname = hostname
+				raise AccsynException("Please supply your Accsyn API KEY or set ACCSYN_API_KEY environment!")
+		self._hostname = hostname
 		self._port = port or ACCSYN_PORT
 		if self._hostname is None:
 			if self._dev:
