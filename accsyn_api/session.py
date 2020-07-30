@@ -1,10 +1,10 @@
-import sys, os, logging, traceback, time, datetime, subprocess, socket, json, uuid, hashlib, copy, unicodedata, _thread, urllib.request, urllib.parse, urllib.error, base64, io, gzip, binascii, re
+import sys, os, logging, traceback, time, datetime, subprocess, socket, json, uuid, hashlib, copy, _thread, urllib.request, urllib.parse, urllib.error, base64, io, gzip, binascii, re
 import requests
 
 try:
 	requests.packages.urllib3.disable_warnings()
 except:
-	print(traceback.format_exc(), file=sys.stderr)
+	print(traceback.format_exc(), file=sys.stderr) # Python 3
 
 logging.basicConfig(format="(%(thread)d@%(asctime)-15s) %(message)s", level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S')
 
@@ -46,7 +46,7 @@ class JSONDecoder(json.JSONDecoder):
 						for i in d[key]:
 							newlist.append(recursive_decode(i))
 						d[key] = newlist
-					elif isinstance(d[key], str) or isinstance(d[key], unicode):
+					elif isinstance(d[key], str):
 						if key == "_id":
 							from bson.objectid import ObjectId
 							d[key] = ObjectId(d[key])
@@ -68,7 +68,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-	__version__ = "1.3.4-2"
+	__version__ = "1.3.4-3"
 
 	def __init__(self, domain=None, username=None, api_key=None, pwd=None, session_key=None, hostname=None, port=None, proxy=None, verbose=False, pretty_json=False, dev=False, path_logfile=None):
 		''' Setup; store credentials, authenticate, get a session key '''
@@ -171,16 +171,6 @@ class Session(object):
 	@staticmethod
 	def safely_printable(s):
 		return ((s or "").encode()).decode("ascii", "ignore")
-		#if isinstance(s, str):
-		#	try:
-		#		u = str(s)
-		#	except:
-		#		u = str(s,'iso-8859-1')
-		#elif isinstance(s, str):
-		#	u = s
-		#else:
-		#	u = str(s)
-		#return unicodedata.normalize('NFKD', u).encode('ascii', 'ignore')
 
 	@staticmethod
 	def json_serial(obj):
@@ -420,7 +410,7 @@ class Session(object):
 				if not do_retry:
 					break
 			except:
-				print(traceback.format_exc(), file=sys.stderr)
+				print(traceback.format_exc(), file=sys.stderr) # Python 3
 				message = "The %s:%d/%s REST %s %s operation failed! Details: %s %s"%(hostname, port, uri, method, Session.obscure_dict_string(Session.safely_printable(str(data)).replace("'",'"')), r.text, traceback.format_exc())
 				Session.warning(message)
 				raise AccsynException(message)
@@ -539,7 +529,7 @@ class Session(object):
 
 	def find(self, query, attributes=None, finished=None, limit=None, skip=None, create=False, update=False):
 		''' Return a list of something '''
-		assert (0<len(query or "") and (isinstance(query, str) or isinstance(query, str) or isinstance(query, unicode))),("Invalid query type supplied, must be of string type!")
+		assert (0<len(query or "") and (isinstance(query, str) or isinstance(query, str))),("Invalid query type supplied, must be of string type!")
 		retval = None
 		d = self.decode_query(query)
 		data = {}
@@ -608,10 +598,10 @@ class Session(object):
 
 	def update_many(self, entitytype, data, entityid=None):
 		''' Update many entities '''
-		assert (0<len(entitytype or "") and (isinstance(entitytype, str) or isinstance(entitytype, str) or isinstance(entitytype, unicode))),("Invalid entity type supplied, must be of string type!")
+		assert (0<len(entitytype or "") and (isinstance(entitytype, str) or isinstance(entitytype, str))),("Invalid entity type supplied, must be of string type!")
 		assert (entitytype.lower() == "task"),("Only multiple 'task' entities can be updated!")		
 		if entitytype.lower() == "task":
-			assert (0<len(entityid or "") and (isinstance(entityid, str) or isinstance(entityid, str) or isinstance(entityid, unicode))),("Invalid entity ID supplied, must be of string type!")
+			assert (0<len(entityid or "") and (isinstance(entityid, str) or isinstance(entityid, str))),("Invalid entity ID supplied, must be of string type!")
 		assert (0<len(data or []) and isinstance(data, list)),("Invalid data supplied, must be a list!")
 		response = self.event("PUT", "%s/edit"%Session.get_base_uri(entitytype), data, entityid=entityid)
 		if response:
@@ -621,8 +611,8 @@ class Session(object):
 
 	def delete_one(self, entitytype, entityid):
 		''' Update an entity '''
-		assert (0<len(entitytype or "") and (isinstance(entitytype, str) or isinstance(entitytype, str) or isinstance(entitytype, unicode))),("Invalid entity type supplied, must be of string type!")
-		assert (0<len(entityid or "") and (isinstance(entityid, str) or isinstance(entityid, str) or isinstance(entityid, unicode))),("Invalid entity ID supplied, must be of string type!")
+		assert (0<len(entitytype or "") and (isinstance(entitytype, str) or isinstance(entitytype, str))),("Invalid entity type supplied, must be of string type!")
+		assert (0<len(entityid or "") and (isinstance(entityid, str) or isinstance(entityid, str))),("Invalid entity ID supplied, must be of string type!")
 		response = self.event("DELETE", "%s/delete"%Session.get_base_uri(entitytype), {}, entityid=entityid)
 		if response:
 			return response['result']
