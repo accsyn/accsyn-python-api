@@ -68,7 +68,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-	__version__ = "1.3.4-3"
+	__version__ = "1.3.4-4"
 
 	def __init__(self, domain=None, username=None, api_key=None, pwd=None, session_key=None, hostname=None, port=None, proxy=None, verbose=False, pretty_json=False, dev=False, path_logfile=None):
 		''' Setup; store credentials, authenticate, get a session key '''
@@ -501,7 +501,7 @@ class Session(object):
 		''' Create an entity '''
 		assert (0<len((entitytype or "").strip())),("You must provide the entity type!")		
 		entitytype = entitytype.lower().strip()
-		if isinstance(data, str) or isinstance(data, str):
+		if isinstance(data, str):
 			assert (0<len((data or "").strip())),("You must provide the data to create!")
 			# Is it JSON as a string or JSON in a file pointed to?
 			try:
@@ -516,6 +516,8 @@ class Session(object):
 			if isinstance(data, list):
 				data = {'tasks':data}
 			assert (not data is None and 0<len(data)),("Empty create data submitted!")
+		if entitytype == "task" and not 'tasks' in data:
+			data = {'tasks':data}
 		if entitytype in ["job","task"]:
 			data['allow_duplicates'] = allow_duplicates
 		d = self.event("POST", "%s/create"%Session.get_base_uri(entitytype), data, query=entitytype_id)
