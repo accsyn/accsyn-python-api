@@ -68,7 +68,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-	__version__ = "1.3.4-4"
+	__version__ = "1.3.4-5"
 
 	def __init__(self, domain=None, username=None, api_key=None, pwd=None, session_key=None, hostname=None, port=None, proxy=None, verbose=False, pretty_json=False, dev=False, path_logfile=None):
 		''' Setup; store credentials, authenticate, get a session key '''
@@ -591,8 +591,9 @@ class Session(object):
 
 	def update_one(self, entitytype, entityid, data):
 		''' Update an entity '''
-		assert (0<len(entitytype or "") and (isinstance(entitytype, str) or isinstance(entitytype, str))),("Invalid entity type supplied, must be of string type!")
-		assert (0<len(entityid or "") and (isinstance(entityid, str) or isinstance(entityid, str))),("Invalid entity ID supplied, must be of string type!")
+		assert (0<len(entitytype or "") and isinstance(entitytype, str)),("Invalid entity type supplied, must be of string type!")
+		entitytype = entitytype.lower().strip()
+		assert (0<len(entityid or "") and (isinstance(entityid, str))),("Invalid entity ID supplied, must be of string type!")
 		assert (0<len(data or {}) and isinstance(data, dict)),("Invalid data supplied, must be dict and have content!")
 		response = self.event("PUT", "%s/edit"%Session.get_base_uri(entitytype), data, entityid=entityid)
 		if response:
@@ -600,8 +601,9 @@ class Session(object):
 
 	def update_many(self, entitytype, data, entityid=None):
 		''' Update many entities '''
-		assert (0<len(entitytype or "") and (isinstance(entitytype, str) or isinstance(entitytype, str))),("Invalid entity type supplied, must be of string type!")
-		assert (entitytype.lower() == "task"),("Only multiple 'task' entities can be updated!")		
+		assert (0<len(entitytype or "") and isinstance(entitytype, str)),("Invalid entity type supplied, must be of string type!")
+		entitytype = entitytype.lower().strip()
+		assert (entitytype == "task"),("Only multiple 'task' entities can be updated!")		
 		if entitytype.lower() == "task":
 			assert (0<len(entityid or "") and (isinstance(entityid, str) or isinstance(entityid, str))),("Invalid entity ID supplied, must be of string type!")
 		assert (0<len(data or []) and isinstance(data, list)),("Invalid data supplied, must be a list!")
@@ -613,8 +615,9 @@ class Session(object):
 
 	def delete_one(self, entitytype, entityid):
 		''' Update an entity '''
-		assert (0<len(entitytype or "") and (isinstance(entitytype, str) or isinstance(entitytype, str))),("Invalid entity type supplied, must be of string type!")
-		assert (0<len(entityid or "") and (isinstance(entityid, str) or isinstance(entityid, str))),("Invalid entity ID supplied, must be of string type!")
+		assert (0<len(entitytype or "") and isinstance(entitytype, str)),("Invalid entity type supplied, must be of string type!")
+		entitytype = entitytype.lower().strip()
+		assert (0<len(entityid or "") and (isinstance(entityid, str))),("Invalid entity ID supplied, must be of string type!")
 		response = self.event("DELETE", "%s/delete"%Session.get_base_uri(entitytype), {}, entityid=entityid)
 		if response:
 			return response['result']
