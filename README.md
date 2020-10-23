@@ -6,11 +6,14 @@ Complete Python API reference can be found [here](https://support.accsyn.com/pyt
 
 Changelog:
 ----------
+v1.3-5
+  * (Create) Returns a list if multiple entities were created.
+  * PEP-8 compliant.
+
 v1.3-4
   * (task query) Fixed bug where additional expression were not detected.
   * New function 'get_session_key' that returns the current session key retreived at authentication, and can be used for subsequent authentications throughout the lifetime of key.
   * New argument 'session_key' to Session(..) construct, will make API to attempt authenticate using the session key instead of API key. The session key are bound to the IP and device detected upon creation.
-  * PEP-8 compliant.
 
 v1.3-1
   * (ls) Now supports getsize attribute. If true, sizes will be calculated and returned for folders within file listings. Have no effect if 'files_only' attribute is set.
