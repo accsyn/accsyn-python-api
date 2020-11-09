@@ -115,7 +115,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-    __version__ = '1.3.5-1'
+    __version__ = '1.3.5-2'
 
     def __init__(
             self,
@@ -580,7 +580,7 @@ class Session(object):
                         CONNECT_TO, READ_TO), 
                         verify=False, 
                         headers=headers_effective)
-                t_end = long(round(time.time() * 1000))
+                t_end = int(round(time.time() * 1000))
                 # break
             except BaseException:
                 sleep_time = 2

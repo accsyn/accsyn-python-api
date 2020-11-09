@@ -9,6 +9,7 @@ Changelog:
 v1.3-5
   * (Create) Returns a list if multiple entities were created.
   * PEP-8 compliant.
+  * b2; (py3k) removed 'long' usage.
 
 v1.3-4
   * (task query) Fixed bug where additional expression were not detected.
