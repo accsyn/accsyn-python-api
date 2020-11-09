@@ -115,7 +115,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-    __version__ = '1.3.5-3'
+    __version__ = '1.3.5-5'
 
     def __init__(
             self,
@@ -292,7 +292,7 @@ class Session(object):
 
     @staticmethod
     def base64_encode(s):
-        return (base64.b64encode((s).encode())).decode('utf-8', 'ignore')
+        return (base64.b64encode(s.encode('utf-8'))).decode('ascii')
 
     def login(self, revive_session_key=None):
         # TODO: Load session key from safe disk storage/key chain?
@@ -417,7 +417,7 @@ class Session(object):
                 with gzip.GzipFile(fileobj=out, mode='w') as f:
                     f.write(Session.safe_dumps(data))
                 b = out.getvalue()
-                event['gz_data'] = binascii.b2a_base64(b.encode("utf-8"))
+                event['gz_data'] = base64.b64encode(b.encode("utf-8")).decode('ascii')
                 self.verbose('Compressed event payload %d>%d(%s%%)' % (
                     size, len(event['gz_data']), 
                     (100 * len(event['gz_data']) / size)))
@@ -535,7 +535,7 @@ class Session(object):
                         self._session_key)
                     headers_effective = {
                         'Authorization': 'ASSession {}'.format(
-                            base64.b64encode(header_data.encode("utf-8")))
+                            Session.base64_encode(header_data))
                     }
                 else:
                     headers_effective = {}
