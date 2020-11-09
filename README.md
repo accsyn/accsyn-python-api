@@ -10,6 +10,7 @@ v1.3-5
   * (Create) Returns a list if multiple entities were created.
   * PEP-8 compliant.
   * b2; (py3k) removed 'long' usage.
+  * b3; (py3k) fixed TypeError: a bytes-like object is required, not 'str'.
 
 v1.3-4
   * (task query) Fixed bug where additional expression were not detected.

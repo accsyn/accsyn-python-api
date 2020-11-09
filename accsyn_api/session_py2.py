@@ -115,7 +115,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-    __version__ = '1.3.5-2'
+    __version__ = '1.3.5-3'
 
     def __init__(
             self,

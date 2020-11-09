@@ -115,7 +115,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-    __version__ = '1.3.5-2'
+    __version__ = '1.3.5-3'
 
     def __init__(
             self,
@@ -417,7 +417,7 @@ class Session(object):
                 with gzip.GzipFile(fileobj=out, mode='w') as f:
                     f.write(Session.safe_dumps(data))
                 b = out.getvalue()
-                event['gz_data'] = binascii.b2a_base64(b)
+                event['gz_data'] = binascii.b2a_base64(b.encode("utf-8"))
                 self.verbose('Compressed event payload %d>%d(%s%%)' % (
                     size, len(event['gz_data']), 
                     (100 * len(event['gz_data']) / size)))
@@ -535,7 +535,7 @@ class Session(object):
                         self._session_key)
                     headers_effective = {
                         'Authorization': 'ASSession {}'.format(
-                            base64.b64encode(header_data))
+                            base64.b64encode(header_data.encode("utf-8")))
                     }
                 else:
                     headers_effective = {}
