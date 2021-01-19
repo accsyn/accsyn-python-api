@@ -11,15 +11,14 @@ import uuid
 import hashlib
 import copy
 import _thread
-import urllib.request
-import urllib.parse
-import urllib.error
+import urllib
 import base64
 import io
 import gzip
 import binascii
 import re
 import requests
+
 
 try:
     requests.packages.urllib3.disable_warnings()
@@ -115,7 +114,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-    __version__ = '1.3.5-5'
+    __version__ = '1.4.0-2'
 
     def __init__(
             self,
@@ -551,7 +550,7 @@ class Session(object):
                 if method.lower() == 'get':
                     r = requests.get(
                         url, 
-                        params=urllib.quote(Session.safe_dumps(data)), 
+                        params=urllib.parse.quote(Session.safe_dumps(data)), 
                         timeout=(CONNECT_TO, READ_TO), 
                         verify=False, 
                         headers=headers_effective)
@@ -574,7 +573,7 @@ class Session(object):
                 elif method.lower() == 'delete':
                     r = requests.delete(
                         url, 
-                        params=urllib.quote(
+                        params=urllib.parse.quote(
                         Session.safe_dumps(data)), 
                         timeout=(
                         CONNECT_TO, READ_TO), 

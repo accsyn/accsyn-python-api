@@ -20,7 +20,6 @@ import binascii
 import re
 import requests
 
-
 try:
     requests.packages.urllib3.disable_warnings()
 except BaseException:
@@ -115,7 +114,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-    __version__ = '1.3.5-5'
+    __version__ = '1.4.0-2'
 
     def __init__(
             self,
