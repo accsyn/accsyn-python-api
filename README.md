@@ -6,6 +6,13 @@ Complete Python API reference can be found [here](https://support.accsyn.com/pyt
 
 Changelog:
 ----------
+1.4.1-1
+  * Session.generate_session_key(liftime) - generates a new session key, with the given lifetime in seconds.
+  * Now reads the ACCSYN_SESSION_KEY environment variable.
+
+1.4.0-3
+  * Brought back Session.get_api_key(), to be able enable this in future backend updates.
+
 1.4.0-2
   * p3k bug fixes.
 

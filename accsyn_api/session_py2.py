@@ -114,7 +114,7 @@ class JSONDecoder(json.JSONDecoder):
 
 class Session(object):
 
-    __version__ = '1.4.0-2'
+    __version__ = '1.4.5-1'
 
     def __init__(
             self,
@@ -178,6 +178,8 @@ class Session(object):
         else:
             self._api_key = os.environ.get(
                 'ACCSYN_API_KEY') or os.environ.get('FILMHUB_API_KEY')
+        if len(session_key or '') == 0:
+            session_key = os.environ.get('ACCSYN_SESSION_KEY')
         if 0 < len(session_key or ''):
             # User has a session key for us to use, validate at login, store it
             # temporarily
@@ -808,7 +810,7 @@ class Session(object):
             skip=None,
             create=False,
             update=False):
-        ''' Return a list of something '''
+        ''' Return a list of entities '''
         assert (
             0 < len(query or '') and 
                 (isinstance(query, str) or 
@@ -867,7 +869,7 @@ class Session(object):
         return retval
 
     def find_one(self, query, attributes=None):
-        ''' Return a list of something '''
+        ''' Return a a single entity '''
         assert (
             0 < len(query or '') and (
                 isinstance(query, str) or 
@@ -880,7 +882,7 @@ class Session(object):
         return None
 
     def report(self, query):
-        ''' Return a list of something '''
+        ''' Return a a report of an entity '''
         d = self.decode_query(query)
         # Send query to server, first determine uri
         uri_base = Session.get_base_uri(d['entitytype'])
@@ -893,6 +895,24 @@ class Session(object):
             query=d.get('expression'))
         return d['report']
 
+    def metrics(self, query, attributes=['speed'], time=None):
+        ''' Return metrics for an entity '''
+        d = self.decode_query(query)
+        # Send query to server, first determine uri
+        uri_base = Session.get_base_uri(d['entitytype'])
+        data = {
+            'attributes':attributes,
+        }
+        if not time is None:
+            data['time'] = time
+        d = self.event(
+            'GET',
+            '%s/metrics' %
+            uri_base,
+            data,
+            query=d.get('expression'))
+        return d['result']
+        
     # Update an entity
 
     def update_one(self, entitytype, entityid, data):
@@ -1038,14 +1058,19 @@ class Session(object):
             event_data)
         return response['result']
 
-    # Misc
-    # def get_api_key(self):
-    #   ''' DEPRECATED as of 1.3-4 '''
-    #   return self.event('GET', 'user/api_key', {})['api_key']
+    #Misc
+    def get_api_key(self):
+      ''' Fetch my API key, by default disabled in backend. '''
+      return self.event('GET', 'user/api_key', {})['api_key']
 
     def get_session_key(self):
         ''' Return the session key. '''
         return self._session_key
+
+    def generate_session_key(self, lifetime=None):
+        ''' Generate a new session key, with the given lifetime. '''
+        return self.event('POST', 'user/generate_session_key', 
+            {'lifetime':lifetime}, query=self._username)['session_key']
 
     def gui_is_running(self):
         result = self.event(
