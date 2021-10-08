@@ -10,20 +10,34 @@ import json
 import uuid
 import hashlib
 import copy
-import unicodedata
-import thread
+
 import urllib
 import base64
-import StringIO
+import io
 import gzip
-import binascii
+
 import re
 import requests
+
+
+from ._version import __version__
+
+if 3 <= sys.version_info.major:
+    
+    import io
+
+else:
+
+    # Python 2 backward compability
+    
+    import unicodedata
+    import StringIO
+    import binascii
 
 try:
     requests.packages.urllib3.disable_warnings()
 except BaseException:
-    print >> sys.stderr, traceback.format_exc()
+    sys.stderr.write(traceback.format_exc())
 
 logging.basicConfig(
     format='(%(thread)d@%(asctime)-15s) %(message)s',
@@ -75,7 +89,7 @@ class JSONDecoder(json.JSONDecoder):
                         for i in d[key]:
                             newlist.append(recursive_decode(i))
                         d[key] = newlist
-                    elif isinstance(d[key], str) or isinstance(d[key], unicode):
+                    elif Session.is_str(d[key]):
                         if key == '_id':
                             from bson.objectid import ObjectId
                             d[key] = ObjectId(d[key])
@@ -92,8 +106,8 @@ class JSONDecoder(json.JSONDecoder):
                                     d[key], '%y-%m-%dT%H:%M:%S')
                         # With millis
                         elif re.match('^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:'
-                            '[0-9]{2}:[0-9]{2}.[0-9]{3}$', 
-                            str(Session.safely_printable(d[key]))):
+                            '[0-9]{2}:[0-9]{2}.[0-9]{3}$', str(
+                                Session.safely_printable(d[key]))):
                             if len(d[key].split('-')[0]) == 4:
                                 d[key] = datetime.datetime.strptime(
                                     d[key], '%Y-%m-%dT%H:%M:%S.%f')
@@ -259,17 +273,21 @@ class Session(object):
 
     @staticmethod
     def safely_printable(s):
-        # FILLER
-        if isinstance(s, str):
-            try:
-                u = unicode(s)
-            except BaseException:
-                u = unicode(s, 'iso-8859-1')
-        elif isinstance(s, unicode):
-            u = s
+        return ((s or '').encode()).decode('ascii', 'ignore')
+
+    @staticmethod
+    def is_str(s):
+        if 3 <= sys.version_info.major:
+            return isinstance(s, str)
         else:
-            u = unicode(s)
-        return unicodedata.normalize('NFKD', u).encode('ascii', 'ignore')
+            return isinstance(s, str) or isinstance(s, unicode)
+
+    @staticmethod
+    def url_quote(url):
+        if 3 <= sys.version_info.major:
+            return urllib.parse.quote(Session.safe_dumps(url))
+        else:
+            return urllib.quote(Session.safe_dumps(url))            
 
     @staticmethod
     def json_serial(obj):
@@ -293,7 +311,13 @@ class Session(object):
 
     @staticmethod
     def base64_encode(s):
-        return base64.b64encode(s)
+        if 3 <= sys.version_info.major:        
+            return (base64.b64encode(s.encode('utf-8'))).decode('ascii')
+        else:
+            if isinstance(s, str) or isinstance(s, unicode):
+                return base64.b64encode(s)
+            else:
+                return binascii.b2a_base64(s)
 
     def login(self, revive_session_key=None):
         # TODO: Load session key from safe disk storage/key chain?
@@ -311,7 +335,7 @@ class Session(object):
                             self._domain, 
                             self._username, 
                             self._api_key)))
-        }
+            }
         elif self._pwd:
             headers = {
                 'Authorization': 'ASCredentials {}'.format(
@@ -344,7 +368,7 @@ class Session(object):
             headers=headers,
             port=self._port)
         # Store session key
-        assert ('session_key' in result), ('No session key were provided')
+        assert ('session_key' in result), ('No session key were provided!')
         self._session_key = result['session_key']
         self._clearance = result['clearance'] or CLEARANCE_NONE
         self._uid = result['id']
@@ -406,7 +430,7 @@ class Session(object):
                         l = o
                         for _o in l:
                             result += recursive_estimate_dict_size(_o)
-                    elif isinstance(o, str) or isinstance(o, unicode):
+                    elif Session.is_str(o):
                         result += len(o)
                     else:
                         result += 10
@@ -414,11 +438,11 @@ class Session(object):
 
             size = recursive_estimate_dict_size(data)
             if (DEFAULT_EVENT_PAYLOAD_COMPRESS_SIZE_TRESHOLD < size):
-                out = StringIO.StringIO()
+                out = io.StringIO()
                 with gzip.GzipFile(fileobj=out, mode='w') as f:
                     f.write(Session.safe_dumps(data))
                 b = out.getvalue()
-                event['gz_data'] = binascii.b2a_base64(b)
+                event['gz_data'] = Session.base64_encode(b)
                 self.verbose('Compressed event payload %d>%d(%s%%)' % (
                     size, len(event['gz_data']), 
                     (100 * len(event['gz_data']) / size)))
@@ -536,14 +560,16 @@ class Session(object):
                         self._session_key)
                     headers_effective = {
                         'Authorization': 'ASSession {}'.format(
-                            base64.b64encode(header_data))
+                            Session.base64_encode(header_data))
                     }
                 else:
                     headers_effective = {}
             headers_effective['ASDevice'] = 'PythonAPI v%s @ %s %s(%s)' % (
             Session.__version__, sys.platform, Session.get_hostname(), os.name)
-            #           while True:
-            t_start = long(round(time.time() * 1000))
+            if 3 <= sys.version_info.major:
+                t_start = int(round(time.time() * 1000))
+            else:
+                t_start = long(round(time.time() * 1000))
             try:
                 self.verbose(
                     'REST %s %s, data: %s' %
@@ -552,7 +578,7 @@ class Session(object):
                 if method.lower() == 'get':
                     r = requests.get(
                         url, 
-                        params=urllib.quote(Session.safe_dumps(data)), 
+                        params=Session.url_quote(data), 
                         timeout=(CONNECT_TO, READ_TO), 
                         verify=False, 
                         headers=headers_effective)
@@ -575,29 +601,28 @@ class Session(object):
                 elif method.lower() == 'delete':
                     r = requests.delete(
                         url, 
-                        params=urllib.quote(
-                        Session.safe_dumps(data)), 
+                        params=Session.url_quote(data), 
                         timeout=(
                         CONNECT_TO, READ_TO), 
                         verify=False, 
                         headers=headers_effective)
-                t_end = long(round(time.time() * 1000))
+                t_end = int(round(time.time() * 1000))
                 # break
             except BaseException:
                 sleep_time = 2
-                t_end = long(round(time.time() * 1000))
+                t_end = int(round(time.time() * 1000))
                 timeout -= int((t_end - t_start) / 1000)
                 timeout -= sleep_time
                 if timeout <= 0 or True:
                     raise AccsynException(
                         'Could not reach {}:{}! Make sure cloud server({}) can'
                         ' be reached from you location and no firewall is '
-                        'blocking outgoing traffic at port {}. '
+                        'blocking outgoing TCP traffic at port {}. '
                         'Details: {}'.format(
                             hostname, 
                             port, 
-                            port, 
                             hostname, 
+                            port, 
                             traceback.format_exc() if not quiet else '(quiet)'))
 
                 Session.warning(
@@ -638,14 +663,14 @@ class Session(object):
                             self.login(revive_session_key=revive_session_key)
                             self.info(
                                 'Authenticated using API KEY and reused expired'
-                                ' session...')
+                                'session...')
                             do_retry = True
                     if not do_retry:
                         self._last_message = retval['message']
                 if not do_retry:
                     break
             except BaseException:
-                print >> sys.stderr, traceback.format_exc()
+                sys.stderr.write(traceback.format_exc())
                 message = 'The {}:{}/{} REST {} {} operation failed! Details: '
                 '{} {}'.format(
                     hostname, 
@@ -761,7 +786,7 @@ class Session(object):
         assert (0 < len((entitytype or '').strip())
                 ), ('You must provide the entity type!')
         entitytype = entitytype.lower().strip()
-        if isinstance(data, str) or isinstance(data, unicode):
+        if Session.is_str(data):
             assert (0 < len((data or '').strip())
                     ), ('You must provide the data to create!')
             # Is it JSON as a string or JSON in a file pointed to?
@@ -806,17 +831,18 @@ class Session(object):
             query,
             attributes=None,
             finished=None,
+            archived=None,
             limit=None,
             skip=None,
             create=False,
             update=False):
         ''' Return a list of entities '''
         assert (
-            0 < len(query or '') and 
-                (isinstance(query, str) or 
-                    isinstance(query, str) or 
-                    isinstance(query, unicode))), \
+            0 < len(query or '') and
+            Session.is_str(query)), \
             ('Invalid query type supplied, must be of string type!')
+
+
         retval = None
         d = self.decode_query(query)
         data = {}
@@ -852,6 +878,8 @@ class Session(object):
                 data = {'type': 1}
             if finished is not None:
                 data['finished'] = finished
+            if archived is not None:
+                data['archived'] = archived
             if limit:
                 data['limit'] = limit
             if skip:
@@ -868,14 +896,14 @@ class Session(object):
                 retval = d['result']
         return retval
 
-    def find_one(self, query, attributes=None):
+    def find_one(self, query, attributes=None, finished=None):
         ''' Return a a single entity '''
         assert (
             0 < len(query or '') and (
-                isinstance(query, str) or 
-                isinstance(query, unicode))), \
+                Session.is_str(query))), \
             ('Invalid query type supplied, must be of string type!')
-        result = self.find(query, attributes=attributes)
+        #
+        result = self.find(query, attributes=attributes, finished=finished)
         if result and 0 < len(result):
             retval = result[0]
             return retval
@@ -912,20 +940,20 @@ class Session(object):
             data,
             query=d.get('expression'))
         return d['result']
-        
+
     # Update an entity
 
     def update_one(self, entitytype, entityid, data):
         ''' Update an entity '''
-        assert (0 < len(entitytype or '') and (isinstance(entitytype, str) or \
-            isinstance(entitytype, unicode)))\
+        assert (0 < len(entitytype or '') and Session.is_str(entitytype))\
             , ('Invalid entity type supplied, must be of string type!')
         entitytype = entitytype.lower().strip()
-        assert (0 < len(entityid or '') and (isinstance(entityid, str) or \
-            isinstance(entityid, unicode)))\
+        assert (0 < len(entityid or '') and Session.is_str(entityid))\
             , ('Invalid entity ID supplied, must be of string type!')
         assert (0 < len(data or {}) and isinstance(data, dict))\
             , ('Invalid data supplied, must be dict and have content!')
+        #
+        #
         response = self.event(
             'PUT',
             '%s/edit' %
@@ -935,20 +963,20 @@ class Session(object):
         if response:
             return response['result'][0]
 
-    def update_many(self, entitytype, data, entityid=None):
+    def update_many(self, entitytype, data, entityid):
         ''' Update many entities '''
-        assert (0 < len(entitytype or '') and (isinstance(entitytype, str) or \
-            isinstance(entitytype, unicode))), \
-            ('Invalid entity type supplied, must be of string type!')
+        assert (0 < len(entitytype or '') and Session.is_str(entitytype))\
+            , ('Invalid entity type supplied, must be of string type!')
         entitytype = entitytype.lower().strip()
         assert (entitytype == 'task'), \
-               ('Only multiple "task" entities can be updated!')
+            ('Only multiple "task" entities can be updated!')
         if entitytype.lower() == 'task':
-           assert (0 < len(entityid or '') and (isinstance(entityid, str) or \
-                isinstance(entityid, unicode))), \
-                ('Invalid entity ID supplied, must be of string type!')
-        assert (0 < len(data or []) and isinstance(data, list)\
-                ), ('Invalid data supplied, must be a list!')
+            assert (0 < len(entityid or '') and (Session.is_str(entityid))), \
+            ('Invalid entity ID supplied, must be of string type!')
+        assert (0 < len(data or []) and isinstance(data, list)), \
+            ('Invalid data supplied, must be a list!')
+        #
+        #
         response = self.event(
             'PUT',
             '%s/edit' %
@@ -962,13 +990,13 @@ class Session(object):
 
     def delete_one(self, entitytype, entityid):
         ''' Update an entity '''
-        assert (0 < len(entitytype or '') and (isinstance(entitytype, str) or \
-            isinstance(entitytype, unicode))), \
+        assert (0 < len(entitytype or '') and Session.is_str(entitytype)), \
             ('Invalid entity type supplied, must be of string type!')
         entitytype = entitytype.lower().strip()
-        assert (0 < len(entityid or '') and (isinstance(entityid, str) or \
-            isinstance(entityid, unicode))), \
+        assert (0 < len(entityid or '') and (Session.is_str(entityid))), \
             ('Invalid entity ID supplied, must be of string type!')
+        #
+        #
         response = self.event(
             'DELETE',
             '%s/delete' %
@@ -988,7 +1016,7 @@ class Session(object):
             files_only=False,
             directories_only=False):
         assert (0 < len(p or '') and (
-            isinstance(p, str) or isinstance(p, unicode) or isinstance(
+            Sesion.is_str(p) or isinstance(
             p, dict) or isinstance(p, list))), \
             ('No path supplied, or not a string/list/dict!')
         data = {
@@ -1010,7 +1038,7 @@ class Session(object):
 
     def getsize(self, p):
         assert (0 < len(p or '') and (
-            isinstance(p, str) or isinstance(p, unicode) or isinstance(
+            Session.is_str(p) or isinstance(
             p, dict) or isinstance(p, list))), \
             ('No path supplied, or not a string/list/dict!')
         data = {
@@ -1023,7 +1051,7 @@ class Session(object):
 
     def exists(self, p):
         assert (0 < len(p or '') and (
-            isinstance(p, str) or isinstance(p, unicode) or isinstance(
+            Session.is_str(p) or isinstance(
             p, dict) or isinstance(p, list))), \
             ('No path supplied, or not a string/list/dict!')
         data = {
@@ -1058,7 +1086,7 @@ class Session(object):
             event_data)
         return response['result']
 
-    #Misc
+    # Misc
     def get_api_key(self):
       ''' Fetch my API key, by default disabled in backend. '''
       return self.event('GET', 'user/api_key', {})['api_key']
@@ -1108,8 +1136,8 @@ class Session(object):
 
     # Help
     def help(self):
-        print 'Please have a look at the Python API reference: '
-        'https://support.accsyn.com/python-api'
+        print('Please have a look at the Python API reference: '
+            'https://support.accsyn.com/python-api')
 
 
 class AccsynException(Exception):
