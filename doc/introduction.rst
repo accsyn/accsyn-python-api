@@ -7,12 +7,13 @@
 Introduction
 ************
 
-The accsyn Python API allows for easy integration into Python (v2.7 & v3.4+) enabled third party applications, enabling directo communication with accsyn via the low level REST API over https.
+The accsyn Python API allows for easy integration into Python (v2.7 & v3.4+) enabled third party applications, enabling
+direct communication with accsyn via the low level REST :term:`API` over https.
 
 With the API you can for example:
 
 - Create automated workflows that reacts on an event and then dispatches data (files/metadata) across the globe, in a safe and controlled environment.
-- Fetch and display accsyn transfer jobs in your own user interface, also enabling control in terms of pause, resume and abort.
+- Fetch and display accsyn a transfer :term:`job` in your own user interface, also enabling control in terms of pause, resume and abort.
 - Handle shares automatically, allowing expose of project dedicated file areas with one or more external users, upon an event in your production systems.
 
 
@@ -23,12 +24,16 @@ With the API you can for example:
 
 .. note::
 
-    The API also do not support multi-operation transactions, meaning that any create, update or delete operation will commit instantly.
+    The API also do not support multi-operation transactions, meaning that any create, update or delete operation will
+    commit instantly.
 
 
 .. note::
 
-    The Python API are not able to send files, it can only tell accsyn backend to spawn a transfer between a server (typically identified by a domain, share and path) and a client (typically identified by a user name/E-mail and/or client ID/hostname). This means that the API will work independent of a locally installed file transfer client.
+    The Python API are not able to send files and act as a :term:`client`, it can only tell accsyn backend to spawn a
+    transfer between a server (typically identified by a domain, share and path) and a client (typically identified by
+    a user name/E-mail and/or client ID/hostname). This means that the API will work independent of a locally installed
+    file transfer client.
 
 
 Other resources:

@@ -7,6 +7,12 @@
 Release Notes
 *************
 
+.. note::
+
+    The accsyn overall changelog can be accessed here: 
+
+    `https://support.accsyn.com <https://support.accsyn.com>`_.
+
 
 .. release:: 1.1.4
     :date: 2019-08-25

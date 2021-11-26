@@ -48,7 +48,7 @@ The following environment variables are picked up if set by python parent proces
 
     accsyn communicates over tcp port 443 (https wrapped CRUD REST calls), make sure to allow outgoing traffic towards accsyn backend (yourdomain.accsyn.com).
 
-    Your API key can be obtained online or from desktop app @ Prefs>Setup API environment, or by running "accsyn user get_api_key" from your terminal/*nix shell.
+    Your API key can be obtained online or from desktop app @ Prefs>Setup API environment, or by running "accsyn user get_api_key" from your terminal/unix shell.
 
     Remember to treat the API key as a secret password as it will grant access to all data on your accsyn shared storage.
 

@@ -1,21 +1,6 @@
-'''
-AccSyn fast filmdelivery and pipeline sync Python API
+# :coding: utf-8
+# :copyright: Copyright (c) 2021 accsyn
 
-Talks CRUD REST over HTTPS 443 with AccSyn cloud server.
-
-'''
-
-import sys
-
-#if (sys.version_info > (3, 0)):
-#	# Python 3 code in this block
-#	from .session import Session
-#else:
-#	# Python 2 code in this block
-#	from .session_py2 import Session
-
+from ._version import __version__
 from .session import Session
-
-
-# __version__ = Session.__version__
 

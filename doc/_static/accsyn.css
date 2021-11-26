@@ -1,0 +1,9 @@
+@import "css/theme.css";
+
+.red {
+	color:red;
+}
+
+.small {
+	font-size: 0.8em;
+}

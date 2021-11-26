@@ -1,7 +1,7 @@
 # :coding: utf-8
-# :copyright: Copyright (c) 2014 ftrack
+# :copyright: Copyright (c) 2021 accsyn/HDR AB
 
-'''ftrack Python API documentation build configuration file.'''
+'''accsyn Python API documentation build configuration file.'''
 
 import os
 import re
@@ -60,7 +60,7 @@ if not os.environ.get('READTHEDOCS', None) == 'True':
     html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 html_static_path = ['_static']
-#html_style = 'accsyn.css'
+html_style = 'accsyn.css'
 
 # If True, copy source rst files to output for reference.
 html_copy_source = True
@@ -79,13 +79,16 @@ def autodoc_skip(app, what, name, obj, skip, options):
 
     return skip
 
+import os
+import sys
+sys.path.insert(0, os.path.join(os.path.abspath('..'), 'source'))
 
 # -- Intersphinx --------------------------------------------------------------
 
 #intersphinx_mapping = {
 #    'python': ('http://docs.python.org/', None),
 #    'accsyn': (
-#        'http://rtd.accsyn.com/docs/ftrack/en/stable/', None
+#        'http://rtd.accsyn.com/docs/accsyn/en/stable/', None
 #    )
 #}
 

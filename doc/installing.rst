@@ -1,5 +1,5 @@
 ..
-    :copyright: Copyright (c) 2021 ftrack
+    :copyright: Copyright (c) 2021 accsyn/HDR AB
 
 .. _installing:
 
@@ -19,7 +19,7 @@ Clone from Git
     git clone https://github.com/accsyn/accsyn-python-api
 
 Then you can build and copy the package into your current Python
-site-packages folder::
+site-packages folder.
 
 
 Dependencies

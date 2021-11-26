@@ -16,8 +16,10 @@ Welcome to the accsyn :term:`Python` :term:`API` documentation.
     using
     datatypes
     jobs
+    shares
+    api_reference/index
     release_notes
-
+    glossary
 
 ******************
 Indices and tables
