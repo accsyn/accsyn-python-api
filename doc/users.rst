@@ -91,19 +91,18 @@ To change user clearance/role::
 
 
 
-Archive
+Offline
 =======
 
-An user can be archived, which means it will be removed from accsyn but still eglible
+An user can be put offline, which means it will be removed from accsyn but still eglible
 for restore if you again create a user with the same identification (code)::
 
-    session.archive_one('User', '61bf395c46ed6081a2b2afc0')
+    session.offline_one('User', '61bf395c46ed6081a2b2afc0')
 
 .. note::
 
-    * Archiving a user also causes user home share to be archived.
+    * Offlining a user also causes user home share to be put offline together with ACLs.
     * No jobs that involves the user can be active.
-    * ACLs are archived with user.
 
 
 Delete
