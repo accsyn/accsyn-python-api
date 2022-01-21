@@ -52,7 +52,7 @@ The following environment variables are picked up if set by python parent proces
 
     Remember to treat the API key as a secret password as it will grant access to all data on your accsyn shared storage.
 
-    Session authenticated with password will expire within 10h, make sure to design your application to check for "session_expired:true" being supplied when a error message is supplied. In that case you will need to re-create your session and retry operation. 
+    Session authenticated with password will expire within 10h, make sure to design your application to check for "session_expired:true" being supplied when a error message is supplied. In that case you will need to re-create your session and retry operation.
 
     Add verbose=True to session creation if you want to see verbose debugging output.
 
@@ -68,48 +68,74 @@ To make sure you have permissions, you can test the obtained session::
 
 Should output your user profile::
 
-
     {
-
        "id":"5b0faf03304bfd4810dbd5fc",
-
        "code”:"john@user.com",
-
        "modified":datetime("2018-06-04 07:06:41.028619")
-
     }
 
 
-Error handling
-==============
 
-If an error occurs, an exception will be raised and the exception message can fetched afterwards by issuing::
+Query
+=====
 
-    print(session.get_last_message())
-    
+The find and find_one functions provide query functionality within the API.
 
-Network proxy support
-=====================
+To get a list of all entities::
 
-If you live on a network that does not have direct Internet access, the Python API can utilise a SOCKS (v4/v5) proxy of yours or an accsyn daemon acting as a proxy (refer to the Accsyn admin manual on how to setup such a proxy). 
+   jobs = session.find('<entity>')
 
-SOCKS proxy
+Expressions
+***********
 
-Supply proxy="socks:<hostname or IP>:<port>" when creating session or set the ACCSYN_PROXY environment variable.
+The accsyn query syntax is not as evolved as for example SQL. The accsyn API currently support nested AND/OR operations using the = or !=/<>. An example of a query in its most complex form::
 
-Using an accsyn network proxy:
+    session.find('job WHERE ((user=5bfeb0381da7ee4095fa217e AND source!=hq) OR status<>failed) AND code="Daily backup"')
 
-Supply proxy="accsyn:<hostname or IP>:<port>" when creating session or set the ACCSYN_PROXY environment variable.
 
+Limit
+*****
+
+To return only a limited set of attributes::
+
+    session.find_one('Job where id=614d660de50d45bb027c9bdd', attributes=['source','destination'])
+
+
+To run a paginated query, that skips 100 jobs and only returns a maximum of 50::
+
+    session.find('Job', skip=100, limit=50)
+
+
+Create
+======
+
+To create any entity (string), supply the scope (string) and the data as a dictionary payload on this generic form::
+
+    session.create(<entity>, <data>)
+
+
+Modify
+======
+
+To modify an entity, supply the scope (string), entity id (string) and data as a dictionary payload::
+
+    session.update_one(<scope>, <id>, <data>)
+
+
+Delete
+======
+
+To delete an entity, supply the scope (string) and entity id (string)::
+
+    session.delete_one(<scope>, <id>)
 
 
 Example of obtaining and modifying an accsyn job
 ================================================
 
-
 Get job named “my_transfer”::
 
-    j = session.find_one('Job WHERE code="“my_transfer”"') 
+    j = session.find_one('Job WHERE code="my_transfer"')
 
 
 Change its status::
@@ -125,8 +151,29 @@ Delete(purge) the job::
 
 
 
-Frome here, learn more about :ref:`datatypes` and/or dig into the different sections for detailed information on how to work with users, jobs, queues and so on.
+From here, learn more about :ref:`datatypes` and/or dig into the different sections for detailed information on how to work with users, jobs, queues and so on.
 
+
+Error handling
+==============
+
+If an error occurs, an exception will be raised and the exception message can fetched afterwards by issuing::
+
+    print(session.get_last_message())
+
+
+Network proxy support
+=====================
+
+If you live on a network that does not have direct Internet access, the Python API can utilise a SOCKS (v4/v5) proxy of yours or an accsyn daemon acting as a proxy (refer to the Accsyn admin manual on how to setup such a proxy).
+
+SOCKS proxy
+
+Supply proxy="socks:<hostname or IP>:<port>" when creating session or set the ACCSYN_PROXY environment variable.
+
+Using an accsyn network proxy:
+
+Supply proxy="accsyn:<hostname or IP>:<port>" when creating session or set the ACCSYN_PROXY environment variable.
 
 
 

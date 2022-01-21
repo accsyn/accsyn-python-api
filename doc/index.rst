@@ -17,6 +17,13 @@ Welcome to the accsyn :term:`Python` :term:`API` documentation.
     datatypes
     jobs
     shares
+    users
+    queues
+    clients
+    file
+    publish
+    compute
+    misc
     api_reference/index
     release_notes
     glossary

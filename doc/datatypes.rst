@@ -99,7 +99,7 @@ Data read from accsyn using the API arrives as JSON dictionaries, categorised by
      - YES
      - NO
      - NO
-     - N`O
+     - NO
      - NO
 
 * :sup:`1` Their own and restricted users.

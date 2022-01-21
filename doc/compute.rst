@@ -1,0 +1,93 @@
+..
+    :copyright: Copyright (c) 2022 accsyn
+
+.. _compute:
+
+************
+Compute jobs
+************
+
+The accsyn compute/render feature allows submitting CPU intensive tasks to accsyn,
+for queued processing on a cluster/farm of computers on one or more sites.
+accsyn supports site-to-site transfer of compute dependencies, as long as they are
+specified properly and reside on a (root) share.
+
+
+Submitting a compute job
+========================
+
+The Python accsyn API support submission of accsyn compute jobs, here follows an example for rendering a Nuke 2D compositing job::
+
+    jobs = session.create("job",{
+        "code": "test_v002.nk render",
+        "input": "C:\\projects\\nuke\\vfx\\test_v002.nk",
+        "parameters": {
+            "input_conversion": "always",
+            "arguments": "-txV",
+            "remote_os": "windows",
+            "mapped_share_paths" : [
+                {
+                    "remote" : "C:\\projects",
+                    "local" : "share=5c5bf52a1da7ee0165105b85"
+                },
+                {
+                     "remote" : "E:\\tools",
+                     "local" : "N:\\tools",
+                     "os" : "windows"
+                 },
+            ],
+            "site":{
+                "local":{
+                    "settings":{
+                        "download":{
+                            "enable":false
+                        },
+                        "upload":{
+                            "task_bucketsize": 1,
+                        },
+                        "common":{
+                            "transfer_speedlimit": 2
+                        },
+                    }
+                }
+            }
+        },
+        "app": "nuke-11",
+        "range": "1001-1100",
+        "dependencies": [
+            "C:\\projects\\nuke\\src\\vh_gridtest.0099.jpg"
+        ],
+        "filters": "ram:>32g,site:sthlm",
+        "output": "C:\\projects\\nuke\\output",
+        "settings": {
+            "task_bucketsize": 5,
+            "transfer_speedlimit": -1.0
+        }
+    })
+
+
+
+* ``code``: (Optional) The name of the compute job.
+* ``input``: The path to the input file to process, currently accsyn only support on single file.
+* ``parameters/input_conversion``: Tell wether input file should be parsed and have path's converted, only supported for ASCII format files. Possible values are: "always" - always attempt to parse  regardless of platform, "platform" - only if there is change in operating system platform (i.e. between windows and mac), "never" - do not touch the input file. It is recommended to leave this on "always" unless exactly the same paths are used within input file as on-prem / at compute cluster.
+* ``parameters/arguments``: Additional parameters to pass on to the compute process (command line options).
+* ``parameters/remote_os``: (Optional)The operating system submit is made from.
+* ``parameters/mapped_share_paths``: (Optional, if ASCII parsable input file and input conversions enabled) List of local paths mapped to on-prem shares. Required if the input file contains local paths that need conversion. If compute servers are running different operating systems, "os" can be used to define different paths. Recognised values are "windows", "mac" and "linux", This is picked by the "common" compute app only, it can be modified to support additional operating systems.
+* ``parameters/site``: (Optional, since v1.5) Site specific setting overrides, "local" is reserved and means the remote submitting computer and will only be considered when submitting from the remote "roaming" site.  In this example``: 1) no download of output will happen 2) One dependency file will uploaded at a time 3) Overall speed limit is 2 MByte/s.
+* ``app``: The named compute app to use, make sure it exists. Compute apps can be administered at Admin/apps page within accsyn web admin pages. Find open source compute app boilerplate scripts  here: https://github.com/accsyn/compute-scripts.
+* ``range``: (If app supports split into items/frames) The integer range to render. Can be on or more(space or comma separated list of) entries on the form "1-10"(range), "4"(single) or "5-250x5"(consider only every 5 item/frames).
+* ``dependencies``: List of files that the input file depend on and must be able to access during the computation process.
+* ``filters``: Comma separated list of filters to apply, see below.
+* ``output``: Path to the folder where the compute app should write back the resulting files.
+* ``settings``: Standard accsyn settings to provide, see https://support.accsyn.com/admin-manual.
+
+
+
+Filters
+*******
+
+* ``ram``: Put a restriction on the RAM usage. On the form "ram:<32g" - less than 32GB or "ram:>64g" - more than 64GB.
+* ``hostname``: Include or exclude machines by hostname or IDs. "hostname:+myhostname" - include this machine only, "hostname:-myhostname" - exclude this machine. Should be combine into one statement like: "hostname:-myhostname1-myhostname2".
+* ``site``: Only execute on a particular site: "site:-mysite" - exclude the site "mysite".
+
+

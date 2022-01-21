@@ -25,16 +25,13 @@ import requests
 
 from ._version import __version__
 
-if 3 <= sys.version_info.major:
+if sys.version_info.major >= 3:
     
     import io
 
 else:
 
     # Python 2 backward compability
-
-    #import unicodedata
-    #import StringIO
     import binascii
 
 try:
@@ -155,19 +152,20 @@ class Session(object):
         :param path_logfile: Output all log messages to this logfile instead of stdout.
         '''
         # Generate a session ID
+        self.__version__ = __version__
         self._pwd = None
         self._session_id = str(uuid.uuid4())
         self._session_key = None
         self._session_key_provided = None
-        self._verbose = verbose
+        self._be_verbose = verbose
         self._pretty_json = pretty_json
         self._proxy = proxy
         self._dev = dev
         Session._p_logfile = path_logfile
         self._clearance = CLEARANCE_NONE
         self._verbose(
-            'Creating accsyn Python API session (v%s)' %
-            __version__)
+            'Creating accsyn Python API session (v{})'.format(
+            __version__))
         for key in os.environ:
             if key.startswith('FILMHUB_'):
                 Session._warning(
@@ -372,7 +370,9 @@ class Session(object):
                 data = {'tasks': data}
             assert (data is not None and 0 < len(data)
                     ), ('Empty create data submitted!')
-        if entitytype == 'task' and 'tasks' not in data:
+        if entitytype == 'queue':
+            data['type'] = 2
+        elif entitytype == 'task' and 'tasks' not in data:
             data = {'tasks': data}
         if entitytype in ['job', 'task']:
             data['allow_duplicates'] = allow_duplicates
@@ -398,6 +398,7 @@ class Session(object):
             query,
             attributes=None,
             finished=None,
+            offline=None,
             archived=None,
             limit=None,
             skip=None,
@@ -409,7 +410,8 @@ class Session(object):
         :param query: The query, a string on accsyn query format.
         :param attributes: The attributes to return, default is to return all attributes with access.
         :param finished: (job) Search among inactive jobs.
-        :param archived: (job) Search among archived (purged) jobs.
+        :param offline: (user,share) Search among offline entities.
+        :param archived: Search among archived (deleted/purged) entities.
         :param limit: The maximum amount of entities to return.
         :param skip: The amount of entities to skip.
         :param create: (attributes) Return create (POST) attributes.
@@ -457,6 +459,8 @@ class Session(object):
                 data = {'type': 1}
             if finished is not None:
                 data['finished'] = finished
+            if offline is not None:
+                data['offline'] = offline
             if archived is not None:
                 data['archived'] = archived
             if limit:
@@ -475,13 +479,15 @@ class Session(object):
                 retval = d['result']
         return retval
 
-    def find_one(self, query, attributes=None, finished=None):
+    def find_one(self, query, attributes=None, finished=None, offline=None, archived=None):
         '''
         Return a single entity.
 
         :param query: The query, a string on accsyn query format.
         :param attributes: The attributes to return, default is to return all attributes with access.
         :param finished: (job) Search among inactive jobs.
+        :param offline: (user,share) Search among offline entities.
+        :param archived: Search among archived (purged/deleted) entities.
         :return: If found, a single dictionary. None otherwise.
         '''
         assert (
@@ -489,7 +495,7 @@ class Session(object):
                 Session._is_str(query))), \
             ('Invalid query type supplied, must be of string type!')
         #
-        result = self.find(query, attributes=attributes, finished=finished)
+        result = self.find(query, attributes=attributes, finished=finished, offline=offline, archived=archived)
         if result and 0 < len(result):
             retval = result[0]
             return retval
@@ -559,8 +565,6 @@ class Session(object):
             , ('Invalid entity ID supplied, must be of string type!')
         assert (0 < len(data or {}) and isinstance(data, dict))\
             , ('Invalid data supplied, must be dict and have content!')
-        #
-        #
         response = self._event(
             'PUT',
             '%s/edit' %
@@ -589,8 +593,6 @@ class Session(object):
             ('Invalid entity ID supplied, must be of string type!')
         assert (0 < len(data or []) and isinstance(data, list)), \
             ('Invalid data supplied, must be a list!')
-        #
-        #
         response = self._event(
             'PUT',
             '%s/edit' %
@@ -600,7 +602,149 @@ class Session(object):
         if response:
             return response['result']
 
-    # Delete an entity
+    # Entity assignment / connections
+
+    def assign(self, entitytype_parent, entitytype_child, data):
+        '''
+        Assign one entity to another.
+
+        .. versionadded:: 1.5
+
+        :param entitytype_parent: The parent entity type to assign child entity to.
+        :param entitytype_child: The child entity type to assign to parent entity.
+        :param data: Assignment data, should contain parent and child entity ids.
+        :return: True if assignment was a success, exception otherwise.
+        '''
+        assert (0 < len(entitytype_parent or '') and Session._is_str(entitytype_parent)), \
+            ('Invalid parent entity type supplied, must be of string type!')
+        assert (0 < len(entitytype_child or '') and Session._is_str(entitytype_child)), \
+            ('Invalid child entity type supplied, must be of string type!')
+        entitytype_parent = entitytype_parent.lower().strip()
+        entitytype_child = entitytype_child.lower().strip()
+        assert (not data is None and isinstance(data, dict) and (0 < len(data or {}))), \
+            ('Invalid assignment data supplied, must be a dict with values!')
+        response = None
+        if entitytype_parent == 'share' and entitytype_child == 'server':
+            # Assign a server to a share, expect share and client supplied
+            share_id = data.get('share')
+            assert (re.match("^[a-z0-9]{24}$", (share_id or ''))),\
+                ('Please supply share ID with assignment data!')
+            client_id = data.get('client')
+            assert (re.match("^[a-z0-9]{24}$", (client_id or ''))),\
+                ('Please supply client ID with assignment data!')
+            what = None
+            if data.get('main') is True:
+                what = 'server'
+            elif data.get('site') is True:
+                what = 'siteserver'
+            else:
+                raise Exception('Please supply type of server assignment (main '
+                                'or site) in assignment data!')
+            response = self._event(
+                'PUT',
+                '%s/edit' %
+                Session._get_base_uri(entitytype_parent),
+                {what:client_id},
+                entityid=share_id)
+        if response:
+            return True
+        else:
+            raise Exception('Unsupported assignment operation!')
+
+    def assignments(self, entitytype, entityid):
+        '''
+        Return list of assigned child entities.
+
+        .. versionadded:: 1.5
+
+        :param query:
+        :return: List of dictionaries.
+        '''
+        assert (0 < len(entitytype or '') and Session._is_str(entitytype)), \
+            ('Invalid parent entity type supplied, must be of string type!')
+        if entitytype.lower() == 'share':
+            response = self._event(
+                'GET',
+                '%s/servers' %
+                Session._get_base_uri(entitytype),
+                {},
+                entityid=entityid)
+            return response['result']
+        else:
+            raise Exception('Unsupported assignment operation!')
+
+    def deassign(self, entitytype_parent, entitytype_child, data):
+        '''
+        De-assign one entity from another.
+
+        .. versionadded:: 1.5
+
+        :param entitytype_parent: The parent entity type to deassign child entity from
+        :param entitytype_child: The child entity type to deassign from parent entity
+        :param data: De-assignment data, should contain parent and child entity ids + additional information as required
+        :return: True if deassignment was a success, exception otherwise.
+        '''
+        assert (0 < len(entitytype_parent or '') and Session._is_str(entitytype_parent)), \
+            ('Invalid parent entity type supplied, must be of string type!')
+        assert (0 < len(entitytype_child or '') and Session._is_str(entitytype_child)), \
+            ('Invalid child entity type supplied, must be of string type!')
+        entitytype_parent = entitytype_parent.lower().strip()
+        entitytype_child = entitytype_child.lower().strip()
+        assert (not data is None and isinstance(data, dict) and (0 < len(data or {}))), \
+            ('Invalid de-assignment data supplied, must be a dict with values!')
+        response = None
+        if entitytype_parent == 'share' and entitytype_child == 'server':
+            # Assign a server to a share, expect share and client supplied
+            share_id = data.get('share')
+            assert (re.match("^[a-z0-9]{24}$", (share_id or ''))),\
+                ('Please supply share ID with de-assignment data!')
+            client_id = data.get('client')
+            assert (re.match("^[a-z0-9]{24}$", (client_id or ''))),\
+                ('Please supply client ID with de-assignment data!')
+            what = None
+            if data.get('main') is True:
+                what = 'server'
+            elif data.get('site') is True:
+                what = 'siteserver'
+            else:
+                raise Exception('Please supply type of server assignment (main '
+                                'or site) in assignment data!')
+            response = self._event(
+                'PUT',
+                '%s/edit' %
+                Session._get_base_uri(entitytype_parent),
+                {'{}_clear'.format(what):client_id},
+                entityid=share_id)
+        if response:
+            return True
+        else:
+            raise Exception('Unsupported assignment operation!')
+
+    # Offline/Delete an entity
+
+    def offline_one(self, entitytype, entityid):
+        '''
+        Offline an entity.
+
+        .. versionadded:: 1.5
+
+        :param entitytype: The type of entity to delete (job, share, acl, ..)
+        :param entityid: The id of the entity.
+        :return: True if offline, an exception is thrown otherwise.
+        '''
+        assert (0 < len(entitytype or '') and Session._is_str(entitytype)), \
+            ('Invalid entity type supplied, must be of string type!')
+        entitytype = entitytype.lower().strip()
+        assert (0 < len(entityid or '') and (Session._is_str(entityid))), \
+            ('Invalid entity ID supplied, must be of string type!')
+        response = self._event(
+            'DELETE',
+            '%s/offline' %
+            Session._get_base_uri(entitytype),
+            {},
+            entityid=entityid)
+        if response:
+            return response['result']
 
     def delete_one(self, entitytype, entityid):
         '''
@@ -615,8 +759,6 @@ class Session(object):
         entitytype = entitytype.lower().strip()
         assert (0 < len(entityid or '') and (Session._is_str(entityid))), \
             ('Invalid entity ID supplied, must be of string type!')
-        #
-        #
         response = self._event(
             'DELETE',
             '%s/delete' %
@@ -626,7 +768,9 @@ class Session(object):
         if response:
             return response['result']
 
+
     # File operations
+
     def ls(
             self,
             path,
@@ -704,6 +848,103 @@ class Session(object):
         response = self._event('GET', 'organization/file', data)
         if response:
             return response['result']
+
+    def mkdir(self, path):
+        '''
+        Create a directory on a share.
+
+        .. versionadded:: 1.5
+
+        :param path: The accsyn path, on the form 'share=<the share>/<path>/<somewhere>'.
+        :return: True if file exists, False otherwise.
+        '''
+        assert (0 < len(path or '') and (
+                Session._is_str(path) or isinstance(
+            path, dict) or isinstance(path, list))), \
+            ('No path supplied, or not a string/list/dict!')
+        data = {
+            'op': 'mkdir',
+            'path': path,
+        }
+        response = self._event('POST', 'organization/file', data)
+        if response:
+            return response['result']
+
+    def rename(self, path, path_to):
+        '''
+        Rename a file/directory on a share.
+
+        .. versionadded:: 1.5
+
+        :param path: The accsyn path, on the form 'share=<the share>/<path>/<somewhere>'.
+        :param path_to: The new accsyn path, has to be within the same directory as source *path*, on the form 'share=<the share>/<path>/<somewhere>'.
+        :return: True if file exists, False otherwise.
+        '''
+        assert (0 < len(path or '') and (
+                Session._is_str(path) or isinstance(
+            path, dict) or isinstance(path, list))), \
+            ('No path supplied, or not a string/list/dict!')
+        assert (0 < len(path_to or '') and (
+                Session._is_str(path_to) or isinstance(
+            path_to, dict) or isinstance(path_to, list))), \
+            ('No destination path supplied, or not a string/list/dict!')
+        data = {
+            'op': 'rename',
+            'path': path,
+            'path_to': path_to,
+        }
+        response = self._event('PUT', 'organization/file', data)
+        if response:
+            return response['result']
+
+    def mv(self, path_src, path_dst):
+        '''
+        Move a file/directory on a share.
+
+        .. versionadded:: 1.5
+
+        :param path_src: The accsyn source path, on the form 'share=<the share>/<path>/<somewhere>'.
+        :param path_dst: The accsyn destination path, on the form 'share=<the share>/<path>/<somewhere>'.
+        :return: True if file exists, False otherwise.
+        '''
+        assert (0 < len(path_src or '') and (
+                Session._is_str(path_src) or isinstance(
+            path_src, dict) or isinstance(path_src, list))), \
+            ('No source path supplied, or not a string/list/dict!')
+        assert (0 < len(path_dst or '') and (
+                Session._is_str(path_dst) or isinstance(
+            path_dst, dict) or isinstance(path_dst, list))), \
+            ('No destination path supplied, or not a string/list/dict!')
+        data = {
+            'op': 'move',
+            'path': path_src,
+            'path_to': path_dst,
+        }
+        response = self._event('PUT', 'organization/file', data)
+        if response:
+            return response['result']
+
+    def rm(self, path):
+        '''
+        Remove a file/directory on a share.
+
+        .. versionadded:: 1.5
+
+        :param path: The accsyn path, on the form 'share=<the share>/<path>/<somewhere>'.
+        :return: True if file exists, False otherwise.
+        '''
+        assert (0 < len(path or '') and (
+                Session._is_str(path) or isinstance(
+            path, dict) or isinstance(path, list))), \
+            ('No path supplied, or not a string/list/dict!')
+        data = {
+            'op': 'mkdir',
+            'path': path,
+        }
+        response = self._event('POST', 'organization/file', data)
+        if response:
+            return response['result']
+
 
     # Pre publish
     def prepublish(self, data):
@@ -1184,12 +1425,7 @@ class Session(object):
         'single ("<entity>"") or with a WHERE statement '
         '("<(sub)entity> WHERE {<entity>.}id=..{ AND ..}"")')
         if len(parts) == 1:
-            if parts[0].lower() == 'user':
-                return {
-                    'entitytype': parts[0].lower(),
-                    'expression': 'code=%s' % self._username}
-            else:
-                return {'entitytype': parts[0].lower()}
+            return {'entitytype': parts[0].lower()}
         else:
             assert (parts[1].strip().lower() == 'where'), (
                 'Invalid query "{}", should be on the form '
@@ -1238,7 +1474,7 @@ class Session(object):
         return s
 
     def _verbose(self, s):
-        if self._verbose:
+        if self._be_verbose:
             Session._info('[ACCSYN_API] %s' % (s))
 
     @staticmethod

@@ -16,6 +16,8 @@ Install using `pip <http://www.pip-installer.org/>`_::
 Clone from Git
 ==============
 
+Clone from our public Git reposity::
+
     git clone https://github.com/accsyn/accsyn-python-api
 
 Then you can build and copy the package into your current Python
