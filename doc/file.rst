@@ -69,8 +69,6 @@ If succeeds, this will return a list of dictionaries, one for each file found, w
     }
 
 
-
-
 Failure scenarios
 *****************
 
@@ -200,6 +198,40 @@ Failure scenarios
 * Permission denied; You do not have write access to the file/folder that is to be deleted.
 * If target is a directory and contains files, exception will say: {“message”:”Cannot delete non-empty directory 'share=thefilm-DIT/TO_ACMEFILM/QT'!”}. To have it deleted anyway, supply the force flag: session.delete("share=thefilm-DIT/TO_ACMEFILM/QT",force=True).
 * The removal failed to to locked files or other permission problems on server. Contact domain adminstrator.
+
+
+Multiple file operations
+========================
+
+Multiple file operations can be made with one call, to do that supply a list of operations::
+
+    session.ls(["share=thefilm-DIT/folder","share=other/folder2"], recursive=True)
+
+If succeeds, this will return a list of dictionaries with result for each operation::
+
+    {
+        [
+            {
+                "path": "share=thefilm-DIT/folder",
+                "result": [
+                    {
+                        "filename":"delivery",
+                        ..
+                    }
+                ]
+            }
+        ,
+            {
+                "path": "share=other/folder2",
+                "result": [
+                    {
+                        "filename":"test",
+                        ..
+                    }
+                ]
+            }
+        ]
+    }
 
 
 
