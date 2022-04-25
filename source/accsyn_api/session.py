@@ -48,9 +48,7 @@ logging.basicConfig(
 ACCSYN_CLOUD_DOMAIN = "accsyn.com"
 ACCSYN_CLOUD_REGISTRY_HOSTNAME = "registry.%s" % ACCSYN_CLOUD_DOMAIN
 ACCSYN_PORT = 443
-DEFAULT_EVENT_PAYLOAD_COMPRESS_SIZE_TRESHOLD = (
-    100 * 1024
-)  # Compress event data payloads above 100k
+DEFAULT_EVENT_PAYLOAD_COMPRESS_SIZE_TRESHOLD = 100 * 1024  # Compress event data payloads above 100k
 
 CLEARANCE_CLOUDADMIN = "cloudadmin"
 CLEARANCE_ADMIN = "admin"
@@ -63,9 +61,7 @@ class JSONEncoder(json.JSONEncoder):
     """JSON serialiser."""
 
     def default(self, obj):
-        if isinstance(obj, datetime.date) or isinstance(
-            obj, datetime.datetime
-        ):
+        if isinstance(obj, datetime.date) or isinstance(obj, datetime.datetime):
             return obj.strftime("%Y-%m-%dT%H:%M:%S")
         return super(JSONEncoder, self).default(obj)
 
@@ -88,45 +84,28 @@ class JSONDecoder(json.JSONDecoder):
                         d[key] = newlist
                     elif Session._is_str(d[key]):
                         if re.match(
-                            "^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:"
-                            "[0-9]{2}$",
+                            "^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:" "[0-9]{2}$",
                             str(Session._safely_printable(d[key])),
                         ):
                             if len(d[key].split("-")[0]) == 4:
-                                d[key] = datetime.datetime.strptime(
-                                    d[key], "%Y-%m-%dT%H:%M:%S"
-                                )
+                                d[key] = datetime.datetime.strptime(d[key], "%Y-%m-%dT%H:%M:%S")
                             else:
-                                d[key] = datetime.datetime.strptime(
-                                    d[key], "%y-%m-%dT%H:%M:%S"
-                                )
+                                d[key] = datetime.datetime.strptime(d[key], "%y-%m-%dT%H:%M:%S")
                         # With millis
                         elif re.match(
-                            "^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:"
-                            "[0-9]{2}:[0-9]{2}.[0-9]{3}$",
+                            "^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:" "[0-9]{2}:[0-9]{2}.[0-9]{3}$",
                             str(Session._safely_printable(d[key])),
                         ):
                             if len(d[key].split("-")[0]) == 4:
-                                d[key] = datetime.datetime.strptime(
-                                    d[key], "%Y-%m-%dT%H:%M:%S.%f"
-                                )
+                                d[key] = datetime.datetime.strptime(d[key], "%Y-%m-%dT%H:%M:%S.%f")
                             else:
-                                d[key] = datetime.datetime.strptime(
-                                    d[key], "%y-%m-%dT%H:%M:%S.%f"
-                                )
+                                d[key] = datetime.datetime.strptime(d[key], "%y-%m-%dT%H:%M:%S.%f")
                         # DEPRECATED
-                        elif (
-                            str(Session._safely_printable(d[key])).find(
-                                "{USD::date}"
-                            )
-                            > -1
-                        ):
+                        elif str(Session._safely_printable(d[key])).find("{USD::date}") > -1:
                             s = d[key][d[key].find("}") + 1 :]
                             d[key] = datetime.datetime.strptime(
                                 s,
-                                "%Y%m%d %H:%M:%S"
-                                if s.find("+") == -1
-                                else "%Y%m%d+%H:%M:%S",
+                                "%Y%m%d %H:%M:%S" if s.find("+") == -1 else "%Y%m%d+%H:%M:%S",
                             )
             return d
 
@@ -179,15 +158,10 @@ class Session(object):
         self._dev = dev
         Session._p_logfile = path_logfile
         self._clearance = CLEARANCE_NONE
-        self._verbose(
-            "Creating accsyn Python API session (v{})".format(__version__)
-        )
+        self._verbose("Creating accsyn Python API session (v{})".format(__version__))
         for key in os.environ:
             if key.startswith("FILMHUB_"):
-                Session._warning(
-                    'Found old FilmHUB product environment variable "{}", '
-                    "please migrate!".format(key)
-                )
+                Session._warning('Found old FilmHUB product environment variable "{}", ' "please migrate!".format(key))
         if domain is None:
             if not (
                 "ACCSYN_DOMAIN" in os.environ
@@ -196,39 +170,26 @@ class Session(object):
                 or "FILMHUB_ORG" in os.environ
             ):
                 raise accsynException(
-                    "Please supply your accsyn domain/organization or set "
-                    "ACCSYN_DOMAIN environment!"
+                    "Please supply your accsyn domain/organization or set " "ACCSYN_DOMAIN environment!"
                 )
         self._domain = domain or (
             os.environ["ACCSYN_DOMAIN"]
             if "ACCSYN_DOMAIN" in os.environ
             else os.environ.get(
                 "ACCSYN_ORG",
-                os.environ.get(
-                    "FILMHUB_DOMAIN", os.environ.get("FILMHUB_ORG")
-                ),
+                os.environ.get("FILMHUB_DOMAIN", os.environ.get("FILMHUB_ORG")),
             )
         )
         if username is None:
-            if not (
-                "ACCSYN_API_USER" in os.environ
-                or "FILMHUB_API_USER" in os.environ
-            ):
+            if not ("ACCSYN_API_USER" in os.environ or "FILMHUB_API_USER" in os.environ):
                 raise accsynException(
-                    "Please supply your accsyn user name (E-mail) or set "
-                    "ACCSYN_API_USER environment!"
+                    "Please supply your accsyn user name (E-mail) or set " "ACCSYN_API_USER environment!"
                 )
-        self._username = (
-            username
-            or os.environ.get("ACCSYN_API_USER")
-            or os.environ["FILMHUB_API_USER"]
-        )
+        self._username = username or os.environ.get("ACCSYN_API_USER") or os.environ["FILMHUB_API_USER"]
         if api_key:
             self._api_key = api_key
         else:
-            self._api_key = os.environ.get("ACCSYN_API_KEY") or os.environ.get(
-                "FILMHUB_API_KEY"
-            )
+            self._api_key = os.environ.get("ACCSYN_API_KEY") or os.environ.get("FILMHUB_API_KEY")
         if len(session_key or "") == 0:
             session_key = os.environ.get("ACCSYN_SESSION_KEY")
         if 0 < len(session_key or ""):
@@ -240,10 +201,7 @@ class Session(object):
                 # Store it temporarily
                 self._pwd = pwd
             else:
-                raise accsynException(
-                    "Please supply your accsyn API KEY or set ACCSYN_API_KEY "
-                    "environment!"
-                )
+                raise accsynException("Please supply your accsyn API KEY or set ACCSYN_API_KEY " "environment!")
         self._hostname = hostname
         self._port = port or ACCSYN_PORT
         if self._hostname is None:
@@ -303,11 +261,7 @@ class Session(object):
     @staticmethod
     def str(d, indent=4):
         """Return a string representation of a dict"""
-        return (
-            json.dumps(d, default=Session._json_serial, indent=indent)
-            if d is not None
-            else ""
-        )
+        return json.dumps(d, default=Session._json_serial, indent=indent) if d is not None else ""
 
     def get_last_message(self):
         """Retreive error message from last API call."""
@@ -378,9 +332,7 @@ class Session(object):
 
     # Create
 
-    def create(
-        self, entitytype, data, entitytype_id=None, allow_duplicates=True
-    ):
+    def create(self, entitytype, data, entitytype_id=None, allow_duplicates=True):
         """
         Create a new accsyn entity.
 
@@ -390,14 +342,10 @@ class Session(object):
         :param allow_duplicates: (jobs and tasks) Allow duplicates to be created.
         :return: The created entity data, as dictionary.
         """
-        assert 0 < len(
-            (entitytype or "").strip()
-        ), "You must provide the entity type!"
+        assert 0 < len((entitytype or "").strip()), "You must provide the entity type!"
         entitytype = entitytype.lower().strip()
         if Session._is_str(data):
-            assert 0 < len(
-                (data or "").strip()
-            ), "You must provide the data to create!"
+            assert 0 < len((data or "").strip()), "You must provide the data to create!"
             # Is it JSON as a string or JSON in a file pointed to?
             try:
                 data = json.loads(data)
@@ -407,15 +355,12 @@ class Session(object):
                     data = json.load(open(data, "r"))
                 else:
                     raise accsynException(
-                        "Cannot build JSON payload data, not a valid JSON "
-                        "string or path to a JSON file!"
+                        "Cannot build JSON payload data, not a valid JSON " "string or path to a JSON file!"
                     )
         else:
             if isinstance(data, list):
                 data = {"tasks": data}
-            assert data is not None and 0 < len(
-                data
-            ), "Empty create data submitted!"
+            assert data is not None and 0 < len(data), "Empty create data submitted!"
         if entitytype == "queue":
             data["type"] = 2
         elif entitytype == "task" and "tasks" not in data:
@@ -465,9 +410,7 @@ class Session(object):
         :param update: (attributes) Return update (PUT) attributes.
         :return: List of dictionaries.
         """
-        assert 0 < len(query or "") and Session._is_str(
-            query
-        ), "Invalid query type supplied, must be of string type!"
+        assert 0 < len(query or "") and Session._is_str(query), "Invalid query type supplied, must be of string type!"
 
         retval = None
         d = self.decode_query(query)
@@ -480,14 +423,12 @@ class Session(object):
                 retval = d["result"]
         elif d["entitytype"] == "attributes":
             assert d.get("expression"), (
-                "Please query which entity to obtain attributes for (i.e. "
-                '"attributes WHERE entitytype=job")'
+                "Please query which entity to obtain attributes for (i.e. " '"attributes WHERE entitytype=job")'
             )
             # Look at expression
             parts = d["expression"].split("=")
             assert len(parts) == 2 and parts[0].strip() == "entitytype", (
-                "Please query attributes by expressions on the form "
-                '"attributes WHERE entitytype=job"'
+                "Please query attributes by expressions on the form " '"attributes WHERE entitytype=job"'
             )
             entitytype = parts[1].strip().replace("'", "").replace('"', "")
             d = self._event(
@@ -516,9 +457,7 @@ class Session(object):
                 data["skip"] = skip
             if attributes:
                 data["attributes"] = attributes
-            d = self._event(
-                "GET", "%s/find" % uri_base, data, query=d.get("expression")
-            )
+            d = self._event("GET", "%s/find" % uri_base, data, query=d.get("expression"))
             if d:
                 retval = d["result"]
         return retval
@@ -568,16 +507,14 @@ class Session(object):
         # Send query to server, first determine uri
         uri_base = Session._get_base_uri(d["entitytype"])
         data = {}
-        d = self._event(
-            "GET", "%s/report" % uri_base, data, query=d.get("expression")
-        )
+        d = self._event("GET", "%s/report" % uri_base, data, query=d.get("expression"))
         return d["report"]
 
     def metrics(self, query, attributes=["speed"], time=None):
         """
         Return metrics for an entity (job)
 
-        .. versionadded:: 1.5
+        .. versionadded:: 2.0
 
         :param query:
         :param attributes:
@@ -592,9 +529,7 @@ class Session(object):
         }
         if not time is None:
             data["time"] = time
-        d = self._event(
-            "GET", "%s/metrics" % uri_base, data, query=d.get("expression")
-        )
+        d = self._event("GET", "%s/metrics" % uri_base, data, query=d.get("expression"))
         return d["result"]
 
     # Update an entity
@@ -615,9 +550,7 @@ class Session(object):
         assert 0 < len(entityid or "") and Session._is_str(
             entityid
         ), "Invalid entity ID supplied, must be of string type!"
-        assert 0 < len(data or {}) and isinstance(
-            data, dict
-        ), "Invalid data supplied, must be dict and have content!"
+        assert 0 < len(data or {}) and isinstance(data, dict), "Invalid data supplied, must be dict and have content!"
         response = self._event(
             "PUT",
             "%s/edit" % Session._get_base_uri(entitytype),
@@ -640,16 +573,12 @@ class Session(object):
             entitytype
         ), "Invalid entity type supplied, must be of string type!"
         entitytype = entitytype.lower().strip()
-        assert (
-            entitytype == "task"
-        ), 'Only multiple "task" entities can be updated!'
+        assert entitytype == "task", 'Only multiple "task" entities can be updated!'
         if entitytype.lower() == "task":
             assert 0 < len(entityid or "") and (
                 Session._is_str(entityid)
             ), "Invalid entity ID supplied, must be of string type!"
-        assert 0 < len(data or []) and isinstance(
-            data, list
-        ), "Invalid data supplied, must be a list!"
+        assert 0 < len(data or []) and isinstance(data, list), "Invalid data supplied, must be a list!"
         response = self._event(
             "PUT",
             "%s/edit" % Session._get_base_uri(entitytype),
@@ -665,7 +594,7 @@ class Session(object):
         """
         Assign one entity to another.
 
-        .. versionadded:: 1.5
+        .. versionadded:: 2.0
 
         :param entitytype_parent: The parent entity type to assign child entity to.
         :param entitytype_child: The child entity type to assign to parent entity.
@@ -681,31 +610,22 @@ class Session(object):
         entitytype_parent = entitytype_parent.lower().strip()
         entitytype_child = entitytype_child.lower().strip()
         assert (
-            not data is None
-            and isinstance(data, dict)
-            and (0 < len(data or {}))
+            not data is None and isinstance(data, dict) and (0 < len(data or {}))
         ), "Invalid assignment data supplied, must be a dict with values!"
         response = None
         if entitytype_parent == "share" and entitytype_child == "server":
             # Assign a server to a share, expect share and client supplied
             share_id = data.get("share")
-            assert re.match(
-                "^[a-z0-9]{24}$", (share_id or "")
-            ), "Please supply share ID with assignment data!"
+            assert re.match("^[a-z0-9]{24}$", (share_id or "")), "Please supply share ID with assignment data!"
             client_id = data.get("client")
-            assert re.match(
-                "^[a-z0-9]{24}$", (client_id or "")
-            ), "Please supply client ID with assignment data!"
+            assert re.match("^[a-z0-9]{24}$", (client_id or "")), "Please supply client ID with assignment data!"
             what = None
             if data.get("main") is True:
                 what = "server"
             elif data.get("site") is True:
                 what = "siteserver"
             else:
-                raise Exception(
-                    "Please supply type of server assignment (main "
-                    "or site) in assignment data!"
-                )
+                raise Exception("Please supply type of server assignment (main " "or site) in assignment data!")
             response = self._event(
                 "PUT",
                 "%s/edit" % Session._get_base_uri(entitytype_parent),
@@ -721,7 +641,7 @@ class Session(object):
         """
         Return list of assigned child entities.
 
-        .. versionadded:: 1.5
+        .. versionadded:: 2.0
 
         :param query:
         :return: List of dictionaries.
@@ -744,7 +664,7 @@ class Session(object):
         """
         De-assign one entity from another.
 
-        .. versionadded:: 1.5
+        .. versionadded:: 2.0
 
         :param entitytype_parent: The parent entity type to deassign child entity from
         :param entitytype_child: The child entity type to deassign from parent entity
@@ -760,31 +680,22 @@ class Session(object):
         entitytype_parent = entitytype_parent.lower().strip()
         entitytype_child = entitytype_child.lower().strip()
         assert (
-            not data is None
-            and isinstance(data, dict)
-            and (0 < len(data or {}))
+            not data is None and isinstance(data, dict) and (0 < len(data or {}))
         ), "Invalid de-assignment data supplied, must be a dict with values!"
         response = None
         if entitytype_parent == "share" and entitytype_child == "server":
             # Assign a server to a share, expect share and client supplied
             share_id = data.get("share")
-            assert re.match(
-                "^[a-z0-9]{24}$", (share_id or "")
-            ), "Please supply share ID with de-assignment data!"
+            assert re.match("^[a-z0-9]{24}$", (share_id or "")), "Please supply share ID with de-assignment data!"
             client_id = data.get("client")
-            assert re.match(
-                "^[a-z0-9]{24}$", (client_id or "")
-            ), "Please supply client ID with de-assignment data!"
+            assert re.match("^[a-z0-9]{24}$", (client_id or "")), "Please supply client ID with de-assignment data!"
             what = None
             if data.get("main") is True:
                 what = "server"
             elif data.get("site") is True:
                 what = "siteserver"
             else:
-                raise Exception(
-                    "Please supply type of server assignment (main "
-                    "or site) in assignment data!"
-                )
+                raise Exception("Please supply type of server assignment (main " "or site) in assignment data!")
             response = self._event(
                 "PUT",
                 "%s/edit" % Session._get_base_uri(entitytype_parent),
@@ -802,7 +713,7 @@ class Session(object):
         """
         Offline an entity.
 
-        .. versionadded:: 1.5
+        .. versionadded:: 2.0
 
         :param entitytype: The type of entity to delete (job, share, acl, ..)
         :param entityid: The id of the entity.
@@ -871,9 +782,7 @@ class Session(object):
         :return: A dictionary containing result of file listing.
         """
         assert 0 < len(path or "") and (
-            Session._is_str(path)
-            or isinstance(path, dict)
-            or isinstance(path, list)
+            Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
         ), "No path supplied, or not a string/list/dict!"
         data = {
             "op": "ls",
@@ -900,9 +809,7 @@ class Session(object):
         :return: A number representing the file size.
         """
         assert 0 < len(path or "") and (
-            Session._is_str(path)
-            or isinstance(path, dict)
-            or isinstance(path, list)
+            Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
         ), "No path supplied, or not a string/list/dict!"
         data = {
             "op": "getsize",
@@ -920,9 +827,7 @@ class Session(object):
         :return: True if file exists, False otherwise.
         """
         assert 0 < len(path or "") and (
-            Session._is_str(path)
-            or isinstance(path, dict)
-            or isinstance(path, list)
+            Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
         ), "No path supplied, or not a string/list/dict!"
         data = {
             "op": "exists",
@@ -936,15 +841,13 @@ class Session(object):
         """
         Create a directory on a share.
 
-        .. versionadded:: 1.5
+        .. versionadded:: 2.0
 
         :param path: The accsyn path, on the form 'share=<the share>/<path>/<somewhere>'.
         :return: True if file exists, False otherwise.
         """
         assert 0 < len(path or "") and (
-            Session._is_str(path)
-            or isinstance(path, dict)
-            or isinstance(path, list)
+            Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
         ), "No path supplied, or not a string/list/dict!"
         data = {
             "op": "mkdir",
@@ -958,21 +861,17 @@ class Session(object):
         """
         Rename a file/directory on a share.
 
-        .. versionadded:: 1.5
+        .. versionadded:: 2.0
 
         :param path: The accsyn path, on the form 'share=<the share>/<path>/<somewhere>'.
         :param path_to: The new accsyn path, has to be within the same directory as source *path*, on the form 'share=<the share>/<path>/<somewhere>'.
         :return: True if file exists, False otherwise.
         """
         assert 0 < len(path or "") and (
-            Session._is_str(path)
-            or isinstance(path, dict)
-            or isinstance(path, list)
+            Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
         ), "No path supplied, or not a string/list/dict!"
         assert 0 < len(path_to or "") and (
-            Session._is_str(path_to)
-            or isinstance(path_to, dict)
-            or isinstance(path_to, list)
+            Session._is_str(path_to) or isinstance(path_to, dict) or isinstance(path_to, list)
         ), "No destination path supplied, or not a string/list/dict!"
         data = {
             "op": "rename",
@@ -987,21 +886,17 @@ class Session(object):
         """
         Move a file/directory on a share.
 
-        .. versionadded:: 1.5
+        .. versionadded:: 2.0
 
         :param path_src: The accsyn source path, on the form 'share=<the share>/<path>/<somewhere>'.
         :param path_dst: The accsyn destination path, on the form 'share=<the share>/<path>/<somewhere>'.
         :return: True if file exists, False otherwise.
         """
         assert 0 < len(path_src or "") and (
-            Session._is_str(path_src)
-            or isinstance(path_src, dict)
-            or isinstance(path_src, list)
+            Session._is_str(path_src) or isinstance(path_src, dict) or isinstance(path_src, list)
         ), "No source path supplied, or not a string/list/dict!"
         assert 0 < len(path_dst or "") and (
-            Session._is_str(path_dst)
-            or isinstance(path_dst, dict)
-            or isinstance(path_dst, list)
+            Session._is_str(path_dst) or isinstance(path_dst, dict) or isinstance(path_dst, list)
         ), "No destination path supplied, or not a string/list/dict!"
         data = {
             "op": "move",
@@ -1016,15 +911,13 @@ class Session(object):
         """
         Remove a file/directory on a share.
 
-        .. versionadded:: 1.5
+        .. versionadded:: 2.0
 
         :param path: The accsyn path, on the form 'share=<the share>/<path>/<somewhere>'.
         :return: True if file exists, False otherwise.
         """
         assert 0 < len(path or "") and (
-            Session._is_str(path)
-            or isinstance(path, dict)
-            or isinstance(path, list)
+            Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
         ), "No path supplied, or not a string/list/dict!"
         data = {
             "op": "mkdir",
@@ -1050,18 +943,13 @@ class Session(object):
             for d in files:
                 if "size" not in d:
                     d["size"] = (
-                        0
-                        if not d.get("is_dir") is True
-                        or d.get("files") is None
-                        else recursive_get_size(d["files"])
+                        0 if not d.get("is_dir") is True or d.get("files") is None else recursive_get_size(d["files"])
                     )
                 result += d["size"]
             return result
 
         event_data = {"files": data, "size": recursive_get_size(data)}
-        response = self._event(
-            "PUT", "organization/publish/preprocess", event_data
-        )
+        response = self._event("PUT", "organization/publish/preprocess", event_data)
         return response["result"]
 
     # Misc
@@ -1084,7 +972,7 @@ class Session(object):
 
     def gui_is_running(self):
         """
-        Check if a GUI is running on the same machine with same username.
+        Check if a GUI is running on the same machine (hostname match) and with same username.
 
         :return: True if found, False otherwise.
         """
@@ -1092,9 +980,7 @@ class Session(object):
             "GET",
             "client/find",
             {},
-            query="user={0} AND code={1} AND type={2}".format(
-                self._uid, Session.get_hostname(), 0
-            ),
+            query="user={0} AND code={1} AND type={2}".format(self._uid, Session.get_hostname(), 0),
         )["result"]
         retval = None
         if 0 < len(result):
@@ -1114,9 +1000,7 @@ class Session(object):
             "GET",
             "client/find",
             {},
-            query="user={0} AND code={1} AND type!={2}".format(
-                self._uid, Session.get_hostname(), 0
-            ),
+            query="user={0} AND code={1} AND type!={2}".format(self._uid, Session.get_hostname(), 0),
         )["result"]
         retval = None
         if 0 < len(result):
@@ -1128,10 +1012,7 @@ class Session(object):
 
     # Help
     def help(self):
-        print(
-            "Please have a look at the Python API reference: "
-            "https://support.accsyn.com/python-api"
-        )
+        print("Please have a look at the Python API reference: " "https://accsyn-python-api.readthedocs.io/en/latest/")
 
     # Internal utility functions
 
@@ -1213,32 +1094,21 @@ class Session(object):
         if proxy_type == "accsyn":
             if proxy_port == -1:
                 proxy_port = 80
-            self._verbose(
-                "Using accsyn proxy @ %s:%s" % (proxy_hostname, proxy_port)
-            )
+            self._verbose("Using accsyn proxy @ %s:%s" % (proxy_hostname, proxy_port))
             hostname = proxy_hostname
             port = proxy_port
         elif proxy_type in ["socks", "socks5"]:
             try:
-                self._verbose(
-                    "Using SOCKS5 proxy @ %s:%s" % (proxy_hostname, proxy_port)
-                )
+                self._verbose("Using SOCKS5 proxy @ %s:%s" % (proxy_hostname, proxy_port))
                 import socks
 
-                socks.setdefaultproxy(
-                    socks.PROXY_TYPE_SOCKS5, proxy_hostname, proxy_port
-                )
+                socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, proxy_hostname, proxy_port)
                 socket.socket = socks.socksocket
             except ImportError as ie:
-                Session._warning(
-                    'Python lacks SOCKS support, please install "pysocks" and'
-                    " try again..."
-                )
+                Session._warning('Python lacks SOCKS support, please install "pysocks" and' " try again...")
                 raise ie
         elif proxy_type is not None:
-            raise accsynException(
-                'Unknown proxy type "{}"!'.format(proxy_type)
-            )
+            raise accsynException('Unknown proxy type "{}"!'.format(proxy_type))
         url = "http{}://{}:{}/api/v1.0{}".format(
             "s" if ssl else "",
             hostname,
@@ -1258,19 +1128,13 @@ class Session(object):
                 headers_effective = copy.deepcopy(headers)
             else:
                 if uri.find("registry/") != 0:
-                    assert self._session_key is not None, (
-                        "Need to be authenticated when communicating with "
-                        "accsyn!"
+                    assert self._session_key is not None, "Need to be authenticated when communicating with " "accsyn!"
+                    header_data = '{"domain":"%s","username":"%s","session_key":"%s"}' % (
+                        self._domain,
+                        self._username,
+                        self._session_key,
                     )
-                    header_data = (
-                        '{"domain":"%s","username":"%s","session_key":"%s"}'
-                        % (self._domain, self._username, self._session_key)
-                    )
-                    headers_effective = {
-                        "Authorization": "ASSession {}".format(
-                            Session._base64_encode(header_data)
-                        )
-                    }
+                    headers_effective = {"Authorization": "ASSession {}".format(Session._base64_encode(header_data))}
                 else:
                     headers_effective = {}
             headers_effective["ASDevice"] = "PythonAPI v%s @ %s %s(%s)" % (
@@ -1327,38 +1191,36 @@ class Session(object):
                 t_end = int(round(time.time() * 1000))
                 # break
             except BaseException:
-                sleep_time = 2
-                t_end = int(round(time.time() * 1000))
-                timeout -= int((t_end - t_start) / 1000)
-                timeout -= sleep_time
-                if timeout <= 0 or True:
-                    raise accsynException(
-                        "Could not reach {}:{}! Make sure cloud server({}) can"
-                        " be reached from you location and no firewall is "
-                        "blocking outgoing TCP traffic at port {}. "
-                        "Details: {}".format(
-                            hostname,
-                            port,
-                            hostname,
-                            port,
-                            traceback.format_exc() if not quiet else "(quiet)",
-                        )
-                    )
-
-                Session._warning(
-                    "Could not reach {}:{}! Waited {}s/{}, will try again in "
-                    "{}s... Details: {}".format(
+                # if timeout <= 0:
+                raise accsynException(
+                    "Could not reach {}:{}! Make sure cloud server({}) can"
+                    " be reached from you location and no firewall is "
+                    "blocking outgoing TCP traffic at port {}. "
+                    "Details: {}".format(
                         hostname,
                         port,
-                        initial_timeout - timeout,
-                        "%ss" % initial_timeout
-                        if initial_timeout < 99999999
-                        else "INF",
-                        sleep_time,
-                        traceback.format_exc(),
+                        hostname,
+                        port,
+                        traceback.format_exc() if not quiet else "(quiet)",
                     )
                 )
-                time.sleep(sleep_time)
+                # sleep_time = 2
+                # t_end = int(round(time.time() * 1000))
+                # timeout -= int((t_end - t_start) / 1000)
+                # timeout -= sleep_time
+                #
+                # Session._warning(
+                #     "Could not reach {}:{}! Waited {}s/{}, will try again in "
+                #     "{}s... Details: {}".format(
+                #         hostname,
+                #         port,
+                #         initial_timeout - timeout,
+                #         "%ss" % initial_timeout if initial_timeout < 99999999 else "INF",
+                #         sleep_time,
+                #         traceback.format_exc(),
+                #     )
+                # )
+                # time.sleep(sleep_time)
 
             try:
                 retval = json.loads(r.text, cls=JSONDecoder)
@@ -1370,9 +1232,7 @@ class Session(object):
                             method,
                             Session._obscure_dict_string(
                                 Session._safely_printable(
-                                    str(retval)
-                                    if not self._pretty_json
-                                    else Session.str(retval)
+                                    str(retval) if not self._pretty_json else Session.str(retval)
                                 ).replace("'", '"')
                             ),
                             t_start - t_end + 1,
@@ -1387,10 +1247,7 @@ class Session(object):
                             revive_session_key = self._session_key
                             self._session_key = None
                             self.login(revive_session_key=revive_session_key)
-                            self._info(
-                                "Authenticated using API KEY and reused expired"
-                                " session..."
-                            )
+                            self._info('Authenticated using API KEY and reused expired session...')
                             do_retry = True
                     if not do_retry:
                         self._last_message = retval["message"]
@@ -1398,24 +1255,20 @@ class Session(object):
                     break
             except BaseException:
                 sys.stderr.write(traceback.format_exc())
-                message = "The {}:{}/{} REST {} {} operation failed! Details: "
-                "{} {}".format(
+                message = 'The {}:{}/{} REST {} {} operation failed! Details: '
+                '{} {}'.format(
                     hostname,
                     port,
                     uri,
                     method,
-                    Session._obscure_dict_string(
-                        Session._safely_printable(str(data)).replace("'", '"')
-                    ),
+                    Session._obscure_dict_string(Session._safely_printable(str(data)).replace("'", '"')),
                     r.text,
                     traceback.format_exc(),
                 )
                 Session._warning(message)
                 raise accsynException(message)
         if "exception" in retval:
-            message = (
-                "{} caused an exception! Please contact {} admin for more"
-            )
+            message = "{} caused an exception! Please contact {} admin for more"
             " further support.".format(uri, self._domain)
             Session._warning(message)
             if self._clearance in [CLEARANCE_ADMIN, CLEARANCE_CLOUDADMIN]:
@@ -1461,9 +1314,7 @@ class Session(object):
                     if isinstance(o, dict):
                         d = o
                         for key in d:
-                            result += len(key) + recursive_estimate_dict_size(
-                                d[key]
-                            )
+                            result += len(key) + recursive_estimate_dict_size(d[key])
                     elif isinstance(o, list):
                         l = o
                         for _o in l:
@@ -1560,10 +1411,9 @@ class Session(object):
         if len(parts) == 1:
             return {"entitytype": parts[0].lower()}
         else:
-            assert parts[1].strip().lower() == "where", (
-                'Invalid query "{}", should be on the form '
-                '"<entitytype> where <expression>".'.format(query)
-            )
+            assert (
+                parts[1].strip().lower() == "where"
+            ), 'Invalid query "{}", should be on the form ' '"<entitytype> where <expression>".'.format(query)
             # Decode expression
             return {
                 "entitytype": parts[0].lower(),
@@ -1615,7 +1465,10 @@ class Session(object):
 
     @staticmethod
     def _safe_dumps(d, indent=None):
-        return json.dumps(d, cls=JSONEncoder, indent=indent)
+        if 3 <= sys.version_info.major:
+            return json.dumps(d if not isinstance(d, list) else list(d.values()), cls=JSONEncoder, indent=indent)
+        else:
+            return json.dumps(d, cls=JSONEncoder, indent=indent)
 
     @staticmethod
     def _safely_printable(s):
@@ -1638,9 +1491,7 @@ class Session(object):
     @staticmethod
     def _json_serial(obj):
         """JSON serializer for *obj not serializable by default json code."""
-        if isinstance(obj, datetime.datetime) or isinstance(
-            obj, datetime.date
-        ):
+        if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
             return obj.isoformat()
         raise TypeError("Type %s not serializable" % type(obj))
 

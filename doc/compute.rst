@@ -43,11 +43,11 @@ The Python accsyn API support submission of accsyn compute jobs, here follows an
                             "enable":false
                         },
                         "upload":{
-                            "task_bucketsize": 1,
+                            "task_bucketsize": 1
                         },
                         "common":{
                             "transfer_speedlimit": 2
-                        },
+                        }
                     }
                 }
             }
@@ -73,14 +73,13 @@ The Python accsyn API support submission of accsyn compute jobs, here follows an
 * ``parameters/arguments``: Additional parameters to pass on to the compute process (command line options).
 * ``parameters/remote_os``: (Optional)The operating system submit is made from.
 * ``parameters/mapped_share_paths``: (Optional, if ASCII parsable input file and input conversions enabled) List of local paths mapped to on-prem shares. Required if the input file contains local paths that need conversion. If compute servers are running different operating systems, "os" can be used to define different paths. Recognised values are "windows", "mac" and "linux", This is picked by the "common" compute app only, it can be modified to support additional operating systems.
-* ``parameters/site``: (Optional, since v1.5) Site specific setting overrides, "local" is reserved and means the remote submitting computer and will only be considered when submitting from the remote "roaming" site.  In this example``: 1) no download of output will happen 2) One dependency file will uploaded at a time 3) Overall speed limit is 2 MByte/s.
+* ``parameters/site``: (Optional, since v2.0) Site specific setting overrides, see below.
 * ``app``: The named compute app to use, make sure it exists. Compute apps can be administered at Admin/apps page within accsyn web admin pages. Find open source compute app boilerplate scripts  here: https://github.com/accsyn/compute-scripts.
 * ``range``: (If app supports split into items/frames) The integer range to render. Can be on or more(space or comma separated list of) entries on the form "1-10"(range), "4"(single) or "5-250x5"(consider only every 5 item/frames).
 * ``dependencies``: List of files that the input file depend on and must be able to access during the computation process.
 * ``filters``: Comma separated list of filters to apply, see below.
 * ``output``: Path to the folder where the compute app should write back the resulting files.
-* ``settings``: Standard accsyn settings to provide, see https://support.accsyn.com/admin-manual.
-
+* ``settings``: Standard accsyn settings to that will apply across all file involved file transfers, see https://support.accsyn.com/admin-manual.
 
 
 Filters
@@ -88,6 +87,26 @@ Filters
 
 * ``ram``: Put a restriction on the RAM usage. On the form "ram:<32g" - less than 32GB or "ram:>64g" - more than 64GB.
 * ``hostname``: Include or exclude machines by hostname or IDs. "hostname:+myhostname" - include this machine only, "hostname:-myhostname" - exclude this machine. Should be combine into one statement like: "hostname:-myhostname1-myhostname2".
-* ``site``: Only execute on a particular site: "site:-mysite" - exclude the site "mysite".
+* ``site``: Only execute on a particular site: "site:-mysite" - exclude the site "mysite". See below for Site specific settings.
 
+
+Site settings
+*************
+
+Settings that is applied for each involved compute / render site, available beneath ``parameters`` sub dictionary and can be edited after job has been submitted.
+
+Proved settings as a dictionary by site name or ID, with sub key "settings":
+
+* ``download``; Settings that will apply to all downloads from main site to this site, typically compute scripts and dependencies. In the example above,
+* ``upload``; Settings that will apply to all uploads from this site back to main site.
+* ``common``; Settings that will apply to both downloads and uploads.
+
+
+The ``local`` site is reserved and means the remote submitting computer and will only be considered when submitting from the remote "roaming" site. With the local site
+download and upload are swapped settings wise, meaning that upload settings apply to the upload of compute scripts and dependencies to main site and
+download settings apply to the download of generated files.
+
+.. note::
+
+    To provide settings that should apply to all compute job sync transfers, put them in ``settings`` dictionary in payload root.
 

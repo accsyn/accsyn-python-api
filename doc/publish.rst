@@ -23,7 +23,7 @@ Supply the list of file-/directory names that should be checked at server end, s
 sub files-/directories as necessary.  The ID should be a uuid4 and is required for accsyn to relate each
 publish entry with each task on job submit later on::
 
-    result = session.publish([
+    pre_publish_response = session.publish([
        {
           "id":"33d59998-c980-4b82-9f6d-06ce27201d26",
           "filename":"first_file",
@@ -32,43 +32,47 @@ publish entry with each task on job submit later on::
        },
        {
           "id":"dda32b0f-36e5-4a5f-9379-fdfabfd482e1",
-          "filename":"second_directory",
+          "filename":"proj_task001_v001",
           "is_dir":true,
           "files":[{
-             "filename":"file.0001.dat",
+             "filename":"file.0001.exr",
+             "filename":"file.0002.exr",
              "size":1000000
           }]
        }
     ])
 
 
-
 Which will return back the same list with additional entries appended by your pre-publish hook::
 
-    {
-       "files":[{
-          "id":"33d59998-c980-4b82-9f6d-06ce27201d26",
-          "filename":"first_file",
-          "size":10240,
-          "is_dir":false,
-          "warning":"Will be uploaded but now published",
-          "can_upload":true,
-       },
-       {
-          "id":"dda32b0f-36e5-4a5f-9379-fdfabfd482e1",
-          "filename":"second_directory",
-          "is_dir":true,
-          "files":[{
-             "filename":"file.0001.dat",
-             "size":1000000
-          }],
-          "ident":"abcd1234",
-          "can_publish":true,
-          "info":"Verified publish, please enter comment and time report"
-       }],
+     {
+        "files":[
+            {
+              "id":"33d59998-c980-4b82-9f6d-06ce27201d26",
+              "filename":"first_file",
+              "size":10240,
+              "is_dir":false,
+              "warning":"Will be uploaded but not published",
+              "can_upload":true,
+            },
+            {
+              "id":"dda32b0f-36e5-4a5f-9379-fdfabfd482e1",
+              "filename":"proj_task001_v001",
+              "is_dir":true,
+              "files":[{
+                 "filename":"file.0001.exr",
+                 "filename":"file.0002.exr",
+                 "size":1000000
+              }],
+              "ident":"abcd1234",
+              "can_publish":true,
+              "info":"Verified publish, please enter comment and time report"
+           }
+       ],
        "time_report":true,
        "comment":true,
-       "guidelines":".."
+       "guidelines":"..",
+       "tasks":["proj_task001_v001","proj2_sq0010_sh0010_lighting_v0002"],
     }
 
 
@@ -87,13 +91,13 @@ and corresponding ID:s supplied to tasks as well::
             },
             {
                 "id":"dda32b0f-36e5-4a5f-9379-fdfabfd482e1",
-                "source":"/Volumes/NAS01/second_directory",
+                "source":"/Volumes/NAS01/proj_task001_v001",
             }
         ],
         "hooks":[
             {
                "when":"hook-job-publish-server",
-               "data":{"files":result}
+               "data":{"files":pre_publish_response['files']}
             }
         ]
     })

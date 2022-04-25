@@ -13,7 +13,7 @@ Release Notes
 
     `https://support.accsyn.com <https://support.accsyn.com>`_.
 
-.. release:: 1.5.1-1
+.. release:: 2.0.1-1
 
     .. change:: new
 
