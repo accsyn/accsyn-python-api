@@ -193,13 +193,13 @@ Modify
 
 To pause a job, resume it and abort it::
 
-    session.update_one('job', '614d660de50d45bb027c9bdd', {'status':"paused"})
-    session.update_one('job', '614d660de50d45bb027c9bdd', {'status':"waiting"})
-    session.update_one('job', '614d660de50d45bb027c9bdd', {'status':"aborted"})
+    session.update('job', '614d660de50d45bb027c9bdd', {'status':"paused"})
+    session.update('job', '614d660de50d45bb027c9bdd', {'status':"waiting"})
+    session.update('job', '614d660de50d45bb027c9bdd', {'status':"aborted"})
 
 To resend a package - reset destination::
 
-    session.update_one('job', '614d660de50d45bb027c9bdd', {'status':"pending"})
+    session.update('job', '614d660de50d45bb027c9bdd', {'status':"pending"})
 
 An additional function is provided to update multiple tasks, within a job::
 
@@ -365,7 +365,7 @@ Only the ``status``, ``priority`` or ``metadata`` of a task can be modified.
 
 Tasks are always updated in group with values supplied as a list of dicts instead of a single dict::
 
-    job = session.find_one('job WHERE code="my_transfer"')
+    job = session.find('job WHERE code="my_transfer"')
 
     updated_job = session.update_many("task", [{
 

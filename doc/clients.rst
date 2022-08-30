@@ -146,7 +146,7 @@ Modify
 
 To disable a client::
 
-    session.update_one('Client', '61cd853e44b630d9e10cfb2e', {'status':"disabled"})
+    session.update('Client', '61cd853e44b630d9e10cfb2e', {'status':"disabled"})
 
 
 Delete

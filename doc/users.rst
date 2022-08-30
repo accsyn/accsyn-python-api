@@ -82,12 +82,12 @@ Modify
 
 To disable a user::
 
-    session.update_one('User', '61bf395c46ed6081a2b2afc0', {'status':"disabled"})
+    session.update('User', '61bf395c46ed6081a2b2afc0', {'status':"disabled"})
 
 
 To change user clearance/role::
 
-    session.update_one('User', '61bf395c46ed6081a2b2afc0', {'role':"disabled"})
+    session.update('User', '61bf395c46ed6081a2b2afc0', {'role':"disabled"})
 
 
 

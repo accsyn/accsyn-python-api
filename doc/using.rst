@@ -119,7 +119,7 @@ Modify
 
 To modify an entity, supply the scope (string), entity id (string) and data as a dictionary payload::
 
-    session.update_one(<scope>, <id>, <data>)
+    session.update(<scope>, <id>, <data>)
 
 
 Delete
@@ -140,7 +140,7 @@ Get job named “my_transfer”::
 
 Change its status::
 
-    session.update_one('Job', j['id'], {
+    session.update('Job', j['id'], {
         "status":"aborted"
     }) 
 

@@ -534,7 +534,7 @@ class Session(object):
 
     # Update an entity
 
-    def update_one(self, entitytype, entityid, data):
+    def update(self, entitytype, entityid, data):
         """
         Update/modify an entity.
 
@@ -560,6 +560,22 @@ class Session(object):
         if response:
             return response["result"][0]
 
+    def update_one(self, entitytype, entityid, data):
+        '''
+        Update/modify an entity.
+
+        :param entitytype: The type of entity to update (job, share, acl, ..)
+        :param entityid: The id of the entity.
+        :param data: The dictionary containing attributes to update.
+        :return: The updated entity data, as dictionary.
+        """
+
+        .. deprecated:: 2.0.2
+            Since Python 2.0.2 you should use the :func:`update` function instead
+
+        '''
+        return self.update(entitytype, entityid, data)
+
     def update_many(self, entitytype, data, entityid):
         """
         Update/modify multiple entities - tasks beneath a job.
@@ -568,6 +584,9 @@ class Session(object):
         :param data: The list dictionaries containing sub entity (task) id and attributes to update.
         :param entityid: The id of the parent entity to update (job)
         :return: The updated sub entities (tasks), as dictionaries.
+
+        .. deprecated:: 2.0.2
+            Since Python 2.0.2 you should use the :func:`update` function instead
         """
         assert 0 < len(entitytype or "") and Session._is_str(
             entitytype

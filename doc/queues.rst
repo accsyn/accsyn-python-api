@@ -73,7 +73,7 @@ Modify
 
 To disable a queue::
 
-    session.update_one('Queue', '61cd853e44b630d9e10cfb2e', {'status':"disabled"})
+    session.update('Queue', '61cd853e44b630d9e10cfb2e', {'status':"disabled"})
 
 
 

@@ -232,11 +232,11 @@ Modify
 
 To disable a share::
 
-    session.update_one('Share', '614d660de50d45bb027c9bdd', {'status':"disabled"})
+    session.update('Share', '614d660de50d45bb027c9bdd', {'status':"disabled"})
 
 Configuring a queue which will become default for new jobs using share::
 
-    session.update_one('Share', '614d660de50d45bb027c9bdd', {'queue':"5ac60a8b1da7ee7eb4d146cf"})
+    session.update('Share', '614d660de50d45bb027c9bdd', {'queue':"5ac60a8b1da7ee7eb4d146cf"})
 
 
 Offline

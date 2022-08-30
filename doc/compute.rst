@@ -40,13 +40,13 @@ The Python accsyn API support submission of accsyn compute jobs, here follows an
                 "local":{
                     "settings":{
                         "download":{
-                            "enable":false
+                            "enable": "false"
                         },
                         "upload":{
-                            "task_bucketsize": 1
+                            "task_bucketsize": "1"
                         },
                         "common":{
-                            "transfer_speedlimit": 2
+                            "transfer_speedlimit": "2"
                         }
                     }
                 }
@@ -60,8 +60,8 @@ The Python accsyn API support submission of accsyn compute jobs, here follows an
         "filters": "ram:>32g,site:sthlm",
         "output": "C:\\projects\\nuke\\output",
         "settings": {
-            "task_bucketsize": 5,
-            "transfer_speedlimit": -1.0
+            "task_bucketsize": "5",
+            "transfer_speedlimit": "-1"
         }
     })
 
