@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='accsyn-python-api',
-    version='2.0.1',
+    version='2.0.2',
     packages=['source/accsyn_api'],
     setup_requires=[
         'sphinx >= 1.2.2',

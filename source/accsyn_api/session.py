@@ -1,5 +1,5 @@
 # :coding: utf-8
-# :copyright: Copyright (c) 2021 accsyn
+# :copyright: Copyright (c) 2016-2022 accsyn / HDR AB
 
 import sys
 import os
@@ -1346,11 +1346,11 @@ class Session(object):
 
             size = recursive_estimate_dict_size(data)
             if DEFAULT_EVENT_PAYLOAD_COMPRESS_SIZE_TRESHOLD < size:
-                out = io.StringIO()
+                out = io.BytesIO()
                 with gzip.GzipFile(fileobj=out, mode="w") as f:
-                    f.write(Session._safe_dumps(data))
+                    f.write(Session._safe_dumps(data).encode('ascii'))
                 b = out.getvalue()
-                event["gz_data"] = Session._base64_encode(b)
+                event["gz_data"] = base64.b64encode(b).decode('utf-8')
                 self._verbose(
                     "Compressed event payload %d>%d(%s%%)"
                     % (
