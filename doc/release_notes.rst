@@ -13,7 +13,28 @@ Release Notes
 
     `https://support.accsyn.com <https://support.accsyn.com>`_.
 
-.. release:: 2.0.1-1
+.. release:: 2.0.3
+    :date: 2021-10-04
+
+    .. change:: fix
+
+        * Fixed bug in PyPi source packaging
+
+
+.. release:: 2.0.2
+    :date: 2021-08-30
+
+    .. change:: fix
+
+        * Fixed bug in payload compression
+
+
+    .. change:: change
+
+        * Replaced update_one and update_many; Code sryle
+
+
+.. release:: 2.0.1
 
     .. change:: new
 
@@ -28,7 +49,7 @@ Release Notes
         * Code styling.
 
 
-.. release:: 1.4.1-1
+.. release:: 1.4.1
     :date: 2021-04-11
 
     .. change:: changed
