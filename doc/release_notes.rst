@@ -13,6 +13,18 @@ Release Notes
 
     `https://support.accsyn.com <https://support.accsyn.com>`_.
 
+.. release:: 2.1.0
+    :date: 2022-12-02
+
+    .. change:: new
+
+        * Support for retrieving and applying settings for a scope, entity or integration.
+
+    .. change:: new
+
+        * Integration utility function (used by ftrack-accsyn-accessor)
+
+
 .. release:: 2.0.3
     :date: 2021-10-04
 

@@ -115,6 +115,10 @@ class JSONDecoder(json.JSONDecoder):
 class Session(object):
     """accsyn API session object."""
 
+    @property
+    def username(self):
+        return self._username
+
     def __init__(
         self,
         domain=None,
@@ -971,6 +975,32 @@ class Session(object):
         response = self._event("PUT", "organization/publish/preprocess", event_data)
         return response["result"]
 
+    # Settings
+
+    def get_setting(self, name=None, scope='workspace', entity_id=None, integration=None, data=None):
+        '''Retrive *name* setting for the given *scope* (workspace, job, share..), for optional *entity_id* or *integration* (ftrack,..)'''
+        evt_data = {'scope': scope, 'name': name}
+        if entity_id:
+            evt_data['ident'] = entity_id
+        if integration:
+            evt_data['integration'] = integration
+        if evt_data:
+            evt_data['data'] = data
+        response = self._event("GET", "setting", evt_data)
+        return response.get("result")
+
+    def set_setting(self, name, value, scope='workspace', entity_id=None, integration=None, data=None):
+        '''Set the setting identified by *name* to *value* for *entity_id* within *scope*.'''
+        evt_data = {'scope': scope, 'name': name, 'value': value}
+        if entity_id:
+            evt_data['ident'] = entity_id
+        if integration:
+            evt_data['integration'] = integration
+        if evt_data:
+            evt_data['data'] = data
+        response = self._event("PUT", "setting", evt_data)
+        return response.get("result")
+
     # Misc
     def get_api_key(self):
         """Fetch API key, by default disabled in backend."""
@@ -1028,6 +1058,19 @@ class Session(object):
                 if retval is True:
                     break
         return retval
+
+    def integration(self, name, operation, data):
+        '''Make an integration utility call for integration pointed out by *name* and providing the *operation* as string and *data* as a dictionary'''
+        assert len(name) > 0, 'No name provided'
+        assert len(operation) > 0, 'No operation provided'
+        return self._event(
+            "PUT",
+            "organization/integration/{}/utility".format(name),
+            {
+                'operation': operation,
+                'data': data,
+            },
+        )["result"]
 
     # Help
     def help(self):
@@ -1332,8 +1375,8 @@ class Session(object):
                 if o is not None:
                     if isinstance(o, dict):
                         d = o
-                        for key in d:
-                            result += len(key) + recursive_estimate_dict_size(d[key])
+                        for key, value in list(d.items()):
+                            result += len(key) + recursive_estimate_dict_size(value)
                     elif isinstance(o, list):
                         l = o
                         for _o in l:
