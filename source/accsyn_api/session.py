@@ -159,7 +159,7 @@ class Session(object):
         self._be_verbose = verbose
         self._pretty_json = pretty_json
         self._proxy = proxy
-        self._dev = dev
+        self._dev = dev is True or os.environ.get('ACCSYN_DEV', 'false') in ['true', '1']
         Session._p_logfile = path_logfile
         self._clearance = CLEARANCE_NONE
         self._verbose("Creating accsyn Python API session (v{})".format(__version__))
@@ -1152,7 +1152,7 @@ class Session(object):
             ssl = False
         if self._dev and (uri or "").find("registry") != 0:
             ssl = False
-            port = 80
+            port = 8181
         if proxy_type == "accsyn":
             if proxy_port == -1:
                 proxy_port = 80
