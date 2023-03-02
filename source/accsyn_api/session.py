@@ -26,11 +26,9 @@ import requests
 from ._version import __version__
 
 if sys.version_info.major >= 3:
-
     import io
 
 else:
-
     # Python 2 backward compability
     import binascii
 
@@ -960,6 +958,7 @@ class Session(object):
         """
         if data is None or not isinstance(data, list):
             raise accsynException("None or empty data supplied!")
+
         # Check entries, calculate size
         def recursive_get_size(files):
             result = 0
