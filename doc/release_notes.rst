@@ -13,6 +13,7 @@ Release Notes
 
     `https://support.accsyn.com <https://support.accsyn.com>`_.
 
+
 .. release:: 2.1.0
     :date: 2022-12-02
 

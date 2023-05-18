@@ -186,7 +186,7 @@ If successful, a list of dictionaries is returned on the same form as returned b
 
 .. note::
 
-    For more examples of the accsyn jobmit syntax, see: `https://https://support.accsyn.com/job-specification <https://support.accsyn.com/job-specification>`_.
+    For more examples of the accsyn jobmit syntax, see: `https://support.accsyn.com/job-specification <https://support.accsyn.com/job-specification>`_.
 
 Modify
 ======
