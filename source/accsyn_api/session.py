@@ -221,6 +221,8 @@ class Session(object):
                 raise accsynException("Please supply your accsyn API KEY or set ACCSYN_API_KEY " "environment!")
         self._hostname = hostname
         self._port = port or ACCSYN_PORT
+        self._timeout = timeout or Session.DEFAULT_TIMEOUT
+        self._connect_timeout = connect_timeout or Session.DEFAULT_CONNECT_TIMEOUT
         if self._hostname is None:
             if self._dev:
                 self._hostname = "172.16.178.161"
@@ -239,8 +241,6 @@ class Session(object):
                     ACCSYN_CLOUD_DOMAIN,
                 )
         self._last_message = None
-        self._timeout = timeout or Session.DEFAULT_TIMEOUT
-        self._connect_timeout = connect_timeout or Session.DEFAULT_CONNECT_TIMEOUT
         self.login()
 
     @staticmethod
