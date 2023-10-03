@@ -113,9 +113,20 @@ class JSONDecoder(json.JSONDecoder):
 class Session(object):
     """accsyn API session object."""
 
+    DEFAULT_CONNECT_TIMEOUT = 10  # Wait 10 seconds for connection
+    DEFAULT_TIMEOUT = 2 * 60  # Wait 2 minutes for response
+
     @property
     def username(self):
         return self._username
+
+    @property
+    def timeout(self):
+        return self._timeout
+
+    @property
+    def connect_timeout(self):
+        return self._connect_timeout
 
     def __init__(
         self,
@@ -131,6 +142,8 @@ class Session(object):
         pretty_json=False,
         dev=False,
         path_logfile=None,
+        timeout=None,
+        connect_timeout=None,
     ):
         """
         Initiate a new API session object. Throws exception upon authentication failure.
@@ -147,6 +160,8 @@ class Session(object):
         :param pretty_json: (verbose) Print pretty formatted JSON.
         :param dev: Dev mode.
         :param path_logfile: Output all log messages to this logfile instead of stdout.
+        :param timeout: Timeout in seconds for API calls - waiting for response.
+        :param connect_timeout: Timeout in seconds for API calls - waiting for connection.
         """
         # Generate a session ID
         self.__version__ = __version__
@@ -224,6 +239,8 @@ class Session(object):
                     ACCSYN_CLOUD_DOMAIN,
                 )
         self._last_message = None
+        self._timeout = timeout or Session.DEFAULT_TIMEOUT
+        self._connect_timeout = connect_timeout or Session.DEFAULT_CONNECT_TIMEOUT
         self.login()
 
     @staticmethod
@@ -1177,13 +1194,12 @@ class Session(object):
             ("/" if not uri.startswith("/") else "") + uri,
         )
         if timeout is None:
-            timeout = 999999
+            timeout = self.timeout
         if data is None:
             data = {}
         # Wait 10s to reach machine, 2min for it to send back data
-        CONNECT_TO, READ_TO = (10, 2 * 60)
+        CONNECT_TO, READ_TO = (self.connect_timeout, timeout)
         r = None
-        initial_timeout = timeout
         for iteration in range(0, 2):
             if headers:
                 headers_effective = copy.deepcopy(headers)

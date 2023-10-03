@@ -1,12 +1,11 @@
 import setuptools
 
 with open("README.md", "r") as fh:
-
     long_description = fh.read()
 
 setuptools.setup(
     name='accsyn-python-api',
-    version='2.1.1',
+    version='2.1.2',
     package_dir={'': 'source'},
     packages=['accsyn_api'],
     setup_requires=[
