@@ -14,6 +14,13 @@ Release Notes
     `https://support.accsyn.com <https://support.accsyn.com>`_.
 
 
+.. release:: 2.1.2
+    :date: 2023-10-03
+
+    .. change:: new
+
+        * Connect and read timout argument added to session init.
+
 .. release:: 2.1.0
     :date: 2022-12-02
 
