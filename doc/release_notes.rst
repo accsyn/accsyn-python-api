@@ -14,6 +14,13 @@ Release Notes
     `https://support.accsyn.com <https://support.accsyn.com>`_.
 
 
+.. release:: 2.1.4
+    :date: 2023-10-17
+
+    .. change:: fix
+
+        * Documentation build fix.
+
 .. release:: 2.1.3
     :date: 2023-10-03
 
