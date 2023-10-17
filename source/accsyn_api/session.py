@@ -586,8 +586,7 @@ class Session(object):
         :param entitytype: The type of entity to update (job, share, acl, ..)
         :param entityid: The id of the entity.
         :param data: The dictionary containing attributes to update.
-        :return: The updated entity data, as dictionary.
-        """
+        :return: The updated entity data, as dictionary
 
         .. deprecated:: 2.0.2
             Since Python 2.0.2 you should use the :func:`update` function instead

@@ -22,7 +22,7 @@ Welcome to the accsyn :term:`Python` :term:`API` documentation.
     clients
     file
     publish
-    compute
+    render
     misc
     api_reference/index
     release_notes

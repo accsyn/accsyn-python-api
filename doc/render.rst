@@ -1,22 +1,22 @@
 ..
     :copyright: Copyright (c) 2022 accsyn
 
-.. _compute:
+.. _render:
 
-************
-Compute jobs
-************
+***********
+Render jobs
+***********
 
-The accsyn compute/render feature allows submitting CPU intensive tasks to accsyn,
+The accsyn render/compute feature allows submitting CPU intensive tasks to accsyn,
 for queued processing on a cluster/farm of computers on one or more sites.
-accsyn supports site-to-site transfer of compute dependencies, as long as they are
+accsyn supports site-to-site transfer of render dependencies, as long as they are
 specified properly and reside on a (root) share.
 
 
-Submitting a compute job
-========================
+Submitting a render job
+=======================
 
-The Python accsyn API support submission of accsyn compute jobs, here follows an example for rendering a Nuke 2D compositing job::
+The Python accsyn API support submission of accsyn render jobs, here follows an example for rendering a Nuke 2D compositing job::
 
     jobs = session.create("job",{
         "code": "test_v002.nk render",
@@ -62,24 +62,39 @@ The Python accsyn API support submission of accsyn compute jobs, here follows an
         "settings": {
             "task_bucketsize": "5",
             "transfer_speedlimit": "-1"
+        },
+        "envs" : {
+            "common": {
+                "FOUNDRY_LICENSE_DEBUG": "true"
+            },
+            "linux": {
+                "NUKE_PATH": "/projects/nuke/src"
+            },
+            "mac": {
+                "NUKE_PATH": "/projects/nuke/src"
+            },
+            "windows": {
+                "NUKE_PATH": "C:\\projects\\nuke\\src"
+            }
         }
     })
 
 
 
-* ``code``: (Optional) The name of the compute job.
+* ``code``: (Optional) The name of the render job.
 * ``input``: The path to the input file to process, currently accsyn only support on single file.
-* ``parameters/input_conversion``: Tell wether input file should be parsed and have path's converted, only supported for ASCII format files. Possible values are: "always" - always attempt to parse  regardless of platform, "platform" - only if there is change in operating system platform (i.e. between windows and mac), "never" - do not touch the input file. It is recommended to leave this on "always" unless exactly the same paths are used within input file as on-prem / at compute cluster.
-* ``parameters/arguments``: Additional parameters to pass on to the compute process (command line options).
+* ``parameters/input_conversion``: Tell wether input file should be parsed and have path's converted, only supported for ASCII format files. Possible values are: "always" - always attempt to parse  regardless of platform, "platform" - only if there is change in operating system platform (i.e. between windows and mac), "never" - do not touch the input file. It is recommended to leave this on "always" unless exactly the same paths are used within input file as on-prem / at render farm.
+* ``parameters/arguments``: Additional parameters to pass on to the render process (command line options).
 * ``parameters/remote_os``: (Optional)The operating system submit is made from.
-* ``parameters/mapped_share_paths``: (Optional, if ASCII parsable input file and input conversions enabled) List of local paths mapped to on-prem shares. Required if the input file contains local paths that need conversion. If compute servers are running different operating systems, "os" can be used to define different paths. Recognised values are "windows", "mac" and "linux", This is picked by the "common" compute app only, it can be modified to support additional operating systems.
+* ``parameters/mapped_share_paths``: (Optional, if ASCII parsable input file and input conversions enabled) List of local paths mapped to on-prem shares. Required if the input file contains local paths that need conversion. If render servers are running different operating systems, "os" can be used to define different paths. Recognised values are "windows", "mac" and "linux", This is picked by the "common" render app only, it can be modified to support additional operating systems.
 * ``parameters/site``: (Optional, since v2.0) Site specific setting overrides, see below.
-* ``app``: The named compute app to use, make sure it exists. Compute apps can be administered at Admin/apps page within accsyn web admin pages. Find open source compute app boilerplate scripts  here: https://github.com/accsyn/compute-scripts.
+* ``app``: The named render app to use, make sure it exists. Compute apps can be administered at Admin/apps page within accsyn web admin pages. Find open source render app boilerplate scripts  here: https://github.com/accsyn/compute-scripts.
 * ``range``: (If app supports split into items/frames) The integer range to render. Can be on or more(space or comma separated list of) entries on the form "1-10"(range), "4"(single) or "5-250x5"(consider only every 5 item/frames).
 * ``dependencies``: List of files that the input file depend on and must be able to access during the computation process.
 * ``filters``: Comma separated list of filters to apply, see below.
-* ``output``: Path to the folder where the compute app should write back the resulting files.
+* ``output``: Path to the folder where the render app should write back the resulting files.
 * ``settings``: Standard accsyn settings to that will apply across all file involved file transfers, see https://support.accsyn.com/admin-manual.
+* ``envs``: Environment variables to set on the render process, can either be given flat or as a dictionary with sub keys "common", "linux", "mac" and "windows" as in the example above.
 
 
 Filters
@@ -93,20 +108,20 @@ Filters
 Site settings
 *************
 
-Settings that is applied for each involved compute / render site, available beneath ``parameters`` sub dictionary and can be edited after job has been submitted.
+Settings that is applied for each involved render site, available beneath ``parameters`` sub dictionary and can be edited after job has been submitted.
 
 Proved settings as a dictionary by site name or ID, with sub key "settings":
 
-* ``download``; Settings that will apply to all downloads from main site to this site, typically compute scripts and dependencies. In the example above,
+* ``download``; Settings that will apply to all downloads from main site to this site, typically render scripts and dependencies. In the example above,
 * ``upload``; Settings that will apply to all uploads from this site back to main site.
 * ``common``; Settings that will apply to both downloads and uploads.
 
 
 The ``local`` site is reserved and means the remote submitting computer and will only be considered when submitting from the remote "roaming" site. With the local site
-download and upload are swapped settings wise, meaning that upload settings apply to the upload of compute scripts and dependencies to main site and
+download and upload are swapped settings wise, meaning that upload settings apply to the upload of render scripts and dependencies to main site and
 download settings apply to the download of generated files.
 
 .. note::
 
-    To provide settings that should apply to all compute job sync transfers, put them in ``settings`` dictionary in payload root.
+    To provide settings that should apply to all render job sync transfers, put them in ``settings`` dictionary in payload root.
 
