@@ -28,7 +28,7 @@ master_doc = "index"
 
 # General information about the project.
 project = u"accsyn Python API"
-copyright = u"2021, accsyn/HDR AB"
+copyright = u"2023, accsyn/HDR AB"
 
 # contents of docs/conf.py
 try:
@@ -51,7 +51,7 @@ modindex_common_prefix = ["accsyn_api."]
 
 # -- HTML output --------------------------------------------------------------
 
-if not os.environ.get("READTHEDOCS", None) == "True":
+if not os.environ.get("READTHEDOCS", None) == "True" or True:
     # Only import and set the theme if building locally.
     import sphinx_rtd_theme
 
