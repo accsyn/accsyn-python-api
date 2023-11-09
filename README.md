@@ -10,7 +10,25 @@ Changelog:
 See doc/release_notes.rst
 
 
-Henrik Norin, HDR AB, 2022
+Documentation:
+--------------
+
+[https://accsyn-python-api.readthedocs.io/en/latest](https://accsyn-python-api.readthedocs.io/en/latest)
+
+
+Building:
+---------
+
+To build the documentation locally, run:
+
+```
+    cd doc
+    pip install -r requirements.txt
+    python -m sphinx -T -E -b html -d _build/doctrees -D language=en . ../dist/doc
+```
+
+
+Henrik Norin, HDR AB, 2023
 accsyn(r) - secure data delivery and workflow sync
 https://accsyn.com 
 https://support.accsyn.com

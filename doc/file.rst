@@ -25,6 +25,8 @@ Optional arguments:
 * ``directories_only``: Return only directories in listing, True or False. Default is False.
 * ``files_only``: Return only files in listing, True or False. Default is False. Note: Providing recursive=True won't have any affect.
 * ``getsize``: Calculate and return size of directories.
+* ``include``: Filter expression (string or list) dictating what to include in result: "word" - exact match, "*word" - ends with word, "word*" - starts with word, "*word*" - contains word, "start*end" - starts & ends with word and "re('...')" - regular expression. Has precedence over *exclude*.
+* ``exclude``:Filter expression (string or list) dictating what to exclude from result: "word" - exact match, "*word" - ends with word, "word*" - starts with word, "*word*" - contains word, "start*end" - starts & ends with word and "re('...')" - regular expression.
 
 
 
@@ -67,6 +69,27 @@ If succeeds, this will return a list of dictionaries, one for each file found, w
             }
         ]
     }
+
+
+
+To search a directory, and its sub-directories, for files with a specific name, use the ``include`` argument::
+
+    session.ls("share=Documentation", include="FindMe.doc", recursive=True)
+
+
+To exclude files matching a regular expression, use the ``exclude`` argument::
+
+    session.ls("share=Documentation", exclude="re('_Draft.*')")
+
+
+To make it case insensitive::
+
+    session.ls("share=thefilm-DIT/TO_ACMEFILM", exclude="re('_draft.*', 'I')")
+
+
+.. note::
+
+    Include and exclude can be combined, include has precedence over exclude.
 
 
 Failure scenarios

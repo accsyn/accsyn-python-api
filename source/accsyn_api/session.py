@@ -818,18 +818,15 @@ class Session(object):
         :param getsize: If True - file sizes will be returned.
         :param files_only: If True - only return files, no directories.
         :param directories_only: If True - only return directories, no files.
-        :param include: Filter expression (string or list) dictating what to include in result: "word" - exact match,
-        "*word" - ends with word, "word*" - starts with word, "*word*" - contains word and "re('...')" - regular
-        expression. Has precedence over *exclude*.
-        :param exclude: Filter expression (string or list) dictating what to exclude from result: "word" - exact match,
-        "*word" - ends with word, "word*" - starts with word, "*word*" - contains word and "re('...')" - regular
-        expression.
+        :param include: Filter expression (string or list) dictating what to include in result: "word" - exact match, "*word" - ends with word, "word*" - starts with word, "*word*" - contains word, "start*end" - starts & ends with word and "re('...')" - regular expression. Has precedence over *exclude*.
+        :param exclude: Filter expression (string or list) dictating what to exclude from result: "word" - exact match, "*word" - ends with word, "word*" - starts with word, "*word*" - contains word, "start*end" - starts & ends with word and "re('...')" - regular expression.
         :return: A dictionary containing result of file listing.
 
         Include and exclude filters are case-insensitive, to make regular expression case-sensitive, use the following
         syntax: "re('...', 'I')".
 
-        .. versionadded:: 2.6-20
+        .. versionadded:: 2.2.0 (app/daemon: 2.6-20)
+
         """
         assert 0 < len(path or "") and (
             Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
@@ -860,17 +857,14 @@ class Session(object):
         Get size of a file or directory.
 
         :param path: The accsyn path, on the form 'share=<the share>/<path>/<somewhere>'.
-        :param include: Filter expression (string or list) dictating what to include in result: "word" - exact match,
-        "*word" - ends with word, "word*" - starts with word, "*word*" - contains word and "re('...')" - regular
-        expression. Has precedence over *exclude*.
-        :param exclude: Filter expression (string or list) dictating what to exclude from result: "word" - exact match,
-        "*word" - ends with word, "word*" - starts with word, "*word*" - contains word and "re('...')" - regular
-        expression.
-
-        :return: A number representing the file size.
+        :param include: Filter expression (string or list) dictating what to include in result: "word" - exact match, "*word" - ends with word, "word*" - starts with word, "*word*" - contains word, "start*end" - starts & ends with word and "re('...')" - regular expression. Has precedence over *exclude*.
+        :param exclude: Filter expression (string or list) dictating what to exclude from result: "word" - exact match, "*word" - ends with word, "word*" - starts with word, "*word*" - contains word, "start*end" - starts & ends with word and "re('...')" - regular expression.
+        :return: A dictionary containing result of file listing.
 
         Include and exclude filters are case-insensitive, to make regular expression case-sensitive, use the following
         syntax: "re('...', 'I')".
+
+        .. versionadded:: 2.2.0 (app/daemon: 2.6-20)
         """
         assert 0 < len(path or "") and (
             Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
