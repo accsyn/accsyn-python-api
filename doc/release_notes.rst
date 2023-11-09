@@ -14,6 +14,13 @@ Release Notes
     `https://support.accsyn.com <https://support.accsyn.com>`_.
 
 
+.. release:: 2.2.0
+    :date: 2023-11-09
+
+    .. change:: feat
+
+        * Include and exclude filter expressions to file 'ls' & 'getsize' operations.
+
 .. release:: 2.1.4
     :date: 2023-10-17
 

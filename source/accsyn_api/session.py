@@ -806,6 +806,8 @@ class Session(object):
         getsize=False,
         files_only=False,
         directories_only=False,
+        include=None,
+        exclude=None,
     ):
         """
         List files on a share.
@@ -816,7 +818,18 @@ class Session(object):
         :param getsize: If True - file sizes will be returned.
         :param files_only: If True - only return files, no directories.
         :param directories_only: If True - only return directories, no files.
+        :param include: Filter expression (string or list) dictating what to include in result: "word" - exact match,
+        "*word" - ends with word, "word*" - starts with word, "*word*" - contains word and "re('...')" - regular
+        expression. Has precedence over *exclude*.
+        :param exclude: Filter expression (string or list) dictating what to exclude from result: "word" - exact match,
+        "*word" - ends with word, "word*" - starts with word, "*word*" - contains word and "re('...')" - regular
+        expression.
         :return: A dictionary containing result of file listing.
+
+        Include and exclude filters are case-insensitive, to make regular expression case-sensitive, use the following
+        syntax: "re('...', 'I')".
+
+        .. versionadded:: 2.6-20
         """
         assert 0 < len(path or "") and (
             Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
@@ -834,16 +847,30 @@ class Session(object):
             data["directories_only"] = directories_only
         if files_only:
             data["files_only"] = files_only
+        if include:
+            data["include"] = include
+        if exclude:
+            data["exclude"] = exclude
         response = self._event("GET", "organization/file", data)
         if response:
             return response["result"]
 
-    def getsize(self, path):
+    def getsize(self, path, include=None, exclude=None):
         """
         Get size of a file or directory.
 
         :param path: The accsyn path, on the form 'share=<the share>/<path>/<somewhere>'.
+        :param include: Filter expression (string or list) dictating what to include in result: "word" - exact match,
+        "*word" - ends with word, "word*" - starts with word, "*word*" - contains word and "re('...')" - regular
+        expression. Has precedence over *exclude*.
+        :param exclude: Filter expression (string or list) dictating what to exclude from result: "word" - exact match,
+        "*word" - ends with word, "word*" - starts with word, "*word*" - contains word and "re('...')" - regular
+        expression.
+
         :return: A number representing the file size.
+
+        Include and exclude filters are case-insensitive, to make regular expression case-sensitive, use the following
+        syntax: "re('...', 'I')".
         """
         assert 0 < len(path or "") and (
             Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
@@ -852,6 +879,10 @@ class Session(object):
             "op": "getsize",
             "path": path,
         }
+        if include:
+            data["include"] = include
+        if exclude:
+            data["exclude"] = exclude
         response = self._event("GET", "organization/file", data)
         if response:
             return response["result"]
@@ -1316,7 +1347,7 @@ class Session(object):
                     )
                 do_retry = False
                 if not retval.get("message") is None:
-                    # Some thing went wrong
+                    # Something went wrong
                     if retval.get("session_expired") is True:
                         if self._api_key is not None:
                             # We should be able to get a new session and retry
