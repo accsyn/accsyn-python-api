@@ -133,7 +133,6 @@ class Session(object):
         domain=None,
         username=None,
         api_key=None,
-        pwd=None,
         session_key=None,
         hostname=None,
         port=None,
@@ -151,7 +150,6 @@ class Session(object):
         :param domain: The accsyn domain (or read from ACCSYN_DOMAIN environment variable)
         :param username: The accsyn username (or read from ACCSYN_API_USER environment variable)
         :param api_key: The secret API key for authentication (or read from ACCSYN_API_KEY environment variable)
-        :param pwd: (No API key supplied) The secret password for authentication
         :param session_key: (No API key or password supplied) The secret session key to use for authentication.
         :param hostname: Override hostname/IP to connect to.
         :param port: Override default port 443.
@@ -165,7 +163,6 @@ class Session(object):
         """
         # Generate a session ID
         self.__version__ = __version__
-        self._pwd = None
         self._session_id = str(uuid.uuid4())
         self._session_key = None
         self._session_key_provided = None
@@ -214,11 +211,7 @@ class Session(object):
             # temporarily
             self._session_key_provided = session_key
         elif len(self._api_key or "") == 0:
-            if 0 < len(pwd or ""):
-                # Store it temporarily
-                self._pwd = pwd
-            else:
-                raise accsynException("Please supply your accsyn API KEY or set ACCSYN_API_KEY " "environment!")
+            raise accsynException("Please supply your accsyn API KEY or set ACCSYN_API_KEY " "environment variable!")
         self._hostname = hostname
         self._port = port or ACCSYN_PORT
         self._timeout = timeout or Session.DEFAULT_TIMEOUT
@@ -296,28 +289,21 @@ class Session(object):
         if revive_session_key:
             d["session_key_reuse"] = revive_session_key
         if self._api_key:
-            headers = {
-                "Authorization": "ASCredentials {}".format(
-                    Session._base64_encode(
-                        '{"domain":"%s","username":"%s","api_key":"%s"}'
-                        % (self._domain, self._username, self._api_key)
-                    )
-                )
-            }
-        elif self._pwd:
-            headers = {
-                "Authorization": "ASCredentials {}".format(
-                    Session._base64_encode(
-                        '{"domain":"%s","username":"%s","pwd":"%s"}'
-                        % (
-                            self._domain,
-                            self._username,
-                            Session._base64_encode(self._pwd),
-                        )
-                    )
-                )
-            }
-            self._pwd = None  # Forget this now
+            headers = {"Authorization": "Basic {}".format(Session._base64_encode(f"{self._username}:{self._api_key}"))}
+        # elif self._pwd:
+        #     headers = {
+        #         "Authorization": "ASCredentials {}".format(
+        #             Session._base64_encode(
+        #                 '{"domain":"%s","username":"%s","pwd":"%s"}'
+        #                 % (
+        #                     self._domain,
+        #                     self._username,
+        #                     Session._base64_encode(self._pwd),
+        #                 )
+        #             )
+        #         )
+        #     }
+        #     self._pwd = None  # Forget this now
         elif self._session_key_provided:
             headers = {
                 "Authorization": "ASSession {}".format(
@@ -334,10 +320,11 @@ class Session(object):
             self._session_key_provided = None  # Forget this now
         else:
             raise Exception("No means of authentication available!")
+        headers["X-Accsyn-Workspace"] = self._domain
         result = self._rest(
             "PUT",
             self._hostname,
-            "/user/login/auth",
+            "/auth",
             d,
             headers=headers,
             port=self._port,
@@ -1123,7 +1110,7 @@ class Session(object):
         """Hide sensitive information within a string originating from a dict."""
         if s is None:
             return s
-        for key in ["pwd", "_key", "token"]:
+        for key in ["_key", "token"]:
             last_pos = 0
             while True:
                 new_pos = s.find(key, last_pos)
