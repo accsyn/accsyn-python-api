@@ -43,12 +43,12 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-ACCSYN_CLOUD_DOMAIN = "accsyn.com"
-ACCSYN_CLOUD_REGISTRY_HOSTNAME = "registry.%s" % ACCSYN_CLOUD_DOMAIN
+ACCSYN_DOMAIN = "accsyn.com"
+ACCSYN_MASTER_HOSTNAME = "master.{}".format(ACCSYN_DOMAIN)
 ACCSYN_PORT = 443
 DEFAULT_EVENT_PAYLOAD_COMPRESS_SIZE_TRESHOLD = 100 * 1024  # Compress event data payloads above 100k
 
-CLEARANCE_CLOUDADMIN = "cloudadmin"
+CLEARANCE_MASTER = "master"
 CLEARANCE_ADMIN = "admin"
 CLEARANCE_EMPLOYEE = "employee"
 CLEARANCE_CLIENT = "client"
@@ -223,7 +223,7 @@ class Session(object):
                 # Get domain
                 result = self._rest(
                     "PUT",
-                    ACCSYN_CLOUD_REGISTRY_HOSTNAME,
+                    ACCSYN_MASTER_HOSTNAME,
                     "registry/organization/domain",
                     {"organization": self._domain},
                 )
@@ -231,7 +231,7 @@ class Session(object):
                 assert "domain" in result, "No domain were provided for us!"
                 self._hostname = "%s.%s" % (
                     result["domain"],
-                    ACCSYN_CLOUD_DOMAIN,
+                    ACCSYN_DOMAIN,
                 )
         self._last_message = None
         self.login()
@@ -1155,7 +1155,7 @@ class Session(object):
         if port is None:
             port = self._port or ACCSYN_PORT
         if hostname is None:
-            hostname = "%s.%s" % (self._domain, ACCSYN_CLOUD_DOMAIN)
+            hostname = "%s.%s" % (self._domain, ACCSYN_DOMAIN)
         # Proxy set?
         proxy_type = None
         proxy_hostname = None
@@ -1216,7 +1216,7 @@ class Session(object):
                 headers_effective = copy.deepcopy(headers)
             else:
                 if uri.find("registry/") != 0:
-                    assert self._session_key is not None, "Need to be authenticated when communicating with " "accsyn!"
+                    assert self._session_key is not None, "Need to be authenticated when communicating with accsyn!"
                     header_data = '{"domain":"%s","username":"%s","session_key":"%s"}' % (
                         self._domain,
                         self._username,
@@ -1225,7 +1225,7 @@ class Session(object):
                     headers_effective = {"Authorization": "ASSession {}".format(Session._base64_encode(header_data))}
                 else:
                     headers_effective = {}
-            headers_effective["ASDevice"] = "PythonAPI v%s @ %s %s(%s)" % (
+            headers_effective["ASDevice"] = "PythonAPI v{} @ {} {}({})".format(
                 __version__,
                 sys.platform,
                 Session.get_hostname(),
@@ -1359,7 +1359,7 @@ class Session(object):
             message = "{} caused an exception! Please contact {} admin for more"
             " further support.".format(uri, self._domain)
             Session._warning(message)
-            if self._clearance in [CLEARANCE_ADMIN, CLEARANCE_CLOUDADMIN]:
+            if self._clearance in [CLEARANCE_ADMIN, CLEARANCE_MASTER]:
                 Session._warning(retval["exception"])
             raise accsynException(message)
         elif "message" in retval:
