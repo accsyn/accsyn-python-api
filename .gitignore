@@ -1,1 +1,9 @@
 *.pyc
+.eggs
+.idea
+dist
+build
+deploy.sh
+doc/_build
+accsyn_python_api.egg-info
+.DS_Store

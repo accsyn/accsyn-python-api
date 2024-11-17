@@ -13,6 +13,13 @@ Release Notes
 
     `https://support.accsyn.com <https://support.accsyn.com>`_.
 
+.. release:: 3.0.0
+    :date: 2024-11-17
+
+    .. change:: feat
+
+        * Compliance with new accsyn v3 workspaces.
+        * Removed pwd and session key authentication, accsyn v3 only support API key basic auth.
 
 .. release:: 2.2.0
     :date: 2023-11-09

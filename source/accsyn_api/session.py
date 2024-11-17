@@ -43,15 +43,16 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-ACCSYN_CLOUD_DOMAIN = "accsyn.com"
-ACCSYN_CLOUD_REGISTRY_HOSTNAME = "registry.%s" % ACCSYN_CLOUD_DOMAIN
+ACCSYN_BACKEND_DOMAIN = "accsyn.com"
+ACCSYN_BACKEND_MASTER_HOSTNAME = "master.{}".format(ACCSYN_BACKEND_DOMAIN)
 ACCSYN_PORT = 443
 DEFAULT_EVENT_PAYLOAD_COMPRESS_SIZE_TRESHOLD = 100 * 1024  # Compress event data payloads above 100k
 
-CLEARANCE_CLOUDADMIN = "cloudadmin"
+CLEARANCE_SUPPORT = "support"
 CLEARANCE_ADMIN = "admin"
 CLEARANCE_EMPLOYEE = "employee"
-CLEARANCE_CLIENT = "client"
+CLEARANCE_STANDARD = "standard"
+CLEARANCE_CLIENT = CLEARANCE_STANDARD # BWCOMP
 CLEARANCE_NONE = "none"
 
 
@@ -65,7 +66,7 @@ class JSONEncoder(json.JSONEncoder):
 
 
 class JSONDecoder(json.JSONDecoder):
-    """JSON deserialise."""
+    """JSON deserialize."""
 
     def decode(self, json_string):
         json_data = json.loads(json_string)
@@ -116,6 +117,8 @@ class Session(object):
     DEFAULT_CONNECT_TIMEOUT = 10  # Wait 10 seconds for connection
     DEFAULT_TIMEOUT = 2 * 60  # Wait 2 minutes for response
 
+    _p_logfile = None
+
     @property
     def username(self):
         return self._username
@@ -133,8 +136,6 @@ class Session(object):
         domain=None,
         username=None,
         api_key=None,
-        pwd=None,
-        session_key=None,
         hostname=None,
         port=None,
         proxy=None,
@@ -151,8 +152,6 @@ class Session(object):
         :param domain: The accsyn domain (or read from ACCSYN_DOMAIN environment variable)
         :param username: The accsyn username (or read from ACCSYN_API_USER environment variable)
         :param api_key: The secret API key for authentication (or read from ACCSYN_API_KEY environment variable)
-        :param pwd: (No API key supplied) The secret password for authentication
-        :param session_key: (No API key or password supplied) The secret session key to use for authentication.
         :param hostname: Override hostname/IP to connect to.
         :param port: Override default port 443.
         :param proxy: The proxy settings (or read from ACCSYN_PROXY environment variable).
@@ -165,16 +164,14 @@ class Session(object):
         """
         # Generate a session ID
         self.__version__ = __version__
-        self._pwd = None
         self._session_id = str(uuid.uuid4())
-        self._session_key = None
-        self._session_key_provided = None
+        self._uid = None
         self._be_verbose = verbose
         self._pretty_json = pretty_json
         self._proxy = proxy
         self._dev = dev is True or os.environ.get('ACCSYN_DEV', 'false') in ['true', '1']
         Session._p_logfile = path_logfile
-        self._clearance = CLEARANCE_NONE
+        self._role = CLEARANCE_NONE
         self._verbose("Creating accsyn Python API session (v{})".format(__version__))
         for key in os.environ:
             if key.startswith("FILMHUB_"):
@@ -183,8 +180,6 @@ class Session(object):
             if not (
                 "ACCSYN_DOMAIN" in os.environ
                 or "ACCSYN_ORG" in os.environ
-                or "FILMHUB_DOMAIN" in os.environ
-                or "FILMHUB_ORG" in os.environ
             ):
                 raise accsynException(
                     "Please supply your accsyn domain/organization or set " "ACCSYN_DOMAIN environment!"
@@ -194,52 +189,42 @@ class Session(object):
             if "ACCSYN_DOMAIN" in os.environ
             else os.environ.get(
                 "ACCSYN_ORG",
-                os.environ.get("FILMHUB_DOMAIN", os.environ.get("FILMHUB_ORG")),
             )
         )
         if username is None:
-            if not ("ACCSYN_API_USER" in os.environ or "FILMHUB_API_USER" in os.environ):
+            if not ("ACCSYN_API_USER" in os.environ):
                 raise accsynException(
                     "Please supply your accsyn user name (E-mail) or set " "ACCSYN_API_USER environment!"
                 )
-        self._username = username or os.environ.get("ACCSYN_API_USER") or os.environ["FILMHUB_API_USER"]
+        self._username = username or os.environ.get("ACCSYN_API_USER")
         if api_key:
             self._api_key = api_key
         else:
-            self._api_key = os.environ.get("ACCSYN_API_KEY") or os.environ.get("FILMHUB_API_KEY")
-        if len(session_key or "") == 0:
-            session_key = os.environ.get("ACCSYN_SESSION_KEY")
-        if 0 < len(session_key or ""):
-            # User has a session key for us to use, validate at login, store it
-            # temporarily
-            self._session_key_provided = session_key
-        elif len(self._api_key or "") == 0:
-            if 0 < len(pwd or ""):
-                # Store it temporarily
-                self._pwd = pwd
-            else:
-                raise accsynException("Please supply your accsyn API KEY or set ACCSYN_API_KEY " "environment!")
+            self._api_key = os.environ.get("ACCSYN_API_KEY")
+        if not self._api_key:
+            raise accsynException("Please supply your accsyn API KEY or set ACCSYN_API_KEY environment!")
         self._hostname = hostname
-        self._port = port or ACCSYN_PORT
+        self._port = port
         self._timeout = timeout or Session.DEFAULT_TIMEOUT
         self._connect_timeout = connect_timeout or Session.DEFAULT_CONNECT_TIMEOUT
         if self._hostname is None:
             if self._dev:
-                self._hostname = "172.16.178.161"
+                self._hostname = "127.0.0.1"
             else:
                 # Get domain
                 result = self._rest(
                     "PUT",
-                    ACCSYN_CLOUD_REGISTRY_HOSTNAME,
-                    "registry/organization/domain",
-                    {"organization": self._domain},
+                    ACCSYN_BACKEND_MASTER_HOSTNAME,
+                    "workspace/J3PKTtDvolDMBtTy6AFGA",
+                    {"ident": self._domain},
                 )
                 # Store hostname
-                assert "domain" in result, "No domain were provided for us!"
-                self._hostname = "%s.%s" % (
-                    result["domain"],
-                    ACCSYN_CLOUD_DOMAIN,
-                )
+                assert "hostname" in result, "No API endpoint hostname were provided for us!"
+                self._hostname = result["hostname"]
+                if self._port is None:
+                    self._port = result["port"]
+        if self._port is None:
+            self._port = ACCSYN_PORT if not self._dev else 8181
         self._last_message = None
         self.login()
 
@@ -286,66 +271,32 @@ class Session(object):
         """Retreive error message from last API call."""
         return self._last_message
 
-    def login(self, revive_session_key=None):
+    def login(self):
         """Attempt to login to accsyn and get a session."""
         # TODO: Load session key from safe disk storage/key chain?
-        assert self._session_key is None, "Already logged in!"
-        d = {
-            "session": self._session_id,
+        assert self._uid is None, "Already logged in!"
+        payload = dict(
+            session_id=self._session_id,
+        )
+        headers = {
+            "Authorization": "basic {}:{}".format(
+                Session._base64_encode(self._username),
+                Session._base64_encode(self._api_key),
+            ),
+            "X-Accsyn-Workspace": self._domain,
         }
-        if revive_session_key:
-            d["session_key_reuse"] = revive_session_key
-        if self._api_key:
-            headers = {
-                "Authorization": "ASCredentials {}".format(
-                    Session._base64_encode(
-                        '{"domain":"%s","username":"%s","api_key":"%s"}'
-                        % (self._domain, self._username, self._api_key)
-                    )
-                )
-            }
-        elif self._pwd:
-            headers = {
-                "Authorization": "ASCredentials {}".format(
-                    Session._base64_encode(
-                        '{"domain":"%s","username":"%s","pwd":"%s"}'
-                        % (
-                            self._domain,
-                            self._username,
-                            Session._base64_encode(self._pwd),
-                        )
-                    )
-                )
-            }
-            self._pwd = None  # Forget this now
-        elif self._session_key_provided:
-            headers = {
-                "Authorization": "ASSession {}".format(
-                    Session._base64_encode(
-                        '{"domain":"%s","username":"%s","session_key":"%s"}'
-                        % (
-                            self._domain,
-                            self._username,
-                            self._session_key_provided,
-                        )
-                    )
-                )
-            }
-            self._session_key_provided = None  # Forget this now
-        else:
-            raise Exception("No means of authentication available!")
-        result = self._rest(
+        response = self._rest(
             "PUT",
             self._hostname,
-            "/user/login/auth",
-            d,
+            "/api/login",
+            payload,
             headers=headers,
             port=self._port,
         )
         # Store session key
-        assert "session_key" in result, "No session key were provided!"
-        self._session_key = result["session_key"]
-        self._clearance = result["clearance"] or CLEARANCE_NONE
+        assert "result" in response, "No result were provided!"
+        result = response["result"]
+        self._role = result["role"]
         self._uid = result["id"]
         return True
 
@@ -1046,19 +997,6 @@ class Session(object):
         """Fetch API key, by default disabled in backend."""
         return self._event("GET", "user/api_key", {})["api_key"]
 
-    def get_session_key(self):
-        """Return the current API session key."""
-        return self._session_key
-
-    def generate_session_key(self, lifetime=None):
-        """Generate a new API session key, with the given *lifetime*."""
-        return self._event(
-            "POST",
-            "user/generate_session_key",
-            {"lifetime": lifetime},
-            query=self._username,
-        )["session_key"]
-
     def gui_is_running(self):
         """
         Check if a GUI is running on the same machine (hostname match) and with same username.
@@ -1168,7 +1106,7 @@ class Session(object):
         if port is None:
             port = self._port or ACCSYN_PORT
         if hostname is None:
-            hostname = "%s.%s" % (self._domain, ACCSYN_CLOUD_DOMAIN)
+            hostname = "{}.{}".format(self._domain, ACCSYN_BACKEND_DOMAIN)
         # Proxy set?
         proxy_type = None
         proxy_hostname = None
@@ -1196,12 +1134,12 @@ class Session(object):
         if proxy_type == "accsyn":
             if proxy_port == -1:
                 proxy_port = 80
-            self._verbose("Using accsyn proxy @ %s:%s" % (proxy_hostname, proxy_port))
+            self._verbose("Using accsyn proxy @ {}:{}".format(proxy_hostname, proxy_port))
             hostname = proxy_hostname
             port = proxy_port
         elif proxy_type in ["socks", "socks5"]:
             try:
-                self._verbose("Using SOCKS5 proxy @ %s:%s" % (proxy_hostname, proxy_port))
+                self._verbose("Using SOCKS5 proxy @ {}:{}".format(proxy_hostname, proxy_port))
                 import socks
 
                 socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, proxy_hostname, proxy_port)
@@ -1211,7 +1149,7 @@ class Session(object):
                 raise ie
         elif proxy_type is not None:
             raise accsynException('Unknown proxy type "{}"!'.format(proxy_type))
-        url = "http{}://{}:{}/api/v1.0{}".format(
+        url = "http{}://{}:{}/api/v3{}".format(
             "s" if ssl else "",
             hostname,
             port,
@@ -1224,155 +1162,118 @@ class Session(object):
         # Wait 10s to reach machine, 2min for it to send back data
         CONNECT_TO, READ_TO = (self.connect_timeout, timeout)
         r = None
-        for iteration in range(0, 2):
-            if headers:
-                headers_effective = copy.deepcopy(headers)
-            else:
-                if uri.find("registry/") != 0:
-                    assert self._session_key is not None, "Need to be authenticated when communicating with " "accsyn!"
-                    header_data = '{"domain":"%s","username":"%s","session_key":"%s"}' % (
-                        self._domain,
-                        self._username,
-                        self._session_key,
-                    )
-                    headers_effective = {"Authorization": "ASSession {}".format(Session._base64_encode(header_data))}
-                else:
-                    headers_effective = {}
-            headers_effective["ASDevice"] = "PythonAPI v%s @ %s %s(%s)" % (
-                __version__,
-                sys.platform,
-                Session.get_hostname(),
-                os.name,
-            )
-            if 3 <= sys.version_info.major:
-                t_start = int(round(time.time() * 1000))
-            else:
-                t_start = long(round(time.time() * 1000))
-            try:
-                self._verbose(
-                    "REST %s %s, data: %s"
-                    % (
-                        method,
-                        url,
-                        data if not self._pretty_json else Session.str(data),
-                    )
-                )
-                if method.lower() == "get":
-                    r = requests.get(
-                        url,
-                        params=Session._url_quote(data),
-                        timeout=(CONNECT_TO, READ_TO),
-                        verify=False,
-                        headers=headers_effective,
-                    )
-                elif method.lower() == "put":
-                    r = requests.put(
-                        url,
-                        Session._safe_dumps(data),
-                        timeout=(CONNECT_TO, READ_TO),
-                        verify=False,
-                        headers=headers_effective,
-                    )
-                elif method.lower() == "post":
-                    r = requests.post(
-                        url,
-                        Session._safe_dumps(data),
-                        timeout=(CONNECT_TO, READ_TO),
-                        verify=False,
-                        headers=headers_effective,
-                    )
-                elif method.lower() == "delete":
-                    r = requests.delete(
-                        url,
-                        params=Session._url_quote(data),
-                        timeout=(CONNECT_TO, READ_TO),
-                        verify=False,
-                        headers=headers_effective,
-                    )
-                t_end = int(round(time.time() * 1000))
-                # break
-            except BaseException:
-                # if timeout <= 0:
-                raise accsynException(
-                    "Could not reach {}:{}! Make sure cloud server({}) can"
-                    " be reached from you location and no firewall is "
-                    "blocking outgoing TCP traffic at port {}. "
-                    "Details: {}".format(
-                        hostname,
-                        port,
-                        hostname,
-                        port,
-                        traceback.format_exc() if not quiet else "(quiet)",
-                    )
-                )
-                # sleep_time = 2
-                # t_end = int(round(time.time() * 1000))
-                # timeout -= int((t_end - t_start) / 1000)
-                # timeout -= sleep_time
-                #
-                # Session._warning(
-                #     "Could not reach {}:{}! Waited {}s/{}, will try again in "
-                #     "{}s... Details: {}".format(
-                #         hostname,
-                #         port,
-                #         initial_timeout - timeout,
-                #         "%ss" % initial_timeout if initial_timeout < 99999999 else "INF",
-                #         sleep_time,
-                #         traceback.format_exc(),
-                #     )
-                # )
-                # time.sleep(sleep_time)
+        retval = None
 
-            try:
-                retval = json.loads(r.text, cls=JSONDecoder)
-                if not quiet:
-                    self._verbose(
-                        "{}/{} REST {} result: {} (~{}ms)".format(
-                            hostname,
-                            uri,
-                            method,
-                            Session._obscure_dict_string(
-                                Session._safely_printable(
-                                    str(retval) if not self._pretty_json else Session.str(retval)
-                                ).replace("'", '"')
-                            ),
-                            t_start - t_end + 1,
-                        )
-                    )
-                do_retry = False
-                if not retval.get("message") is None:
-                    # Something went wrong
-                    if retval.get("session_expired") is True:
-                        if self._api_key is not None:
-                            # We should be able to get a new session and retry
-                            revive_session_key = self._session_key
-                            self._session_key = None
-                            self.login(revive_session_key=revive_session_key)
-                            self._info('Authenticated using API KEY and reused expired session...')
-                            do_retry = True
-                    if not do_retry:
-                        self._last_message = retval["message"]
-                if not do_retry:
-                    break
-            except BaseException:
-                sys.stderr.write(traceback.format_exc())
-                message = 'The {}:{}/{} REST {} {} operation failed! Details: '
-                '{} {}'.format(
+        if headers:
+            headers_effective = copy.deepcopy(headers)
+        else:
+            headers_effective = {
+                "Authorization": "basic {}:{}".format(
+                Session._base64_encode(self._username),
+                    Session._base64_encode(self._api_key)
+                ),
+                "X-Accsyn-Workspace": self._domain,
+            }
+        headers_effective["X-Accsyn-Device"] = "PythonAPI v%s @ %s %s(%s)" % (
+            __version__,
+            sys.platform,
+            Session.get_hostname(),
+            os.name,
+        )
+        if 3 <= sys.version_info.major:
+            t_start = int(round(time.time() * 1000))
+        else:
+            t_start = long(round(time.time() * 1000))
+        try:
+            self._verbose(
+                "REST %s %s, data: %s"
+                % (
+                    method,
+                    url,
+                    data if not self._pretty_json else Session.str(data),
+                )
+            )
+            if method.lower() == "get":
+                r = requests.get(
+                    url,
+                    params=Session._url_quote(data),
+                    timeout=(CONNECT_TO, READ_TO),
+                    verify=False,
+                    headers=headers_effective,
+                )
+            elif method.lower() == "put":
+                r = requests.put(
+                    url,
+                    Session._safe_dumps(data),
+                    timeout=(CONNECT_TO, READ_TO),
+                    verify=False,
+                    headers=headers_effective,
+                )
+            elif method.lower() == "post":
+                r = requests.post(
+                    url,
+                    Session._safe_dumps(data),
+                    timeout=(CONNECT_TO, READ_TO),
+                    verify=False,
+                    headers=headers_effective,
+                )
+            elif method.lower() == "delete":
+                r = requests.delete(
+                    url,
+                    params=Session._url_quote(data),
+                    timeout=(CONNECT_TO, READ_TO),
+                    verify=False,
+                    headers=headers_effective,
+                )
+            t_end = int(round(time.time() * 1000))
+            # break
+        except BaseException:
+            # if timeout <= 0:
+            raise accsynException(
+                "Could not reach {}:{}! Make sure backend({}) can"
+                " be reached from you location and no firewall is "
+                "blocking outgoing TCP traffic at port {}. "
+                "Details: {}".format(
                     hostname,
                     port,
-                    uri,
-                    method,
-                    Session._obscure_dict_string(Session._safely_printable(str(data)).replace("'", '"')),
-                    r.text,
-                    traceback.format_exc(),
+                    hostname,
+                    port,
+                    traceback.format_exc() if not quiet else "(quiet)",
                 )
-                Session._warning(message)
-                raise accsynException(message)
+            )
+        try:
+            retval = json.loads(r.text, cls=JSONDecoder)
+            if not quiet:
+                self._verbose(
+                    "{}/{} REST {} result: {} (~{}ms)".format(
+                        hostname,
+                        uri,
+                        method,
+                        Session._obscure_dict_string(
+                            Session._safely_printable(
+                                str(retval) if not self._pretty_json else Session.str(retval)
+                            ).replace("'", '"')
+                        ),
+                        t_start - t_end + 1,
+                    )
+                )
+        except BaseException:
+            sys.stderr.write(traceback.format_exc())
+            message = 'The {} REST {} {} operation failed! Details: {} {}'.format(
+                url,
+                method,
+                Session._obscure_dict_string(Session._safely_printable(str(data)).replace("'", '"')),
+                r.text,
+                traceback.format_exc(),
+            )
+            Session._warning(message)
+            raise accsynException(message)
+
         if "exception" in retval:
             message = "{} caused an exception! Please contact {} admin for more"
             " further support.".format(uri, self._domain)
             Session._warning(message)
-            if self._clearance in [CLEARANCE_ADMIN, CLEARANCE_CLOUDADMIN]:
+            if self._role in [CLEARANCE_ADMIN, CLEARANCE_SUPPORT]:
                 Session._warning(retval["exception"])
             raise accsynException(message)
         elif "message" in retval:
@@ -1395,7 +1296,7 @@ class Session(object):
         quiet=False,
     ):
         """Utility; Construct an event and send using REST to accsyn backend."""
-        assert self._session_key, "Login before posting event!"
+        assert self._uid, "Login before posting event!"
         event = {
             "audience": "api",
             "domain": self._domain,

@@ -27,6 +27,13 @@ To build the documentation locally, run:
     python -m sphinx -T -E -b html -d _build/doctrees -D language=en . ../dist/doc
 ```
 
+Deploying:
+----------
+
+```
+python setup.py sdist bdist_wheel
+twine upload --verbose --username accsyn dist/*
+```
 
 Henrik Norin, HDR AB, 2023
 accsyn(r) - secure data delivery and workflow sync
