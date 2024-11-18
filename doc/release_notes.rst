@@ -13,6 +13,13 @@ Release Notes
 
     `https://support.accsyn.com <https://support.accsyn.com>`_.
 
+.. release:: 3.0.2
+    :date: 2024-11-18
+
+    .. change:: fix
+
+        * Replaced organization > workspace.
+
 .. release:: 3.0.1
     :date: 2024-11-18
 

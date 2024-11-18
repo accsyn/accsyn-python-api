@@ -187,7 +187,7 @@ class Session(object):
             )
         if not domain:
             raise AccsynException(
-                "Please supply your accsyn domain/organization or set " "ACCSYN_DOMAIN environment!"
+                "Please supply your accsyn domain/workspace or set " "ACCSYN_DOMAIN environment!"
             )
         if not username:
             username = os.environ.get("ACCSYN_API_USER")
@@ -802,7 +802,7 @@ class Session(object):
             data["include"] = include
         if exclude:
             data["exclude"] = exclude
-        response = self._event("GET", "organization/file", data)
+        response = self._event("GET", "workspace/file", data)
         if response:
             return response["result"]
 
@@ -831,7 +831,7 @@ class Session(object):
             data["include"] = include
         if exclude:
             data["exclude"] = exclude
-        response = self._event("GET", "organization/file", data)
+        response = self._event("GET", "workspace/file", data)
         if response:
             return response["result"]
 
@@ -849,7 +849,7 @@ class Session(object):
             "op": "exists",
             "path": path,
         }
-        response = self._event("GET", "organization/file", data)
+        response = self._event("GET", "workspace/file", data)
         if response:
             return response["result"]
 
@@ -869,7 +869,7 @@ class Session(object):
             "op": "mkdir",
             "path": path,
         }
-        response = self._event("POST", "organization/file", data)
+        response = self._event("POST", "workspace/file", data)
         if response:
             return response["result"]
 
@@ -894,7 +894,7 @@ class Session(object):
             "path": path,
             "path_to": path_to,
         }
-        response = self._event("PUT", "organization/file", data)
+        response = self._event("PUT", "workspace/file", data)
         if response:
             return response["result"]
 
@@ -919,7 +919,7 @@ class Session(object):
             "path": path_src,
             "path_to": path_dst,
         }
-        response = self._event("PUT", "organization/file", data)
+        response = self._event("PUT", "workspace/file", data)
         if response:
             return response["result"]
 
@@ -939,7 +939,7 @@ class Session(object):
             "op": "mkdir",
             "path": path,
         }
-        response = self._event("POST", "organization/file", data)
+        response = self._event("POST", "workspace/file", data)
         if response:
             return response["result"]
 
@@ -966,7 +966,7 @@ class Session(object):
             return result
 
         event_data = {"files": data, "size": recursive_get_size(data)}
-        response = self._event("PUT", "organization/publish/preprocess", event_data)
+        response = self._event("PUT", "workspace/publish/preprocess", event_data)
         return response["result"]
 
     # Settings
@@ -1046,7 +1046,7 @@ class Session(object):
         assert len(operation) > 0, 'No operation provided'
         return self._event(
             "PUT",
-            "organization/integration/{}/utility".format(name),
+            "workspace/integration/{}/utility".format(name),
             {
                 'operation': operation,
                 'data': data,
@@ -1431,9 +1431,9 @@ class Session(object):
         uri_base = entitytype
         # Send query to server, first determine uri
         # if entitytype == 'share':
-        #   uri_base = 'organization/share'
+        #   uri_base = 'workspace/share'
         if entitytype == "site":
-            uri_base = "organization/site"
+            uri_base = "workspace/site"
         elif entitytype == "queue":
             uri_base = "job"
         elif entitytype == "task":
