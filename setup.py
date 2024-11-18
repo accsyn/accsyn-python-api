@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='accsyn-python-api',
-    version='3.0.0',
+    version='3.0.1',
     package_dir={'': 'source'},
     packages=['accsyn_api'],
     setup_requires=[

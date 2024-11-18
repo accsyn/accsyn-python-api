@@ -166,6 +166,7 @@ class Session(object):
         self.__version__ = __version__
         self._session_id = str(uuid.uuid4())
         self._uid = None
+        self._api_key = None
         self._be_verbose = verbose
         self._pretty_json = pretty_json
         self._proxy = proxy
@@ -176,33 +177,29 @@ class Session(object):
         for key in os.environ:
             if key.startswith("FILMHUB_"):
                 Session._warning('Found old FilmHUB product environment variable "{}", ' "please migrate!".format(key))
-        if domain is None:
-            if not (
-                "ACCSYN_DOMAIN" in os.environ
-                or "ACCSYN_ORG" in os.environ
-            ):
-                raise accsynException(
-                    "Please supply your accsyn domain/organization or set " "ACCSYN_DOMAIN environment!"
+        if not domain:
+            domain = (
+                os.environ["ACCSYN_DOMAIN"]
+                if "ACCSYN_DOMAIN" in os.environ
+                else os.environ.get(
+                    "ACCSYN_ORG",
                 )
-        self._domain = domain or (
-            os.environ["ACCSYN_DOMAIN"]
-            if "ACCSYN_DOMAIN" in os.environ
-            else os.environ.get(
-                "ACCSYN_ORG",
             )
-        )
-        if username is None:
+        if not domain:
+            raise AccsynException(
+                "Please supply your accsyn domain/organization or set " "ACCSYN_DOMAIN environment!"
+            )
+        if not username:
+            username = os.environ.get("ACCSYN_API_USER")
+        if not username:
             if not ("ACCSYN_API_USER" in os.environ):
-                raise accsynException(
-                    "Please supply your accsyn user name (E-mail) or set " "ACCSYN_API_USER environment!"
+                raise AccsynException(
+                    "Please supply your accsyn user name (E-mail) or set ACCSYN_API_USER environment!"
                 )
-        self._username = username or os.environ.get("ACCSYN_API_USER")
-        if api_key:
-            self._api_key = api_key
-        else:
-            self._api_key = os.environ.get("ACCSYN_API_KEY")
-        if not self._api_key:
-            raise accsynException("Please supply your accsyn API KEY or set ACCSYN_API_KEY environment!")
+        if not api_key:
+            api_key = os.environ.get("ACCSYN_API_KEY")
+        if not api_key:
+            raise AccsynException("Please supply your accsyn API KEY or set ACCSYN_API_KEY environment!")
         self._hostname = hostname
         self._port = port
         self._timeout = timeout or Session.DEFAULT_TIMEOUT
@@ -212,19 +209,25 @@ class Session(object):
                 self._hostname = "127.0.0.1"
             else:
                 # Get domain
-                result = self._rest(
-                    "PUT",
+                response = self._rest(
+                    "GET",
                     ACCSYN_BACKEND_MASTER_HOSTNAME,
-                    "workspace/J3PKTtDvolDMBtTy6AFGA",
-                    {"ident": self._domain},
+                    "J3PKTtDvolDMBtTy6AFGA",
+                    {"ident": domain},
                 )
                 # Store hostname
+                if "message" in response:
+                    raise AccsynException(response["message"])
+                result = response.get('result', {})
                 assert "hostname" in result, "No API endpoint hostname were provided for us!"
                 self._hostname = result["hostname"]
                 if self._port is None:
                     self._port = result["port"]
         if self._port is None:
             self._port = ACCSYN_PORT if not self._dev else 8181
+        self._domain = domain
+        self._username = username
+        self._api_key = api_key
         self._last_message = None
         self.login()
 
@@ -324,7 +327,7 @@ class Session(object):
                 if os.path.exists(data):
                     data = json.load(open(data, "r"))
                 else:
-                    raise accsynException(
+                    raise AccsynException(
                         "Cannot build JSON payload data, not a valid JSON " "string or path to a JSON file!"
                     )
         else:
@@ -949,7 +952,7 @@ class Session(object):
         :return: Processed publish data, see documentation.
         """
         if data is None or not isinstance(data, list):
-            raise accsynException("None or empty data supplied!")
+            raise AccsynException("None or empty data supplied!")
 
         # Check entries, calculate size
         def recursive_get_size(files):
@@ -1148,7 +1151,7 @@ class Session(object):
                 Session._warning('Python lacks SOCKS support, please install "pysocks" and' " try again...")
                 raise ie
         elif proxy_type is not None:
-            raise accsynException('Unknown proxy type "{}"!'.format(proxy_type))
+            raise AccsynException('Unknown proxy type "{}"!'.format(proxy_type))
         url = "http{}://{}:{}/api/v3{}".format(
             "s" if ssl else "",
             hostname,
@@ -1164,9 +1167,10 @@ class Session(object):
         r = None
         retval = None
 
+        headers_effective = dict()
         if headers:
             headers_effective = copy.deepcopy(headers)
-        else:
+        elif self._api_key:
             headers_effective = {
                 "Authorization": "basic {}:{}".format(
                 Session._base64_encode(self._username),
@@ -1229,7 +1233,7 @@ class Session(object):
             # break
         except BaseException:
             # if timeout <= 0:
-            raise accsynException(
+            raise AccsynException(
                 "Could not reach {}:{}! Make sure backend({}) can"
                 " be reached from you location and no firewall is "
                 "blocking outgoing TCP traffic at port {}. "
@@ -1267,7 +1271,7 @@ class Session(object):
                 traceback.format_exc(),
             )
             Session._warning(message)
-            raise accsynException(message)
+            raise AccsynException(message)
 
         if "exception" in retval:
             message = "{} caused an exception! Please contact {} admin for more"
@@ -1275,11 +1279,11 @@ class Session(object):
             Session._warning(message)
             if self._role in [CLEARANCE_ADMIN, CLEARANCE_SUPPORT]:
                 Session._warning(retval["exception"])
-            raise accsynException(message)
+            raise AccsynException(message)
         elif "message" in retval:
             message_effective = retval.get("message_hr") or retval["message"]
             Session._warning(message_effective)
-            raise accsynException(message_effective)
+            raise AccsynException(message_effective)
         return retval
 
     # REST get
@@ -1509,6 +1513,6 @@ class Session(object):
                 return binascii.b2a_base64(s)
 
 
-class accsynException(Exception):
+class AccsynException(Exception):
     def __init__(self, message):
-        super(accsynException, self).__init__(message)
+        super(AccsynException, self).__init__(message)

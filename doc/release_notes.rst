@@ -13,6 +13,13 @@ Release Notes
 
     `https://support.accsyn.com <https://support.accsyn.com>`_.
 
+.. release:: 3.0.1
+    :date: 2024-11-18
+
+    .. change:: fix
+
+        * Bug fixes.
+
 .. release:: 3.0.0
     :date: 2024-11-17
 
