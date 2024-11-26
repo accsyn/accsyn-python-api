@@ -55,6 +55,18 @@ CLEARANCE_STANDARD = "standard"
 CLEARANCE_CLIENT = CLEARANCE_STANDARD # BWCOMP
 CLEARANCE_NONE = "none"
 
+CLIENT_TYPE_APP = 0
+CLIENT_TYPE_SERVER = 1
+CLIENT_TYPE_USERSERVER = 2
+CLIENT_TYPE_BROWSER = 3
+CLIENT_TYPE_COMPUTE_LANE = 4
+CLIENT_TYPE_ACCSYN_VPX = 5
+
+CLIENT_STATE_INIT = "init"
+CLIENT_STATE_ONLINE = "online"
+CLIENT_STATE_OFFLINE = "offline"
+CLIENT_STATE_DISABLED = "disabled"
+CLIENT_STATE_DISABLED_OFFLINE = "disabled-offline"
 
 class JSONEncoder(json.JSONEncoder):
     """JSON serialiser."""
@@ -430,7 +442,7 @@ class Session(object):
                 data["skip"] = skip
             if attributes:
                 data["attributes"] = attributes
-            d = self._event("GET", "%s/find" % uri_base, data, query=d.get("expression"))
+            d = self._event("GET", "{}/find".format(uri_base), data, query=d.get("expression"))
             if d:
                 retval = d["result"]
         return retval
@@ -1001,8 +1013,14 @@ class Session(object):
         return self._event("GET", "user/api_key", {})["api_key"]
 
     def gui_is_running(self):
+        """ Backward compability """
+        return self.app_is_running()
+
+    def app_is_running(self):
         """
-        Check if a GUI is running on the same machine (hostname match) and with same username.
+        Check if the accsyn desktop app is running on the same machine (code/hostname match) and with same user ID.
+
+        Equivalent to do client query with user, code and type.
 
         :return: True if found, False otherwise.
         """
@@ -1010,19 +1028,25 @@ class Session(object):
             "GET",
             "client/find",
             {},
-            query="user={0} AND code={1} AND type={2}".format(self._uid, Session.get_hostname(), 0),
+            query="user={0} AND code={1} AND type={2}".format(self._uid, Session.get_hostname(), CLIENT_TYPE_APP),
         )["result"]
         retval = None
         if 0 < len(result):
             for c in result:
-                retval = c["status"] in ["online", "disabled"]
+                retval = c["status"] in [CLIENT_STATE_ONLINE, CLIENT_STATE_DISABLED]
                 if retval is True:
                     break
         return retval
 
     def server_is_running(self):
+        """ Backward compatibility """
+        return self.daemon_is_running()
+
+    def daemon_is_running(self):
         """
-        Check if a server is running on the same machine with same username.
+        Check if a daemon is running on the same machine (code/hostname match) with same user ID.
+
+        Equivalent to do client query with user, code and type.
 
         :return: True if found, False otherwise.
         """
@@ -1030,12 +1054,13 @@ class Session(object):
             "GET",
             "client/find",
             {},
-            query="user={0} AND code={1} AND type!={2}".format(self._uid, Session.get_hostname(), 0),
+            query="user={0} AND code={1} AND (type={2} OR type={3})".format(self._uid, Session.get_hostname(),
+                                                                            CLIENT_TYPE_SERVER, CLIENT_TYPE_USERSERVER),
         )["result"]
         retval = None
         if 0 < len(result):
             for c in result:
-                retval = c["status"] in ["online", "disabled"]
+                retval = c["status"] in [CLIENT_STATE_ONLINE, CLIENT_STATE_DISABLED]
                 if retval is True:
                     break
         return retval
@@ -1430,11 +1455,7 @@ class Session(object):
     def _get_base_uri(entitytype):
         uri_base = entitytype
         # Send query to server, first determine uri
-        # if entitytype == 'share':
-        #   uri_base = 'workspace/share'
-        if entitytype == "site":
-            uri_base = "workspace/site"
-        elif entitytype == "queue":
+        if entitytype == "queue":
             uri_base = "job"
         elif entitytype == "task":
             uri_base = "job/task"

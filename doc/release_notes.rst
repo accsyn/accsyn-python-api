@@ -13,6 +13,18 @@ Release Notes
 
     `https://support.accsyn.com <https://support.accsyn.com>`_.
 
+.. release:: 3.0.3
+    :date: 2024-11-26
+
+    .. change:: changed
+
+        * Replaced 'gui_is_running' and 'app_is_running' with 'app_is_running' and 'deamon_is_running', keeping the old names for backwards compatibility.
+        * 'daemon_is_running' now properly checks for user clients on the same machine being of type server(workspace context) or user server (run by user daemon host).
+
+    .. change:: fix
+
+        * Fixed site query bug.
+
 .. release:: 3.0.2
     :date: 2024-11-18
 

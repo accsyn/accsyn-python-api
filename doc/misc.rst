@@ -20,11 +20,11 @@ Will return a string with your session key.
 
 
 
-Check if GUI or server is running::
+Check if the accsyn app or daemon (user server) is running on the same machine and same user ID::
 
-    session.gui_is_running()
+    session.app_is_running()
 
-    session.server_is_running()
+    session.daemon_is_running()
 
 Will return True if GUI/Server is running, False if offline, None if not installed/detected.
 
