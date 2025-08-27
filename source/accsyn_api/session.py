@@ -52,7 +52,7 @@ CLEARANCE_SUPPORT = "support"
 CLEARANCE_ADMIN = "admin"
 CLEARANCE_EMPLOYEE = "employee"
 CLEARANCE_STANDARD = "standard"
-CLEARANCE_CLIENT = CLEARANCE_STANDARD # BWCOMP
+CLEARANCE_CLIENT = CLEARANCE_STANDARD  # BWCOMP
 CLEARANCE_NONE = "none"
 
 CLIENT_TYPE_APP = 0
@@ -67,6 +67,7 @@ CLIENT_STATE_ONLINE = "online"
 CLIENT_STATE_OFFLINE = "offline"
 CLIENT_STATE_DISABLED = "disabled"
 CLIENT_STATE_DISABLED_OFFLINE = "disabled-offline"
+
 
 class JSONEncoder(json.JSONEncoder):
     """JSON serialiser."""
@@ -198,9 +199,7 @@ class Session(object):
                 )
             )
         if not domain:
-            raise AccsynException(
-                "Please supply your accsyn domain/workspace or set " "ACCSYN_DOMAIN environment!"
-            )
+            raise AccsynException("Please supply your accsyn domain/workspace or set ACCSYN_DOMAIN environment!")
         if not username:
             username = os.environ.get("ACCSYN_API_USER")
         if not username:
@@ -1013,7 +1012,7 @@ class Session(object):
         return self._event("GET", "user/api_key", {})["api_key"]
 
     def gui_is_running(self):
-        """ Backward compability """
+        """Backward compability"""
         return self.app_is_running()
 
     def app_is_running(self):
@@ -1039,7 +1038,7 @@ class Session(object):
         return retval
 
     def server_is_running(self):
-        """ Backward compatibility """
+        """Backward compatibility"""
         return self.daemon_is_running()
 
     def daemon_is_running(self):
@@ -1054,8 +1053,9 @@ class Session(object):
             "GET",
             "client/find",
             {},
-            query="user={0} AND code={1} AND (type={2} OR type={3})".format(self._uid, Session.get_hostname(),
-                                                                            CLIENT_TYPE_SERVER, CLIENT_TYPE_USERSERVER),
+            query="user={0} AND code={1} AND (type={2} OR type={3})".format(
+                self._uid, Session.get_hostname(), CLIENT_TYPE_SERVER, CLIENT_TYPE_USERSERVER
+            ),
         )["result"]
         retval = None
         if 0 < len(result):
@@ -1198,8 +1198,7 @@ class Session(object):
         elif self._api_key:
             headers_effective = {
                 "Authorization": "basic {}:{}".format(
-                Session._base64_encode(self._username),
-                    Session._base64_encode(self._api_key)
+                    Session._base64_encode(self._username), Session._base64_encode(self._api_key)
                 ),
                 "X-Accsyn-Workspace": self._domain,
             }
