@@ -11,7 +11,18 @@ Release Notes
 
     The accsyn overall changelog can be accessed here: 
 
-    `https://support.accsyn.com <https://support.accsyn.com>`_.
+    `https://support.accsyn.com/changelog <https://support.accsyn.com/changelog>`_.
+
+.. release:: 3.1.0
+    :date: 2025-11-12
+
+    .. change:: new
+
+        * Migrated from setuptools to poetry for package management.
+        
+    .. change:: changed
+
+        * Renamed 'domain' parameter to 'workspace' in Session constructor.
 
 .. release:: 3.0.3
     :date: 2024-11-26

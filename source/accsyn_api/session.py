@@ -14,7 +14,7 @@ import uuid
 import hashlib
 import copy
 
-import urllib
+import urllib.parse
 import base64
 import io
 import gzip
@@ -24,13 +24,6 @@ import requests
 
 
 from ._version import __version__
-
-if sys.version_info.major >= 3:
-    import io
-
-else:
-    # Python 2 backward compability
-    import binascii
 
 try:
     requests.packages.urllib3.disable_warnings()
@@ -44,7 +37,7 @@ logging.basicConfig(
 )
 
 ACCSYN_BACKEND_DOMAIN = "accsyn.com"
-ACCSYN_BACKEND_MASTER_HOSTNAME = "master.{}".format(ACCSYN_BACKEND_DOMAIN)
+ACCSYN_BACKEND_MASTER_HOSTNAME = f"master.{ACCSYN_BACKEND_DOMAIN}"
 ACCSYN_PORT = 443
 DEFAULT_EVENT_PAYLOAD_COMPRESS_SIZE_TRESHOLD = 100 * 1024  # Compress event data payloads above 100k
 
@@ -75,7 +68,7 @@ class JSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, datetime.date) or isinstance(obj, datetime.datetime):
             return obj.strftime("%Y-%m-%dT%H:%M:%S")
-        return super(JSONEncoder, self).default(obj)
+        return super().default(obj)
 
 
 class JSONDecoder(json.JSONDecoder):
@@ -146,7 +139,7 @@ class Session(object):
 
     def __init__(
         self,
-        domain=None,
+        workspace=None,
         username=None,
         api_key=None,
         hostname=None,
@@ -154,26 +147,29 @@ class Session(object):
         proxy=None,
         verbose=False,
         pretty_json=False,
-        dev=False,
         path_logfile=None,
         timeout=None,
         connect_timeout=None,
+        domain=None,
     ):
         """
         Initiate a new API session object. Throws exception upon authentication failure.
 
-        :param domain: The accsyn domain (or read from ACCSYN_DOMAIN environment variable)
+        :param workspace: The accsyn workspace code (or read from ACCSYN_WORKSPACE environment variable)
         :param username: The accsyn username (or read from ACCSYN_API_USER environment variable)
         :param api_key: The secret API key for authentication (or read from ACCSYN_API_KEY environment variable)
-        :param hostname: Override hostname/IP to connect to.
-        :param port: Override default port 443.
+        :param hostname: Override the hostname/IP of the workspace to connect to.
+        :param port: Override default port (443/TCP)
         :param proxy: The proxy settings (or read from ACCSYN_PROXY environment variable).
-        :param verbose: Create a verbose session, printing debug output to stdout.
+        :param verbose: Printing verbose debugging output to stdout.
         :param pretty_json: (verbose) Print pretty formatted JSON.
-        :param dev: Dev mode.
         :param path_logfile: Output all log messages to this logfile instead of stdout.
         :param timeout: Timeout in seconds for API calls - waiting for response.
         :param connect_timeout: Timeout in seconds for API calls - waiting for connection.
+        :param domain: (Backward compatibility) The accsyn domain (or read from ACCSYN_DOMAIN environment variable)
+
+        .. deprecated:: 3.1.0
+            Use the :param workspace: parameter instead
         """
         # Generate a session ID
         self.__version__ = __version__
@@ -183,23 +179,22 @@ class Session(object):
         self._be_verbose = verbose
         self._pretty_json = pretty_json
         self._proxy = proxy
-        self._dev = dev is True or os.environ.get('ACCSYN_DEV', 'false') in ['true', '1']
+        self._dev = os.environ.get('AS_DEV', 'false') in ['true', '1']
         Session._p_logfile = path_logfile
         self._role = CLEARANCE_NONE
-        self._verbose("Creating accsyn Python API session (v{})".format(__version__))
+        self._verbose(f"Creating accsyn Python API session (v{__version__})")
         for key in os.environ:
             if key.startswith("FILMHUB_"):
-                Session._warning('Found old FilmHUB product environment variable "{}", ' "please migrate!".format(key))
-        if not domain:
-            domain = (
-                os.environ["ACCSYN_DOMAIN"]
-                if "ACCSYN_DOMAIN" in os.environ
-                else os.environ.get(
-                    "ACCSYN_ORG",
-                )
-            )
-        if not domain:
-            raise AccsynException("Please supply your accsyn domain/workspace or set ACCSYN_DOMAIN environment!")
+                Session._warning(f'Detected deprecated FilmHUB environment variable "{key}", please migrate!')
+        if not workspace:
+            workspace = domain
+        if not workspace:
+            for key in ["ACCSYN_WORKSPACE", "ACCSYN_DOMAIN", "ACCSYN_ORG"]:
+                if key in os.environ:
+                    workspace = os.environ[key]
+                    break
+        if not workspace:
+            raise AccsynException("Please supply your accsyn workspace domain or set ACCSYN_WORKSPACE environment!")
         if not username:
             username = os.environ.get("ACCSYN_API_USER")
         if not username:
@@ -219,24 +214,26 @@ class Session(object):
             if self._dev:
                 self._hostname = "127.0.0.1"
             else:
-                # Get domain
+                # Resolve workspace hostname
                 response = self._rest(
                     "GET",
                     ACCSYN_BACKEND_MASTER_HOSTNAME,
                     "J3PKTtDvolDMBtTy6AFGA",
-                    {"ident": domain},
+                    dict(ident=workspace),
                 )
                 # Store hostname
                 if "message" in response:
                     raise AccsynException(response["message"])
-                result = response.get('result', {})
-                assert "hostname" in result, "No API endpoint hostname were provided for us!"
+                result = response.get('result', dict())
+                assert "hostname" in result, "No API endpoint hostname were provided for workspace {}!".format(
+                    workspace
+                )
                 self._hostname = result["hostname"]
                 if self._port is None:
                     self._port = result["port"]
         if self._port is None:
             self._port = ACCSYN_PORT if not self._dev else 8181
-        self._domain = domain
+        self._workspace = workspace
         self._username = username
         self._api_key = api_key
         self._last_message = None
@@ -293,11 +290,8 @@ class Session(object):
             session_id=self._session_id,
         )
         headers = {
-            "Authorization": "basic {}:{}".format(
-                Session._base64_encode(self._username),
-                Session._base64_encode(self._api_key),
-            ),
-            "X-Accsyn-Workspace": self._domain,
+            "Authorization": f"basic {Session._base64_encode(self._username)}:{Session._base64_encode(self._api_key)}",
+            "X-Accsyn-Workspace": self._workspace,
         }
         response = self._rest(
             "PUT",
@@ -343,17 +337,17 @@ class Session(object):
                     )
         else:
             if isinstance(data, list):
-                data = {"tasks": data}
+                data = dict(tasks=data)
             assert data is not None and 0 < len(data), "Empty create data submitted!"
         if entitytype == "queue":
             data["type"] = 2
         elif entitytype == "task" and "tasks" not in data:
-            data = {"tasks": data}
+            data = dict(tasks=data)
         if entitytype in ["job", "task"]:
             data["allow_duplicates"] = allow_duplicates
         d = self._event(
             "POST",
-            "%s/create" % Session._get_base_uri(entitytype),
+            f"{Session._get_base_uri(entitytype)}/create",
             data,
             query=entitytype_id,
         )
@@ -398,11 +392,11 @@ class Session(object):
 
         retval = None
         d = self.decode_query(query)
-        data = {}
+        data = dict()
         if d["entitytype"] == "entitytypes":
             # Ask cloud server, the Python API is rarely updated and should not
             # need to know
-            d = self._event("GET", "entitytypes", {})
+            d = self._event("GET", "entitytypes", dict())
             if d:
                 retval = d["result"]
         elif d["entitytype"] == "attributes":
@@ -418,7 +412,7 @@ class Session(object):
             d = self._event(
                 "GET",
                 "attributes",
-                {"entitytype": entitytype, "create": create, "update": update},
+                dict(entitytype=entitytype, create=create, update=update),
             )
             if d:
                 retval = d["result"]
@@ -426,9 +420,9 @@ class Session(object):
             # Send query to server, first determine uri
             uri_base = Session._get_base_uri(d["entitytype"])
             if d["entitytype"] == "queue":
-                data = {"type": 2}
+                data = dict(type=2)
             elif d["entitytype"] == "job":
-                data = {"type": 1}
+                data = dict(type=1)
             if finished is not None:
                 data["finished"] = finished
             if offline is not None:
@@ -441,7 +435,7 @@ class Session(object):
                 data["skip"] = skip
             if attributes:
                 data["attributes"] = attributes
-            d = self._event("GET", "{}/find".format(uri_base), data, query=d.get("expression"))
+            d = self._event("GET", f"{uri_base}/find", data, query=d.get("expression"))
             if d:
                 retval = d["result"]
         return retval
@@ -490,8 +484,8 @@ class Session(object):
         d = self.decode_query(query)
         # Send query to server, first determine uri
         uri_base = Session._get_base_uri(d["entitytype"])
-        data = {}
-        d = self._event("GET", "%s/report" % uri_base, data, query=d.get("expression"))
+        data = dict()
+        d = self._event("GET", f"{uri_base}/report", data, query=d.get("expression"))
         return d["report"]
 
     def metrics(self, query, attributes=["speed"], time=None):
@@ -513,7 +507,7 @@ class Session(object):
         }
         if not time is None:
             data["time"] = time
-        d = self._event("GET", "%s/metrics" % uri_base, data, query=d.get("expression"))
+        d = self._event("GET", f"{uri_base}/metrics", data, query=d.get("expression"))
         return d["result"]
 
     # Update an entity
@@ -537,7 +531,7 @@ class Session(object):
         assert 0 < len(data or {}) and isinstance(data, dict), "Invalid data supplied, must be dict and have content!"
         response = self._event(
             "PUT",
-            "%s/edit" % Session._get_base_uri(entitytype),
+            f"{Session._get_base_uri(entitytype)}/edit",
             data,
             entityid=entityid,
         )
@@ -554,7 +548,7 @@ class Session(object):
         :return: The updated entity data, as dictionary
 
         .. deprecated:: 2.0.2
-            Since Python 2.0.2 you should use the :func:`update` function instead
+            Since version 2.0.2 you should use the :func:`update` function instead
 
         '''
         return self.update(entitytype, entityid, data)
@@ -569,7 +563,7 @@ class Session(object):
         :return: The updated sub entities (tasks), as dictionaries.
 
         .. deprecated:: 2.0.2
-            Since Python 2.0.2 you should use the :func:`update` function instead
+            Since version 2.0.2 you should use the :func:`update` function instead
         """
         assert 0 < len(entitytype or "") and Session._is_str(
             entitytype
@@ -583,7 +577,7 @@ class Session(object):
         assert 0 < len(data or []) and isinstance(data, list), "Invalid data supplied, must be a list!"
         response = self._event(
             "PUT",
-            "%s/edit" % Session._get_base_uri(entitytype),
+            f"{Session._get_base_uri(entitytype)}/edit",
             data,
             entityid=entityid,
         )
@@ -630,8 +624,8 @@ class Session(object):
                 raise Exception("Please supply type of server assignment (main " "or site) in assignment data!")
             response = self._event(
                 "PUT",
-                "%s/edit" % Session._get_base_uri(entitytype_parent),
-                {what: client_id},
+                f"{Session._get_base_uri(entitytype_parent)}/edit",
+                dict([(what, client_id)]),
                 entityid=share_id,
             )
         if response:
@@ -654,7 +648,7 @@ class Session(object):
         if entitytype.lower() == "share":
             response = self._event(
                 "GET",
-                "%s/servers" % Session._get_base_uri(entitytype),
+                f"{Session._get_base_uri(entitytype)}/servers",
                 {},
                 entityid=entityid,
             )
@@ -700,8 +694,8 @@ class Session(object):
                 raise Exception("Please supply type of server assignment (main " "or site) in assignment data!")
             response = self._event(
                 "PUT",
-                "%s/edit" % Session._get_base_uri(entitytype_parent),
-                {"{}_clear".format(what): client_id},
+                f"{Session._get_base_uri(entitytype_parent)}/edit",
+                dict([(f"{what}_clear", client_id)]),
                 entityid=share_id,
             )
         if response:
@@ -730,7 +724,7 @@ class Session(object):
         ), "Invalid entity ID supplied, must be of string type!"
         response = self._event(
             "DELETE",
-            "%s/offline" % Session._get_base_uri(entitytype),
+            f"{Session._get_base_uri(entitytype)}/offline",
             {},
             entityid=entityid,
         )
@@ -754,7 +748,7 @@ class Session(object):
         ), "Invalid entity ID supplied, must be of string type!"
         response = self._event(
             "DELETE",
-            "%s/delete" % Session._get_base_uri(entitytype),
+            f"{Session._get_base_uri(entitytype)}/delete",
             {},
             entityid=entityid,
         )
@@ -976,7 +970,7 @@ class Session(object):
                 result += d["size"]
             return result
 
-        event_data = {"files": data, "size": recursive_get_size(data)}
+        event_data = dict(files=data, size=recursive_get_size(data))
         response = self._event("PUT", "workspace/publish/preprocess", event_data)
         return response["result"]
 
@@ -984,7 +978,7 @@ class Session(object):
 
     def get_setting(self, name=None, scope='workspace', entity_id=None, integration=None, data=None):
         '''Retrive *name* setting for the given *scope* (workspace, job, share..), for optional *entity_id* or *integration* (ftrack,..)'''
-        evt_data = {'scope': scope, 'name': name}
+        evt_data = dict(scope=scope, name=name)
         if entity_id:
             evt_data['ident'] = entity_id
         if integration:
@@ -996,7 +990,7 @@ class Session(object):
 
     def set_setting(self, name, value, scope='workspace', entity_id=None, integration=None, data=None):
         '''Set the setting identified by *name* to *value* for *entity_id* within *scope*.'''
-        evt_data = {'scope': scope, 'name': name, 'value': value}
+        evt_data = dict(scope=scope, name=name, value=value)
         if entity_id:
             evt_data['ident'] = entity_id
         if integration:
@@ -1009,7 +1003,7 @@ class Session(object):
     # Misc
     def get_api_key(self):
         """Fetch API key, by default disabled in backend."""
-        return self._event("GET", "user/api_key", {})["api_key"]
+        return self._event("GET", "user/api_key", dict())["api_key"]
 
     def gui_is_running(self):
         """Backward compability"""
@@ -1027,7 +1021,7 @@ class Session(object):
             "GET",
             "client/find",
             {},
-            query="user={0} AND code={1} AND type={2}".format(self._uid, Session.get_hostname(), CLIENT_TYPE_APP),
+            query=f"user={self._uid} AND code={Session.get_hostname()} AND type={CLIENT_TYPE_APP}",
         )["result"]
         retval = None
         if 0 < len(result):
@@ -1053,9 +1047,7 @@ class Session(object):
             "GET",
             "client/find",
             {},
-            query="user={0} AND code={1} AND (type={2} OR type={3})".format(
-                self._uid, Session.get_hostname(), CLIENT_TYPE_SERVER, CLIENT_TYPE_USERSERVER
-            ),
+            query=f"user={self._uid} AND code={Session.get_hostname()} AND (type={CLIENT_TYPE_SERVER} OR type={CLIENT_TYPE_USERSERVER})",
         )["result"]
         retval = None
         if 0 < len(result):
@@ -1071,7 +1063,7 @@ class Session(object):
         assert len(operation) > 0, 'No operation provided'
         return self._event(
             "PUT",
-            "workspace/integration/{}/utility".format(name),
+            f"workspace/integration/{name}/utility",
             {
                 'operation': operation,
                 'data': data,
@@ -1134,7 +1126,7 @@ class Session(object):
         if port is None:
             port = self._port or ACCSYN_PORT
         if hostname is None:
-            hostname = "{}.{}".format(self._domain, ACCSYN_BACKEND_DOMAIN)
+            hostname = f"{self._workspace}.{ACCSYN_BACKEND_DOMAIN}"
         # Proxy set?
         proxy_type = None
         proxy_hostname = None
@@ -1162,12 +1154,12 @@ class Session(object):
         if proxy_type == "accsyn":
             if proxy_port == -1:
                 proxy_port = 80
-            self._verbose("Using accsyn proxy @ {}:{}".format(proxy_hostname, proxy_port))
+            self._verbose(f"Using accsyn proxy @ {proxy_hostname}:{proxy_port}")
             hostname = proxy_hostname
             port = proxy_port
         elif proxy_type in ["socks", "socks5"]:
             try:
-                self._verbose("Using SOCKS5 proxy @ {}:{}".format(proxy_hostname, proxy_port))
+                self._verbose(f"Using SOCKS5 proxy @ {proxy_hostname}:{proxy_port}")
                 import socks
 
                 socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, proxy_hostname, proxy_port)
@@ -1176,17 +1168,12 @@ class Session(object):
                 Session._warning('Python lacks SOCKS support, please install "pysocks" and' " try again...")
                 raise ie
         elif proxy_type is not None:
-            raise AccsynException('Unknown proxy type "{}"!'.format(proxy_type))
-        url = "http{}://{}:{}/api/v3{}".format(
-            "s" if ssl else "",
-            hostname,
-            port,
-            ("/" if not uri.startswith("/") else "") + uri,
-        )
+            raise AccsynException(f'Unknown proxy type "{proxy_type}"!')
+        url = f"http{'s' if ssl else ''}://{hostname}:{port}/api/v3{('/' if not uri.startswith('/') else '') + uri}"
         if timeout is None:
             timeout = self.timeout
         if data is None:
-            data = {}
+            data = dict()
         # Wait 10s to reach machine, 2min for it to send back data
         CONNECT_TO, READ_TO = (self.connect_timeout, timeout)
         r = None
@@ -1197,30 +1184,15 @@ class Session(object):
             headers_effective = copy.deepcopy(headers)
         elif self._api_key:
             headers_effective = {
-                "Authorization": "basic {}:{}".format(
-                    Session._base64_encode(self._username), Session._base64_encode(self._api_key)
-                ),
-                "X-Accsyn-Workspace": self._domain,
+                "Authorization": f"basic {Session._base64_encode(self._username)}:{Session._base64_encode(self._api_key)}",
+                "X-Accsyn-Workspace": self._workspace,
             }
-        headers_effective["X-Accsyn-Device"] = "PythonAPI v%s @ %s %s(%s)" % (
-            __version__,
-            sys.platform,
-            Session.get_hostname(),
-            os.name,
+        headers_effective["X-Accsyn-Device"] = (
+            f"PythonAPI v{__version__} @ {sys.platform} {Session.get_hostname()}({os.name})"
         )
-        if 3 <= sys.version_info.major:
-            t_start = int(round(time.time() * 1000))
-        else:
-            t_start = long(round(time.time() * 1000))
+        t_start = int(round(time.time() * 1000))
         try:
-            self._verbose(
-                "REST %s %s, data: %s"
-                % (
-                    method,
-                    url,
-                    data if not self._pretty_json else Session.str(data),
-                )
-            )
+            self._verbose(f"REST {method} {url}, data: {data if not self._pretty_json else Session.str(data)}")
             if method.lower() == "get":
                 r = requests.get(
                     url,
@@ -1258,48 +1230,28 @@ class Session(object):
         except BaseException:
             # if timeout <= 0:
             raise AccsynException(
-                "Could not reach {}:{}! Make sure backend({}) can"
-                " be reached from you location and no firewall is "
-                "blocking outgoing TCP traffic at port {}. "
-                "Details: {}".format(
-                    hostname,
-                    port,
-                    hostname,
-                    port,
-                    traceback.format_exc() if not quiet else "(quiet)",
-                )
+                f"Could not reach {hostname}:{port}! Make sure backend({hostname}) can be reached from you location and no firewall is blocking outgoing TCP traffic at port {port}. Details: {traceback.format_exc() if not quiet else '(quiet)'}"
             )
         try:
             retval = json.loads(r.text, cls=JSONDecoder)
             if not quiet:
-                self._verbose(
-                    "{}/{} REST {} result: {} (~{}ms)".format(
-                        hostname,
-                        uri,
-                        method,
-                        Session._obscure_dict_string(
-                            Session._safely_printable(
-                                str(retval) if not self._pretty_json else Session.str(retval)
-                            ).replace("'", '"')
-                        ),
-                        t_start - t_end + 1,
+                str_result = Session._obscure_dict_string(
+                    Session._safely_printable(str(retval) if not self._pretty_json else Session.str(retval)).replace(
+                        "'", '"'
                     )
                 )
+                self._verbose(f"{hostname}/{uri} REST {method} result: {str_result} (~{t_start - t_end + 1}ms)")
         except BaseException:
             sys.stderr.write(traceback.format_exc())
-            message = 'The {} REST {} {} operation failed! Details: {} {}'.format(
-                url,
-                method,
-                Session._obscure_dict_string(Session._safely_printable(str(data)).replace("'", '"')),
-                r.text,
-                traceback.format_exc(),
+            str_data = Session._obscure_dict_string(Session._safely_printable(str(data)).replace("'", '"'))
+            message = (
+                f'The {url} REST {method} {str_data} operation failed! Details: {r.text} {traceback.format_exc()}'
             )
             Session._warning(message)
             raise AccsynException(message)
 
         if "exception" in retval:
-            message = "{} caused an exception! Please contact {} admin for more"
-            " further support.".format(uri, self._domain)
+            message = f"{uri} caused an exception! Please contact {self._workspace} admin for more further support."
             Session._warning(message)
             if self._role in [CLEARANCE_ADMIN, CLEARANCE_SUPPORT]:
                 Session._warning(retval["exception"])
@@ -1327,7 +1279,7 @@ class Session(object):
         assert self._uid, "Login before posting event!"
         event = {
             "audience": "api",
-            "domain": self._domain,
+            "workspace": self._workspace,
             "eid": str(uuid.uuid4()),
             "session": self._session_id,
             "uri": uri,
@@ -1363,12 +1315,7 @@ class Session(object):
                 b = out.getvalue()
                 event["gz_data"] = base64.b64encode(b).decode('utf-8')
                 self._verbose(
-                    "Compressed event payload %d>%d(%s%%)"
-                    % (
-                        size,
-                        len(event["gz_data"]),
-                        (100 * len(event["gz_data"]) / size),
-                    )
+                    f"Compressed event payload {size}>{len(event['gz_data'])}({100 * len(event['gz_data']) / size}%)"
                 )
                 did_compress_payload = True
         if not did_compress_payload:
@@ -1432,18 +1379,18 @@ class Session(object):
                 s += query[idx]
         if idx_part_start < len(query):
             parts.append(query[idx_part_start:])
-        self._verbose('Query: "{}", parts: "{}"'.format(query, parts))
+        self._verbose(f'Query: "{query}", parts: "{parts}"')
         assert len(parts) == 1 or 3 <= len(parts), (
             "Query has invalid syntax; statements can either be "
             'single ("<entity>"") or with a WHERE statement '
             '("<(sub)entity> WHERE {<entity>.}id=..{ AND ..}"")'
         )
         if len(parts) == 1:
-            return {"entitytype": parts[0].lower()}
+            return dict(entitytype=parts[0].lower())
         else:
             assert (
                 parts[1].strip().lower() == "where"
-            ), 'Invalid query "{}", should be on the form ' '"<entitytype> where <expression>".'.format(query)
+            ), f'Invalid query "{query}", should be on the form "<entitytype> where <expression>".'
             # Decode expression
             return {
                 "entitytype": parts[0].lower(),
@@ -1487,14 +1434,11 @@ class Session(object):
 
     def _verbose(self, s):
         if self._be_verbose:
-            Session._info("[ACCSYN_API] %s" % (s))
+            Session._info(f"[ACCSYN_API] {s}")
 
     @staticmethod
     def _safe_dumps(d, indent=None):
-        if 3 <= sys.version_info.major:
-            return json.dumps(d if not isinstance(d, list) else list(d.values()), cls=JSONEncoder, indent=indent)
-        else:
-            return json.dumps(d, cls=JSONEncoder, indent=indent)
+        return json.dumps(d if not isinstance(d, list) else list(d.values()), cls=JSONEncoder, indent=indent)
 
     @staticmethod
     def _safely_printable(s):
@@ -1502,37 +1446,25 @@ class Session(object):
 
     @staticmethod
     def _is_str(s):
-        if 3 <= sys.version_info.major:
-            return isinstance(s, str)
-        else:
-            return isinstance(s, str) or isinstance(s, unicode)
+        return isinstance(s, str)
 
     @staticmethod
     def _url_quote(url):
-        if 3 <= sys.version_info.major:
-            return urllib.parse.quote(Session._safe_dumps(url))
-        else:
-            return urllib.quote(Session._safe_dumps(url))
+        return urllib.parse.quote(Session._safe_dumps(url))
 
     @staticmethod
     def _json_serial(obj):
         """JSON serializer for *obj not serializable by default json code."""
         if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
             return obj.isoformat()
-        raise TypeError("Type %s not serializable" % type(obj))
+        raise TypeError(f"Type {type(obj)} not serializable")
 
     @staticmethod
     def _base64_encode(s):
         """Produce a BASE64 encoded string."""
-        if 3 <= sys.version_info.major:
-            return (base64.b64encode(s.encode("utf-8"))).decode("ascii")
-        else:
-            if isinstance(s, str) or isinstance(s, unicode):
-                return base64.b64encode(s)
-            else:
-                return binascii.b2a_base64(s)
+        return (base64.b64encode(s.encode("utf-8"))).decode("ascii")
 
 
 class AccsynException(Exception):
     def __init__(self, message):
-        super(AccsynException, self).__init__(message)
+        super().__init__(message)

@@ -20,23 +20,15 @@ In a Python session, import the accsyn Python API to start using it::
 Create a session
 ================
 
-The session is the Python object used when communicating with accsyn, it requires valid credentials supplied::
+The session is the Python object used when communicating with accsyn, it requires valid API credentials supplied upon creation::
 
-    session = accsyn_api.Session(domain='acmefilm',username='john@user.com', api_key='f0a8b9a9-879f-4174-9d08-322eea196efc')
-
-or::
-
-    session = accsyn_api.Session(domain='acmefilm',username='john@user.com', pwd='password')
-
-or::
-
-    session = accsyn_api.Session(domain='acmefilm',username='john@user.com', session_key='6152693980700117321a5f8c')
+    session = accsyn_api.Session(workspace='acmefilm',username='john@user.com', api_key='BlrPCfxLIRZEdhL6LXotwXRmDWbPRsPgLYcpa7ubyu97gxpqSC4130Adfh968Low')
 
 
 
-The following environment variables are picked up if set by python parent process:
+The following environment variables are picked up if set within python parent process, and not provided as arguments to the Session constructor:
 
-"ACCSYN_DOMAIN" => "domain".
+"ACCSYN_WORKSPACE" => "workspace".
 
 "ACCSYN_API_USER" => "username".
 
@@ -46,7 +38,7 @@ The following environment variables are picked up if set by python parent proces
 
 .. note::
 
-    accsyn communicates over tcp port 443 (https wrapped CRUD REST calls), make sure to allow outgoing traffic towards accsyn backend (yourdomain.accsyn.com).
+    accsyn communicates over tcp port 443 (https wrapped CRUD REST calls), make sure to allow outgoing traffic towards accsyn backend (your-workspace.accsyn.com).
 
     Your API key can be obtained online or from desktop app @ Prefs>Setup API environment, or by running "accsyn user get_api_key" from your terminal/unix shell.
 
@@ -62,7 +54,7 @@ The following environment variables are picked up if set by python parent proces
 Testing the session
 ===================
 
-To make sure you have permissions, you can test the obtained session::
+To make sure the API is working, you can test the obtained session::
 
     print(session.find_one("User"))
 
@@ -84,6 +76,7 @@ The find and find_one functions provide query functionality within the API.
 To get a list of all entities::
 
    jobs = session.find('<entity>')
+
 
 Expressions
 ***********

@@ -30,14 +30,27 @@ master_doc = "index"
 project = u"accsyn Python API"
 copyright = u"2023, accsyn/HDR AB"
 
-# contents of docs/conf.py
+# Get version from Poetry pyproject.toml or installed package
 try:
+    # Try to get version from installed package first
     release = get_distribution("accsyn-python-api").version
-    # take major/minor/patch
     VERSION = release.split("-")[0]
 except DistributionNotFound:
-    # package is not installed
-    VERSION = "Unknown version"
+    # Fallback to reading from pyproject.toml
+    try:
+        import tomllib
+    except ImportError:
+        import tomli as tomllib
+
+    import os
+
+    pyproject_path = os.path.join(os.path.dirname(__file__), "..", "pyproject.toml")
+    try:
+        with open(pyproject_path, "rb") as f:
+            pyproject_data = tomllib.load(f)
+        VERSION = pyproject_data["tool"]["poetry"]["version"]
+    except (FileNotFoundError, KeyError):
+        VERSION = "Unknown version"
 
 version = VERSION
 release = VERSION
