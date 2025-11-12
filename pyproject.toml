@@ -1,3 +1,79 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "accsyn-python-api"
+version = "3.1.0"
+description = "A Python API for accsyn programmable fast and secure data delivery software"
+authors = ["Henrik Norin <support@accsyn.com>"]
+license = "Apache-2.0"
+readme = "README.md"
+homepage = "https://accsyn.com"
+repository = "https://github.com/accsyn/accsyn-python-api.git"
+documentation = "https://accsyn-python-api.readthedocs.io"
+keywords = ["accsyn", "api", "file-transfer", "delivery"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: File Transfer Protocol (FTP)",
+]
+packages = [{include = "accsyn_api", from = "source"}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+requests = "^2.25.0"
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.0.0"
+isort = "^5.12.0"
+flake8 = "^5.0.0"
+mypy = "^1.0.0"
+pytest = "^7.0.0"
+pytest-cov = "^4.0.0"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+sphinx = "^1.2.2"
+sphinx-rtd-theme = "^0.1.6,<1"
+jinja2 = "<3.1"
+lowdown = "^0.1.0,<2"
+tomli = {version = "^2.0.0", python = "<3.11"}
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/accsyn/accsyn-python-api/issues"
+"Support" = "https://support.accsyn.com"
+
 [tool.black]
 line-length = 119
 skip-string-normalization = true
+target-version = ['py38']
+
+[tool.isort]
+profile = "black"
+line_length = 119
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+addopts = "--cov=accsyn_api --cov-report=term-missing"
