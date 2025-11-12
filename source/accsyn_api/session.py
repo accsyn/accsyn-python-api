@@ -1187,9 +1187,9 @@ class Session(object):
                 "Authorization": f"basic {Session._base64_encode(self._username)}:{Session._base64_encode(self._api_key)}",
                 "X-Accsyn-Workspace": self._workspace,
             }
-        headers_effective["X-Accsyn-Device"] = (
-            f"PythonAPI v{__version__} @ {sys.platform} {Session.get_hostname()}({os.name})"
-        )
+        headers_effective[
+            "X-Accsyn-Device"
+        ] = f"PythonAPI v{__version__} @ {sys.platform} {Session.get_hostname()}({os.name})"
         t_start = int(round(time.time() * 1000))
         try:
             self._verbose(f"REST {method} {url}, data: {data if not self._pretty_json else Session.str(data)}")
