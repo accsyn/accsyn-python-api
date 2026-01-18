@@ -17,13 +17,13 @@ This section will explain the different type data that can be obtained by the AP
 Roles
 =====
 
-Three built-in "roles" (permission/clearance) levels exists for accsyn users, the clearance dictates what data can be read and write through the API:
+Three built-in "roles" (permission/clearance) levels exists for accsyn users, the clearance dictates what entities and attributes can be read and write through the API:
 
-* Admins; Are allowed to read and write all data – configure accsyn.
+* Administrators (**admin**); Are allowed to read and write all data – configure accsyn.
 
-* Employees; Are allowed full access to jobs and data on all shares.
+* Employees (**employee**); Managers that are allowed full access to jobs and data on volumes given access to.
 
-* Users; (i.e. remote freelancers/customers) Besides receiving packages, they are only allowed to access share's explicitly given access through ACLs (Access Control Lists). Restricted users automatically is given a share @ default location - <root share>/accsyn/<user id (email)>.
+* Standard users (**standard**); (i.e. remote/external users) Besides receiving deliveries, they are only allowed to access share's explicitly given access through ACLs (Access Control Lists).
 
 
 
@@ -43,7 +43,7 @@ Data read from accsyn using the API arrives as JSON dictionaries, categorised by
      - 
      - Employee:
      - 
-     - User (restricted):
+     - Standard:
      - 
    * -
      -
@@ -54,29 +54,61 @@ Data read from accsyn using the API arrives as JSON dictionaries, categorised by
      - Read
      - Write
    * - User
-     - User profile data
-     - YES
+     - Users and their profile data
      - YES
      - YES
      - YES :sup:`1`
+     - YES :sup:`1`
      - YES :sup:`2`
      - YES :sup:`2`
-   * - Organization
-     - Global domain settings
+   * - Workspace
+     - Global workspace settings
      - YES
      - YES
      - YES
-     - NO
-     - NO
-     - NO
-   * - Job
-     - A (transfer) job containing tasks
+     - no
+     - no
+     - no
+   * - Queue
+     - A queue of jobs (transfers, renders |br| (compute), deliveries, ...) to be executed
+     - YES
+     - YES
+     - YES
+     - no
+     - no
+     - no
+   * - Transfer
+     - A file job containing tasks
      - YES
      - YES
      - YES
      - YES
      - YES :sup:`3`
      - YES :sup:`3`
+   * - Delivery
+     - A delivery package containing one |br| or more file(s) and/or folder(s) to be delivered |br| to one or more recipients
+     - YES
+     - YES
+     - YES
+     - YES
+     - YES :sup:`4`
+     - YES :sup:`4`
+   * - Request
+     - A request package containing one |br| or more file(s) and/or folder(s) to be requested |br| from one or more senders
+     - YES
+     - YES
+     - YES
+     - YES
+     - YES :sup:`4`
+     - YES :sup:`4`
+   * - Stream
+     - A video stream of one or more |br| files to be streamed and/or downloadable by one or |br| more recipients
+     - YES
+     - YES
+     - YES
+     - YES
+     - YES :sup:`4`
+     - YES :sup:`4`
    * - Task
      - A file/directory that should be |br| transferred within a job.
      - YES
@@ -85,32 +117,85 @@ Data read from accsyn using the API arrives as JSON dictionaries, categorised by
      - YES
      - YES :sup:`3`
      - YES :sup:`3`
-   * - Share
-     -  Defines a sub-directory beneath a |br| root share that should be made available |br| to users.
+   * - Folder
+     -  Defines a sub-directory beneath a |br| volume that should be granted access through ACLs |br| to one or more standard users.
      - YES
      - YES
      - YES
-     - YES :sup:`4`
      - YES :sup:`5`
+     - YES :sup:`6`
+     - YES :sup:`6`
+   * - Collection
+     -  A virtual shared folder containing |br| one or more files and/or folders to be granted access |br| through ACLs to one or more standard users.
+     - YES
+     - YES
+     - YES
      - YES :sup:`5`
-   * - Root share
-     -  Defines a directory, typically on a |br| network volume, that is to be made available |br| to accsyn for file transfers and other operations.
+     - YES :sup:`6`
+     - YES :sup:`6`
+   * - Home
+     -  Defines the special home sub-directory beneath a |br| volume that should be granted access |br| through ACLs to a specific user.
      - YES
      - YES
-     - NO
-     - NO
-     - NO
-     - NO
+     - YES
+     - YES :sup:`5`
+     - YES :sup:`6`
+     - YES :sup:`6`
+   * - Volume
+     -  Defines a directory, typically on a |br| network volume, available |br| to accsyn and granted access |br| through ACLs to one ore more employees.
+     - YES
+     - YES
+     - no
+     - no
+     - no
+     - no
+   * - Site
+     - A physical or cloud location where accsyn can be deployed
+     - YES
+     - YES
+     - YES
+     - no
+     - no
+     - no
+   * - Server
+     - A workspace file transfer endpoint or |br| compute node
+     - YES
+     - YES
+     - YES
+     - no
+     - no
+     - no
+   * - User server
+     - A server running remotely in user space |br| for unattended file deliveries and |br| globally mapped shares.
+     - YES
+     - YES
+     - YES
+     - YES
+     - YES :sup:`1`
+     - YES :sup:`1`
+   * - Client
+     - A user file transfer endpoint running in |br| app or web browser.
+     - YES
+     - YES
+     - YES
+     - YES
+     - YES :sup:`1`
+     - YES :sup:`1`
+   * - ACL
+     - Access control list defining what a user |br| has access to (workspace, folder, delivery etc.)
+     - YES
+     - YES
+     - YES
+     - YES
+     - YES :sup:`1`
+     - YES :sup:`1`
 
-* :sup:`1` Their own and restricted users.
-
+* :sup:`1` Their own and standard users.
 * :sup:`2` Only their own.
-
 * :sup:`3` If involved in job either as sending or receing part.
-
-* :sup:`4` Except admin or other employee home shares.
-
-* :sup:`5` Home share and share given explicit access through ACL.
+* :sup:`4` If an explicit recipient.
+* :sup:`5` Except admin or other employee home shares.
+* :sup:`6` Home share and share given explicit access through ACL.
 
 
 

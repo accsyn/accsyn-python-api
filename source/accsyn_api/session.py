@@ -61,6 +61,12 @@ CLIENT_STATE_OFFLINE = "offline"
 CLIENT_STATE_DISABLED = "disabled"
 CLIENT_STATE_DISABLED_OFFLINE = "disabled-offline"
 
+JOB_TYPE_TRANSFER = 1   # p2p transfer job, either standalone or beneath a delivery/request
+JOB_TYPE_QUEUE = 2  # A job contai
+JOB_TYPE_COMPUTE = 3    # A compute/render job
+JOB_TYPE_DELIVERY = 7 # An outgoing delivery job, hold one or more upload jobs for managers and one download job per recipient
+JOB_TYPE_REQUEST = 8 # An inbound upload request, holds one upload job per recipient and then one or more download job for managers
+JOB_TYPE_STREAM = 10 # An accsyn streaming delivery, same as delivery but containing one or more streamable media
 
 class JSONEncoder(json.JSONEncoder):
     """JSON serialiser."""
@@ -320,8 +326,8 @@ class Session(object):
         :param allow_duplicates: (jobs and tasks) Allow duplicates to be created.
         :return: The created entity data, as dictionary.
         """
-        assert 0 < len((entitytype or "").strip()), "You must provide the entity type!"
-        entitytype = entitytype.lower().strip()
+        entitytype = (entitytype or "").lower().strip()
+        assert entitytype, "You must provide the entity type to create!"
         if Session._is_str(data):
             assert 0 < len((data or "").strip()), "You must provide the data to create!"
             # Is it JSON as a string or JSON in a file pointed to?
@@ -340,7 +346,15 @@ class Session(object):
                 data = dict(tasks=data)
             assert data is not None and 0 < len(data), "Empty create data submitted!"
         if entitytype == "queue":
-            data["type"] = 2
+            data["type"] = JOB_TYPE_QUEUE
+        elif entitytype in ["transfer", "job"]: # Since 3.2 job corresponds to file transfer jobs
+            data["type"] = JOB_TYPE_TRANSFER
+        elif entitytype == "compute":
+            data["type"] = JOB_TYPE_COMPUTE
+        elif entitytype == "delivery":
+            data["type"] = JOB_TYPE_DELIVERY
+        elif entitytype == "request":
+            data["type"] = JOB_TYPE_REQUEST
         elif entitytype == "task" and "tasks" not in data:
             data = dict(tasks=data)
         if entitytype in ["job", "task"]:
@@ -420,9 +434,19 @@ class Session(object):
             # Send query to server, first determine uri
             uri_base = Session._get_base_uri(d["entitytype"])
             if d["entitytype"] == "queue":
-                data = dict(type=2)
+                data = dict(type=JOB_TYPE_QUEUE)
+            elif d["entitytype"] == "transfer":
+                data = dict(type=JOB_TYPE_TRANSFER)
+            elif d["entitytype"] =="compute":
+                data = dict(type=JOB_TYPE_COMPUTE)
+            elif d["entitytype"] == "delivery":
+                data = dict(type=JOB_TYPE_DELIVERY)
+            elif d["entitytype"] == "request":
+                data = dict(type=JOB_TYPE_REQUEST)
+            elif d["entitytype"] == "stream":
+                data = dict(type=JOB_TYPE_STREAM)
             elif d["entitytype"] == "job":
-                data = dict(type=1)
+                data = dict(types=[JOB_TYPE_TRANSFER, JOB_TYPE_COMPUTE, JOB_TYPE_DELIVERY, JOB_TYPE_REQUEST, JOB_TYPE_STREAM])
             if finished is not None:
                 data["finished"] = finished
             if offline is not None:
@@ -1402,6 +1426,8 @@ class Session(object):
         uri_base = entitytype
         # Send query to server, first determine uri
         if entitytype == "queue":
+            uri_base = "job"
+        elif entitytype in ["transfer", "compute", "delivery", "request", "stream"]:
             uri_base = "job"
         elif entitytype == "task":
             uri_base = "job/task"
