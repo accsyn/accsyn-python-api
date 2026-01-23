@@ -127,3 +127,4 @@ deploy.sh
 *.code-workspace
 accsyn-python-api.code-workspace
 poetry.lock
+.env*

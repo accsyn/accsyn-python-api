@@ -15,7 +15,8 @@ Welcome to the accsyn :term:`Python` :term:`API` documentation.
     installing
     using
     datatypes
-    jobs
+    transfers
+    deliveries
     shares
     users
     queues

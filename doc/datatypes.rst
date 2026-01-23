@@ -1,5 +1,5 @@
 ..
-    :copyright: Copyright (c) 2021 accsyn
+    :copyright: Copyright (c) 2026 accsyn
 
 .. _datatypes:
 
@@ -78,7 +78,7 @@ Data read from accsyn using the API arrives as JSON dictionaries, categorised by
      - no
      - no
    * - Transfer
-     - A file job containing tasks
+     - A file transfer job with each task |br| being a file of folder to transfer (was formerly |br| known as "job")
      - YES
      - YES
      - YES
@@ -126,7 +126,7 @@ Data read from accsyn using the API arrives as JSON dictionaries, categorised by
      - YES :sup:`6`
      - YES :sup:`6`
    * - Collection
-     -  A virtual shared folder containing |br| one or more files and/or folders to be granted access |br| through ACLs to one or more standard users.
+     -  A virtual shared folder containing |br| one or more files and/or folders to be granted |br| access through ACLs to one or more standard users.
      - YES
      - YES
      - YES
@@ -134,7 +134,7 @@ Data read from accsyn using the API arrives as JSON dictionaries, categorised by
      - YES :sup:`6`
      - YES :sup:`6`
    * - Home
-     -  Defines the special home sub-directory beneath a |br| volume that should be granted access |br| through ACLs to a specific user.
+     -  Defines the special home sub-directory |br| beneath a  volume that should be granted  |br| access through ACLs to a specific user.
      - YES
      - YES
      - YES
@@ -142,7 +142,7 @@ Data read from accsyn using the API arrives as JSON dictionaries, categorised by
      - YES :sup:`6`
      - YES :sup:`6`
    * - Volume
-     -  Defines a directory, typically on a |br| network volume, available |br| to accsyn and granted access |br| through ACLs to one ore more employees.
+     -  Defines a directory, typically on a |br| network volume, available |br| to accsyn and |br| granted access through ACLs to one ore more employees.
      - YES
      - YES
      - no
@@ -150,7 +150,7 @@ Data read from accsyn using the API arrives as JSON dictionaries, categorised by
      - no
      - no
    * - Site
-     - A physical or cloud location where accsyn can be deployed
+     - A physical or cloud location where accsyn |br| can be deployed
      - YES
      - YES
      - YES
@@ -214,21 +214,21 @@ Each entity has its own attributes, such as “id” or “code”(an accsyn abb
 
 To retrieve a list of known attributes for an entity::
 
-    session.find('attributes WHERE entitytype=job')
+    session.find('attributes WHERE entitytype=delivery')
 
-This will return a list of attributes entities of that entity type can have, i.e. ["id","code","status",...]. 
+This will return a list of attributes an delivery entity can have, i.e. ["id","code","status",...]. 
 
 .. note::
     
-    Depending role/clearance, some attributes might be not visible if accessing the API as an restricted user.
+    The attributes available depends on the role/clearance level of the API user.
 
 
 
 By default, all readable attributes are returned. To return attributes only allowed during creation and edit::
 
-    session.find('attributes WHERE entitytype=job', create=True)
+    session.find('attributes WHERE entitytype=folder', create=True)
 
-    session.find('attributes WHERE entitytype=job', update=True)
+    session.find('attributes WHERE entitytype=folder', update=True)
 
 
 

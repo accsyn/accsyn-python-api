@@ -1,5 +1,5 @@
 ..
-    :copyright: Copyright (c) 2021 accsyn
+    :copyright: Copyright (c) 2026 accsyn
 
 .. _using:
 
@@ -90,9 +90,9 @@ Expressions
 
 The accsyn API uses a query language that is based on a simplified SQL syntax::
 
-    session.find('transfer WHERE source=hq')
+    session.find('Transfer WHERE source=myworkspace')
 
-Returns a list of all download file transfer jobs.
+Returns a list of all download jobs (workspace code/domain is "myworkspace").
 
 .. note::
 
@@ -126,12 +126,12 @@ Limit
 
 To return only a limited set of attributes::
 
-    session.find_one('transfer where id=614d660de50d45bb027c9bdd', attributes=['source','destination'])
+    session.find_one('Transfer where id=614d660de50d45bb027c9bdd', attributes=['source','destination'])
 
 
 To run a paginated query, that skips 100 jobs and only returns a maximum of 50::
 
-    session.find('transfer', skip=100, limit=50)
+    session.find('Transfer', skip=100, limit=50)
 
 
 Create
@@ -163,19 +163,17 @@ Example of obtaining and modifying an accsyn file transfer
 
 Get job named “my_transfer”::
 
-    j = session.find_one('transfer WHERE code="my_transfer"')
+    transfer = session.find_one('Transfer WHERE name="my_transfer"')
 
 
 Change its status::
 
-    session.update('transfer', j['id'], {
-        "status":"aborted"
-    }) 
+    session.update('Transfer', transfer['id'], {"status":"aborted"}) 
 
 
-Delete(purge) the transfer::
+Delete(archive) the transfer::
 
-    session.delete_one('transfer', j['id']}) 
+    session.delete_one('Transfer', transfer['id']}) 
 
 
 

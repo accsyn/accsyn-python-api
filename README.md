@@ -63,8 +63,51 @@ poetry run black .
 
 ```
 
-Building and Publishing:
------------------------
+Testing:
+--------
+
+The test suite requires role-specific credential files to test different user permissions.
+Tests will be skipped if the required .env files are not present.
+
+**Prepare test credentials:**
+
+Create three `.env` files in the project root directory, one for each role:
+
+1. `.env.admin` - Admin role credentials
+2. `.env.employee` - Employee role credentials
+3. `.env.standard` - Standard (restricted end user) role credentials
+
+Each `.env` file should contain:
+
+```bash
+ACCSYN_WORKSPACE=your_workspace
+ACCSYN_API_USER=user@example.com
+ACCSYN_API_KEY=your_api_key
+```
+
+**Run tests:**
+
+```bash
+# Run all tests
+poetry run pytest
+
+# Run with coverage report
+poetry run pytest --cov=accsyn_api --cov-report=term-missing
+
+# Run a specific test file
+poetry run pytest tests/test_find_entitytypes.py
+
+# Run tests for a specific role
+poetry run pytest -k "admin"
+poetry run pytest -k "employee"
+poetry run pytest -k "standard"
+```
+
+**Note:** Tests that require a specific role will be skipped if the corresponding `.env` file is missing.
+
+
+Building and publishing to PyPi:
+--------------------------------
 
 ```bash
 # Build the package

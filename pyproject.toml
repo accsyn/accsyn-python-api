@@ -29,6 +29,9 @@ classifiers = [
 ]
 packages = [{include = "accsyn_api", from = "source"}]
 
+[tool.poetry.scripts]
+test = "accsyn_api._devtools:test"
+
 [tool.poetry.dependencies]
 python = "^3.8"
 requests = "^2.25.0"
@@ -43,6 +46,7 @@ flake8 = "^5.0.0"
 mypy = "^1.0.0"
 pytest = "^7.0.0"
 pytest-cov = "^4.0.0"
+pytest-order = "^1.0.0"
 
 [tool.poetry.group.docs]
 optional = true

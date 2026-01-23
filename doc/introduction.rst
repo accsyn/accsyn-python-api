@@ -1,5 +1,5 @@
 ..
-    :copyright: Copyright (c) 2021 accsyn
+    :copyright: Copyright (c) 2026 accsyn
 
 .. _introduction:
 
@@ -32,7 +32,7 @@ Limitations:
 Other resources:
 ================
 
-This documentation the most common use cases, syntax of API calls are also shown within the accsyn webapp/admin pages @ https://<yourdomain>.accsyn.com, at the bottom of each page.
+This documentation the most common use cases, syntax of API calls are also shown within the accsyn webapp/admin pages @ https://accsyn.io, at the bottom of each page.
 
 Our tutorials covers how to setup accsyn to achieve a certain functionality and many of them come with complete source code, find the tutorials here: 
 
