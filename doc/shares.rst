@@ -163,18 +163,18 @@ Create a standard share, beneath a root share (employee clearance allowed)::
         "path":"_SHARED_ASSETS",
     })
 
-In both cases, if creation was successful, a dictionary will be returned on the same format as a query would return.
+In both cases, if creation was successful, a dictionary will be returned on the same format as a share query would return.
 
 Assign server
 *************
 
 Upon creation, a root share is not served by a client yet. This is required to be able to perform file transfers.
 
-To assign a server to a root share (admin role required)::
+To assign a server to a volume on the main site (hq) (admin role required)::  
 
-    retval = session.assign("Share", "server", {
-        "share":"61779c54b80099ea066b0604",
-        "client": "61779c54b80099ea066b0604",
+    retval = session.assign("Volume", "server", {
+        "volume":"61779c54b80099ea066b0604",
+        "server": "66867188e8b00e18156bcf51",
         "main":True
     })
 
@@ -188,11 +188,11 @@ Return value will be True if operation was successful. Ongoing jobs will not be 
 
 
 
-To assign a site server, e.g. a server that will serve a proxy of a root share on a remote office/cloud location::
+To assign a site server, e.g. a server that will serve a volume locally at a remote office/cloud location::
 
-    retval = session.assign("Share", "server", {
-        "share":"61779c54b80099ea066b0604",
-        "client": "61779c54b80099ea066b0604",
+    retval = session.assign("Volume", "server", {
+        "volume":"61779c54b80099ea066b0604",
+        "server": "66867188e8b00e18156bcf51",
         "site":True
     })
 
@@ -207,7 +207,7 @@ List servers
 
 To list which servers are serving a root share::
 
-    retval = session.assignments("Share", "61779c54b80099ea066b0604")
+    retval = session.assignments("Volume", "61779c54b80099ea066b0604")
 
 Return value will be a list of dictionaries with assignment data.
 
@@ -215,16 +215,16 @@ Return value will be a list of dictionaries with assignment data.
 De-assign server
 ****************
 
-To stop a server from serving a root share, call the 'deassign' API function (admin role required)::
+To stop a server from serving a volume, call the 'deassign' API function (admin role required)::
 
-    retval = session.deassign("Share", "server", {
-        "share":"standard",
-        "client": "61779c54b80099ea066b0604",
+    retval = session.deassign("Volume", "server", {
+        "volume":"61779c54b80099ea066b0604",
+        "server": "66867188e8b00e18156bcf51",
         "main":True
     })
 
 Return value will be True if operation was successful. Ongoing jobs will not be affected by this change, new jobs will
-not be able to be submitted until a new server is assigned.
+not be able to be submitted until a new server is assigned for the volume.
 
 
 Modify

@@ -283,7 +283,7 @@ class Session(object):
                 if "message" in response:
                     raise AccsynException(response["message"])
                 result = response.get('result', dict())
-                assert "hostname" in result, "No API endpoint hostname were provided for workspace {}!".format(
+                assert "hostname" in result, "No API endpoint hostname were provided for workspace dict()!".format(
                     workspace
                 )
                 self._hostname = result["hostname"]
@@ -584,7 +584,7 @@ class Session(object):
         assert 0 < len(entityid or "") and Session._is_str(
             entityid
         ), "Invalid entity ID supplied, must be of string type!"
-        assert 0 < len(data or {}) and isinstance(data, dict), "Invalid data supplied, must be dict and have content!"
+        assert 0 < len(data or dict()) and isinstance(data, dict), "Invalid data supplied, must be dict and have content!"
         response = self._event(
             "PUT",
             f"{entitytype}/edit",
@@ -649,7 +649,7 @@ class Session(object):
     def assign(
         self,
         entitytype_parent: str,
-        entitytype_child: str,
+        entitytype: str,
         data: Dict[str, Any],
     ) -> bool:
         """
@@ -657,29 +657,29 @@ class Session(object):
 
         .. versionadded:: 2.0
 
-        :param entitytype_parent: The parent entity type to assign child entity to.
-        :param entitytype_child: The child entity type to assign to parent entity.
-        :param data: Assignment data, should contain parent and child entity ids.
+        :param entitytype_parent: The parent entity type to assign entity to.
+        :param entitytype_other: The entity type to assign to parent entity.
+        :param data: Assignment data, should contain parent entity id and entity ids.
         :return: True if assignment was a success, exception otherwise.
         """
         assert 0 < len(entitytype_parent or "") and Session._is_str(
             entitytype_parent
         ), "Invalid parent entity type supplied, must be of string type!"
-        assert 0 < len(entitytype_child or "") and Session._is_str(
-            entitytype_child
-        ), "Invalid child entity type supplied, must be of string type!"
+        assert 0 < len(entitytype or "") and Session._is_str(
+            entitytype
+        ), "Invalid entity type supplied, must be of string type!"
         entitytype_parent = entitytype_parent.lower().strip()
-        entitytype_child = entitytype_child.lower().strip()
+        entitytype = entitytype.lower().strip()
         assert (
-            not data is None and isinstance(data, dict) and (0 < len(data or {}))
+            not data is None and isinstance(data, dict) and (0 < len(data or dict()))
         ), "Invalid assignment data supplied, must be a dict with values!"
         response = None
-        if entitytype_parent in ["volume", "share"] and entitytype_child == "server":
+        if entitytype_parent in ["volume", "share"] and entitytype in ["server", "client"]:
             # Assign a server to a share, expect share and client supplied
-            share_id = data.get("share")
-            assert re.match("^[a-z0-9]{24}$", (share_id or "")), "Please supply share ID with assignment data!"
-            client_id = data.get("client")
-            assert re.match("^[a-z0-9]{24}$", (client_id or "")), "Please supply client ID with assignment data!"
+            share_id = data.get("volume", data.get("share"))
+            assert re.match("^[a-z0-9]{24}$", (share_id or "")), "Please supply parent entity ID as 'volume' with assignment data!"
+            client_id = data.get("server", data.get("client"))
+            assert re.match("^[a-z0-9]{24}$", (client_id or "")), "Please supply entity ID as 'server' with assignment data!"
             what = None
             if data.get("main") is True:
                 what = "server"
@@ -689,9 +689,21 @@ class Session(object):
                 raise Exception("Please supply type of server assignment (main " "or site) in assignment data!")
             response = self._event(
                 "PUT",
-                f"{entitytype_parent}/edit",
+                f"share/edit",
                 dict([(what, client_id)]),
                 entityid=share_id,
+            )
+        elif entitytype_parent in ["delivery"] and entitytype in ["user"]:
+            # Assign a user to a delivery, expect delivery and user supplied
+            delivery_id = data.get("delivery")
+            assert re.match("^[a-z0-9]{24}$", (delivery_id or "")), "Please supply parent entity ID as 'delivery' with assignment data!"
+            user_id = data.get("user")
+            assert re.match("^[a-z0-9]{24}$", (user_id or "")), "Please supply entity ID as 'user' with assignment data!"
+            response = self._event(
+                "PUT",
+                f"job/recipient/add",
+                dict(recipient=user_id),
+                entityid=delivery_id,
             )
         if response:
             return True
@@ -700,7 +712,9 @@ class Session(object):
 
     def assignments(self, entitytype: str, entityid: str) -> List[Dict[str, Any]]:
         """
-        Return list of assigned child entities.
+        Return list of assigned entities.
+
+        This can be used to list servers assigned to a volume, or recipients (user) assigned to a delivery.
 
         .. versionadded:: 2.0
 
@@ -711,10 +725,20 @@ class Session(object):
             entitytype
         ), "Invalid parent entity type supplied, must be of string type!"
         if entitytype.lower() in ["volume", "share"]: # share is deprecated since 3.2
+            # List servers assigned to a volume
             response = self._event(
                 "GET",
                 f"{entitytype}/servers",
-                {},
+                dict(),
+                entityid=entityid,
+            )
+            return response["result"]
+        elif entitytype.lower() in ["delivery"]:
+            # List recipients assigned to a delivery
+            response = self._event(
+                "GET",
+                f"job/recipients",
+                dict(),
                 entityid=entityid,
             )
             return response["result"]
@@ -724,7 +748,7 @@ class Session(object):
     def deassign(
         self,
         entitytype_parent: str,
-        entitytype_child: str,
+        entitytype: str,
         data: Dict[str, Any],
     ) -> bool:
         """
@@ -732,29 +756,29 @@ class Session(object):
 
         .. versionadded:: 2.0
 
-        :param entitytype_parent: The parent entity type to deassign child entity from
-        :param entitytype_child: The child entity type to deassign from parent entity
-        :param data: De-assignment data, should contain parent and child entity ids + additional information as required
+        :param entitytype_parent: The parent entity type to deassign entity from
+        :param entitytype: The entity type to deassign from parent entity
+        :param data: De-assignment data, should contain parent entity id and entity ids + additional information as required
         :return: True if deassignment was a success, exception otherwise.
         """
         assert 0 < len(entitytype_parent or "") and Session._is_str(
             entitytype_parent
         ), "Invalid parent entity type supplied, must be of string type!"
-        assert 0 < len(entitytype_child or "") and Session._is_str(
-            entitytype_child
-        ), "Invalid child entity type supplied, must be of string type!"
+        assert 0 < len(entitytype or "") and Session._is_str(
+            entitytype
+        ), "Invalid centity type supplied, must be of string type!"
         entitytype_parent = entitytype_parent.lower().strip()
-        entitytype_child = entitytype_child.lower().strip()
+        entitytype = entitytype.lower().strip()
         assert (
-            not data is None and isinstance(data, dict) and (0 < len(data or {}))
+            not data is None and isinstance(data, dict) and (0 < len(data or dict()))
         ), "Invalid de-assignment data supplied, must be a dict with values!"
         response = None
-        if entitytype_parent == "share" and entitytype_child == "server":
+        if entitytype_parent in ["volume", "share"] and entitytype == "server":
             # Assign a server to a share, expect share and client supplied
-            share_id = data.get("share")
-            assert re.match("^[a-z0-9]{24}$", (share_id or "")), "Please supply share ID with de-assignment data!"
-            client_id = data.get("client")
-            assert re.match("^[a-z0-9]{24}$", (client_id or "")), "Please supply client ID with de-assignment data!"
+            share_id = data.get("volume", data.get("share"))
+            assert re.match("^[a-z0-9]{24}$", (share_id or "")), "Please supply parent entity ID as 'volume' with de-assignment data!"
+            client_id = data.get("server", data.get("client"))
+            assert re.match("^[a-z0-9]{24}$", (client_id or "")), "Please supply entity ID as 'server' with de-assignment data!"
             what = None
             if data.get("main") is True:
                 what = "server"
@@ -767,6 +791,18 @@ class Session(object):
                 f"{entitytype_parent}/edit",
                 dict([(f"{what}_clear", client_id)]),
                 entityid=share_id,
+            )
+        elif entitytype_parent in ["delivery"] and entitytype == "user":
+            # De-assign a user from a delivery, expect delivery and user supplied
+            delivery_id = data.get("delivery")
+            assert re.match("^[a-z0-9]{24}$", (delivery_id or "")), "Please supply parent entity ID as 'delivery' with de-assignment data!"
+            user_id = data.get("user")
+            assert re.match("^[a-z0-9]{24}$", (user_id or "")), "Please supply entity ID as 'user' with de-assignment data!"
+            response = self._event(
+                "DELETE",
+                f"job/recipient",
+                dict(recipient=user_id),
+                entityid=delivery_id,
             )
         if response:
             return True
@@ -802,7 +838,7 @@ class Session(object):
         response = self._event(
             "DELETE",
             f"{entitytype}/deactivate",
-            {},
+            dict(),
             entityid=entityid,
         )
         if response:
@@ -826,7 +862,7 @@ class Session(object):
         response = self._event(
             "DELETE",
             f"{entitytype}/delete",
-            {},
+            dict(),
             entityid=entityid,
         )
         if response:
@@ -1131,7 +1167,7 @@ class Session(object):
         result = self._event(
             "GET",
             "client/find",
-            {},
+            dict(),
             query=f"user={self._uid} AND code={Session.get_hostname()} AND type={CLIENT_TYPE_APP}",
         )["result"]
         retval = None
@@ -1157,7 +1193,7 @@ class Session(object):
         result = self._event(
             "GET",
             "client/find",
-            {},
+            dict(),
             query=f"user={self._uid} AND code={Session.get_hostname()} AND (type={CLIENT_TYPE_SERVER} OR type={CLIENT_TYPE_USERSERVER})",
         )["result"]
         retval = None
