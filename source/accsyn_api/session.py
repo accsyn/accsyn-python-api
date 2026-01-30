@@ -334,7 +334,7 @@ class Session(object):
     @staticmethod
     def str(d: Optional[Dict[str, Any]], indent: int = 4) -> str:
         """Return a string representation of a dict"""
-        return json.dumps(d, default=Session._json_serial, indent=indent) if d is not None else ""
+        return json.dumps(d, default=Session._json_serial, indent=indent) if d is not None else "None"
 
     def get_last_message(self) -> Optional[str]:
         """Retreive error message from last API call."""
