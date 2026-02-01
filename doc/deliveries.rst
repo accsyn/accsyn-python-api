@@ -3,21 +3,21 @@
 
 .. _deliveries:
 
-***************
-File Deliveries
-***************
+**********
+Deliveries
+**********
 
-A an accsyn file delivery is a persistent job that delivers one or more files to one or more recipients.
+A an accsyn file delivery is a persistent job that delivers one or more files to one or more recipients and 
+is similar to a shared collection of files, but streamlined to make it simple for the recipient to 
+download and action the delivery using a standard web browser.
 
-Documentation: `https://support.accsyn.com/delivery`
+Documentation: `https://support.accsyn.com/delivery <https://support.accsyn.com/delivery>`_
 
 
 A file delivery can either be created as a temporary delivery that will 
 have files uploaded to it and then be submitted, or be created
 from existing files on an accsyn storage volume/share and submitted immediately.
 
-A delivery is similar to a shared collection of files, but streamlined to make it simple for the recipient to 
-download and action the delivery using a standard web browser.
 
 
 Create a temporary delivery
@@ -33,7 +33,7 @@ To create a temporary delivery, supply the name and the init status::
         "status":"init"
     })
 
-This will return a list containing the created delivery, as would have been returned by a delivery find query.
+This will return the created delivery, as would have been returned by a delivery find query.
 
 The delivery will be kept in the init state for 8 hours (default) until it expires and is deleted.
 
@@ -143,7 +143,7 @@ The delivery will be submitted and the user will receive an email with a link to
 The files will be available for download for the default duration of one month.
 
 List files and folders associated with a delivery
-------------------------------------------------
+-------------------------------------------------
 
 To list files and folders that has been sent with a delivery::
 
@@ -244,10 +244,10 @@ To create a temporary upload request, supply the name and the init status::
         "recipients":["demo.user@accsyn.com"]
     })
 
-This will return a list containing the created upload request, as would have been returned by a request find query. The request will be 
+This will return the created upload request, as would have been returned by a request find query. The request will be 
 submitted immediately and the user will receive an email with a link to the request.
 
-To create a temp request that will be submitted later:
+To create a temp request that will be submitted later::
 
     upload_request = session.create("Request",{
         "name":"Project material",
@@ -261,15 +261,15 @@ Add at least one recipient and then submit the request by setting the status to 
 Create upload reqest to a storage folder
 ----------------------------------------
 
-To create an upload request to a storage folder, supply the path to the folder and the recipients::
+To create an upload request to a folder on the the default volume supply the path to the folder and the recipients::
 
     upload_request = session.create("Request",{
-        "name":"Project material",
-        "destination":"share=projects/source/from_client",
+        "name":"Provide project material",
+        "destination":"share=(default)/source/from_client",
         "recipients":["demo.user@accsyn.com"]
     })
 
-This will return a list containing the created upload request, as would have been returned by a request find query. The request will be 
+This will return the created upload request, as would have been returned by a request find query. The request will be 
 submitted immediately and the user will receive an email with a link to the request.
 
 To create a request that will be submitted later, supply with the 'init' status (see above)

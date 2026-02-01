@@ -1,17 +1,26 @@
 ..
     :copyright: Copyright (c) 2021 accsyn
 
-.. _shares:
+.. _filesharing:
 
-******
-Shares
-******
+************
+File Sharing
+************
 
-An accsyn share defines a physical location on storage, from which files are allowed to be served. There are two main types of shares:
+Files and folders residing on accsyn storage volumes can be shared with other users, either through a delivery or through the accsyn file sharing engine.
 
-* **Root share**; The base directory, were accsyn has access and were shares can live. Users having the default 'employee' role has full access to root shares, restricted users have not.
+Documentation: `https://support.accsyn.com/file-sharing <https://support.accsyn.com/file-sharing>`_
 
-* **Share**; A directory beneath a root share, at a relative path, from which restricted users can be given access through ACLs (access control lists). There are **Standard** shares and the **User** (a.k.a Home share) which is always created upon user activation, providing an initial default area for file access.
+
+An accsyn 'share' is the base entity used to describe the following storage entities avaiable through the API:
+
+* **Volume**; The base directory, were accsyn has access and files can be shared/delivered from or to. Users having the default 'employee' role has full access to volumes beeing granted access to, restricted users have not.
+
+* **Folder**; A shared folder beneath a volume, at a relative path, from which restricted users can be given access through ACLs (access control lists). 
+
+* **Home**; A shared folder designated to a user, providing an initial default area for file access. Home folders are not mandatory for operation, but accsyn can be configured to automatically create a home folder for each user upon user activation.
+
+* **Collection**; A virtual shared folder containing one or more files and/or folders to be granted access through ACLs to one or more standard users.
 
 
 Query
