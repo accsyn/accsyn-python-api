@@ -556,9 +556,9 @@ class Session(object):
         :return:
         """
         d = self._decode_query(query)
-        data = {
-            "attributes": attributes,
-        }
+        data = dict(
+            attributes=attributes,
+        )
         if not time is None:
             data["time"] = time
         d = self._event("GET", f"{d['entitytype']}/metrics", data, query=d.get("expression"))
@@ -680,17 +680,12 @@ class Session(object):
             assert re.match("^[a-z0-9]{24}$", (share_id or "")), "Please supply parent entity ID as 'volume' with assignment data!"
             client_id = data.get("server", data.get("client"))
             assert re.match("^[a-z0-9]{24}$", (client_id or "")), "Please supply entity ID as 'server' with assignment data!"
-            what = None
-            if data.get("main") is True:
-                what = "server"
-            elif data.get("site") is True:
-                what = "siteserver"
-            else:
-                raise Exception("Please supply type of server assignment (main " "or site) in assignment data!")
             response = self._event(
                 "PUT",
-                f"share/edit",
-                dict([(what, client_id)]),
+                f"share/server",
+                dict(
+                    client=client_id,
+                ),
                 entityid=share_id,
             )
         elif entitytype_parent in ["delivery"] and entitytype in ["user"]:
@@ -705,8 +700,27 @@ class Session(object):
                 dict(recipient=user_id),
                 entityid=delivery_id,
             )
-        if response:
-            return True
+        elif entitytype_parent in ["volume","folder","home","collection"] and entitytype in ["user"]:
+            # Assign an employee user to a volume
+            volume_id = data.get("volume")
+            assert re.match("^[a-z0-9]{24}$", (volume_id or "")), "Please supply parent entity ID as 'volume' with assignment data!"
+            user_id = data.get("user")
+            assert re.match("^[a-z0-9]{24}$", (user_id or "")), "Please supply entity ID as 'user' with assignment data!"
+            payload = dict(
+                entity="user:{}".format(user_id),
+                target="share:{}".format(volume_id),
+                read=data.get("read", True),
+                write=data.get("write", True),
+                notify=data.get("notify", True),
+                message=data.get("message", "")
+            )
+            response = self._event(
+                "POST",
+                f"acl/create",
+                payload
+            )
+        if response is not None:
+            return response["result"]
         else:
             raise Exception("Unsupported assignment operation!")
 
@@ -714,7 +728,7 @@ class Session(object):
         """
         Return list of assigned entities.
 
-        This can be used to list servers assigned to a volume, or recipients (user) assigned to a delivery.
+        This can be used to list servers assigned to a volume.
 
         .. versionadded:: 2.0
 
@@ -729,15 +743,6 @@ class Session(object):
             response = self._event(
                 "GET",
                 f"{entitytype}/servers",
-                dict(),
-                entityid=entityid,
-            )
-            return response["result"]
-        elif entitytype.lower() in ["delivery"]:
-            # List recipients assigned to a delivery
-            response = self._event(
-                "GET",
-                f"job/recipients",
                 dict(),
                 entityid=entityid,
             )
@@ -779,35 +784,221 @@ class Session(object):
             assert re.match("^[a-z0-9]{24}$", (share_id or "")), "Please supply parent entity ID as 'volume' with de-assignment data!"
             client_id = data.get("server", data.get("client"))
             assert re.match("^[a-z0-9]{24}$", (client_id or "")), "Please supply entity ID as 'server' with de-assignment data!"
-            what = None
-            if data.get("main") is True:
-                what = "server"
-            elif data.get("site") is True:
-                what = "siteserver"
-            else:
-                raise Exception("Please supply type of server assignment (main " "or site) in assignment data!")
             response = self._event(
-                "PUT",
-                f"{entitytype_parent}/edit",
-                dict([(f"{what}_clear", client_id)]),
+                "DELETE",
+                f"{entitytype_parent}/server",
+                dict(client=client_id),
                 entityid=share_id,
             )
-        elif entitytype_parent in ["delivery"] and entitytype == "user":
+        if response is not None:
+            return response["result"]
+        else:
+            raise Exception("Unsupported assignment operation!")
+
+     # Entity access grant / revocation
+
+    def grant(
+        self,
+        entitytype: str,
+        entitityid: str,
+        targettype: str,
+        targetid: str,
+        data: Dict[str, Any],
+    ) -> bool:
+        """
+        Grant access to an entity.
+
+        .. versionadded:: 3.2
+
+        :param entitytype: The entity type to grant access to.
+        :param entitityid: The id of the entity to grant access to.
+        :param targettype: The entity type to grant access.
+        :param targetid: The id of the entity to grant access.
+        :param data: ACL data, should permissions and other data.
+        :return: True if assignment was a success, exception otherwise.
+        """
+        assert 0 < len(entitytype or "") and Session._is_str(
+            entitytype
+        ), "Invalid parent entity type supplied, must be of string type!"
+        entitytype = entitytype.lower().strip()
+        assert 0 < len(entitityid or "") and Session._is_str(
+            entitityid
+        ), "Invalid entity ID supplied, must be of string type!"
+        entitityid = entitityid.lower().strip()
+        assert re.match("^[a-z0-9]{24}$", (entitityid or "")), "Please supply a valid entity ID!"
+        assert 0 < len(targettype or "") and Session._is_str(
+            targettype
+        ), "Invalid target entity type supplied, must be of string type!"
+        targettype = targettype.lower().strip()
+        assert 0 < len(targetid or "") and Session._is_str(
+            targetid
+        ), "Invalid entity type supplied, must be of string type!"
+        targetid = targetid.lower().strip()
+        assert re.match("^[a-z0-9]{24}$", (targetid or "")), "Please supply a target valid ID!"
+        assert (
+            not data is None and isinstance(data, dict) and (0 < len(data or dict()))
+        ), "Invalid assignment data supplied, must be a dict with values!"
+        result = None
+        if entitytype in ["delivery"] and targettype in ["user"]:
+            # Assign a user to a delivery, expect delivery and user supplied
+            delivery_id = entitityid
+            assert re.match("^[a-z0-9]{24}$", (delivery_id or "")), "Please supply parent entity ID as 'delivery' with acl data!"
+            user_id = targetid
+            assert re.match("^[a-z0-9]{24}$", (user_id or "")), "Please supply entity ID as 'user' with acl data!"
+            response = self._event(
+                "PUT",
+                f"job/recipient/add",
+                dict(recipient=user_id),
+                entityid=delivery_id,
+            )
+            result = response["result"]
+        elif entitytype in ["volume","folder","home","collection"] and targettype in ["user"]:
+            # Assign an employee user to a volume
+            volume_id = entitityid
+            assert re.match("^[a-z0-9]{24}$", (volume_id or "")), "Please supply parent entity ID as 'volume' with acl data!"
+            user_id = targetid
+            assert re.match("^[a-z0-9]{24}$", (user_id or "")), "Please supply entity ID as 'user' with acl data!"
+            payload = dict(
+                entity="user:{}".format(user_id),
+                target="share:{}".format(volume_id),
+                read=data.get("read", True),
+                write=data.get("write", True),
+                notify=data.get("notify", True),
+                message=data.get("message", ""),
+                path=data.get("path", "/"),
+            )
+            response = self._event(
+                "POST",
+                f"acl/create",
+                payload
+            )
+            acl = response["result"][0]
+            result = dict(
+                user=acl["entity"].split(":")[1],
+                user_hr=acl.get("entity_hr", ""),
+                read=acl["read"],
+                write=acl["write"],
+                acknowledged=acl.get("acknowledged", False),
+            )
+        if result is not None:
+            return result
+        else:
+            raise Exception("Unsupported grant access operation!")
+
+    def access(self, entitytype: str, entityid: str) -> List[Dict[str, Any]]:
+        """
+        Return list of ACLs for an entity.
+
+        This can be used to list user with access to a delivery or a share (volume, folder, home, collection).
+
+        .. versionadded:: 3.2
+
+        :param entitytype: The entity type to list access for (delivery, volume, folder, home, collection).
+        :param entityid: The id of the entity to list access for.
+        :return: List of dictionaries.
+        """
+        assert 0 < len(entitytype or "") and Session._is_str(
+            entitytype
+        ), "Invalid parent entity type supplied, must be of string type!"
+        if entitytype.lower() in ["delivery"]:
+            # List recipients assigned to a delivery
+            response = self._event(
+                "GET",
+                f"job/recipients",
+                dict(),
+                entityid=entityid,
+            )
+            return response["result"]
+        elif entitytype.lower() in ["volume", "folder", "home","collection"]:
+            # List users with access to a share
+            response = self._event(
+                "GET",
+                f"acl/find",
+                dict(),
+                query="acl WHERE target=share:{}".format(entityid),
+            )
+            result = []
+            for acl in response["result"]:
+                result.append(dict(
+                    user=acl["entity"].split(":")[1],
+                    user_hr=acl.get("entity_hr", ""),
+                    read=acl["read"],
+                    write=acl["write"],
+                    acknowledged=acl.get("acknowledged", False),
+                    path=acl.get("path", "/"),
+                ))
+            return result
+        else:
+            raise Exception("Unsupported access operation!")
+
+    def revoke(
+        self,
+        entitytype: str,
+        entityid: str,
+        targettype: str,
+        targetid: str
+    ) -> bool:
+        """
+        Revoke access to an entity.
+
+        .. versionadded:: 3.2
+
+        :param entity: The parent entity type to revoke access from.
+        :param target: The entity type to revoke access.
+        :param data: ACL data, should contain parent entity id and entity ids.
+        :return: True if revocation was a success, exception otherwise.
+        """
+        assert 0 < len(entitytype or "") and Session._is_str(
+            entitytype
+        ), "Invalid parent entity type supplied, must be of string type!"
+        entitytype = entitytype.lower().strip()
+        assert 0 < len(entityid or "") and Session._is_str(
+            entityid
+        ), "Invalid entity id supplied, must be of string type!"
+        entityid = entityid.lower().strip()
+        assert 0 < len(targettype or "") and Session._is_str(
+            targettype
+        ), "Invalid target entity type supplied, must be of string type!"
+        targettype = targettype.lower().strip()
+        assert 0 < len(targetid or "") and Session._is_str(
+            targetid
+        ), "Invalid target entity id supplied, must be of string type!"
+        targetid = targetid.lower().strip()
+        response = None
+        if entitytype in ["delivery"] and targettype == "user":
             # De-assign a user from a delivery, expect delivery and user supplied
-            delivery_id = data.get("delivery")
-            assert re.match("^[a-z0-9]{24}$", (delivery_id or "")), "Please supply parent entity ID as 'delivery' with de-assignment data!"
-            user_id = data.get("user")
-            assert re.match("^[a-z0-9]{24}$", (user_id or "")), "Please supply entity ID as 'user' with de-assignment data!"
+            delivery_id = entityid
+            assert re.match("^[a-z0-9]{24}$", (delivery_id or "")), "Please supply parent entity ID as 'delivery' with revoke data!"
+            user_id = targetid
+            assert re.match("^[a-z0-9]{24}$", (user_id or "")), "Please supply entity ID as 'user' with revoke data!"
             response = self._event(
                 "DELETE",
                 f"job/recipient",
                 dict(recipient=user_id),
                 entityid=delivery_id,
             )
-        if response:
-            return True
+        elif entitytype in ["volume","folder","home","collection"] and targettype == "user":
+            # De-assign a user from a share
+            share_id = entityid
+            assert re.match("^[a-z0-9]{24}$", (share_id or "")), "Please supply parent entity ID as 'folder', 'home' or 'collection' with revoke data!"
+            user_id = targetid
+            assert re.match("^[a-z0-9]{24}$", (user_id or "")), "Please supply entity ID as 'user' with revoke data!"
+            # First, located the ACL
+            response = self._event("GET", f"acl/find", dict(), query="acl WHERE entity=user:{} AND target=share:{}".format(user_id, share_id))
+            acls = response["result"]
+            if len(acls) == 0:
+                raise AccsynException("No ACL found for user {} and share {}".format(user_id, share_id))
+            response = self._event(
+                "DELETE",
+                f"acl/delete",
+                dict(),
+                entityid=acls[0]["id"],
+            )
+        if response is not None:
+            return response["result"]
         else:
-            raise Exception("Unsupported assignment operation!")
+            raise Exception("Unsupported revoke access operation!")
+
 
     # Deactivate/Delete an entity
 
@@ -903,13 +1094,13 @@ class Session(object):
         assert 0 < len(path or "") and (
             Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
         ), "No path supplied, or not a string/list/dict!"
-        data = {
-            "op": "ls",
-            "path": path,
-            "download": True,
-            "recursive": recursive,
-            "getsize": getsize,
-        }
+        data = dict(
+            op="ls",
+            path=path,
+            download=True,
+            recursive=recursive,
+            getsize=getsize,
+        )
         if maxdepth:
             data["maxdepth"] = maxdepth
         if directories_only:
@@ -946,10 +1137,10 @@ class Session(object):
         assert 0 < len(path or "") and (
             Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
         ), "No path supplied, or not a string/list/dict!"
-        data = {
-            "op": "getsize",
-            "path": path,
-        }
+        data = dict(
+            op="getsize",
+            path=path,
+        )
         if include:
             data["include"] = include
         if exclude:
@@ -970,10 +1161,10 @@ class Session(object):
         assert 0 < len(path or "") and (
             Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
         ), "No path supplied, or not a string/list/dict!"
-        data = {
-            "op": "exists",
-            "path": path,
-        }
+        data = dict(
+            op="exists",
+            path=path,
+        )
         response = self._event("GET", "workspace/file", data)
         if response:
             return response["result"]
@@ -992,10 +1183,10 @@ class Session(object):
         assert 0 < len(path or "") and (
             Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
         ), "No path supplied, or not a string/list/dict!"
-        data = {
-            "op": "mkdir",
-            "path": path,
-        }
+        data = dict(
+            op="mkdir",
+            path=path,
+        )
         response = self._event("POST", "workspace/file", data)
         if response:
             return response["result"]
@@ -1020,11 +1211,11 @@ class Session(object):
         assert 0 < len(path_to or "") and (
             Session._is_str(path_to) or isinstance(path_to, dict) or isinstance(path_to, list)
         ), "No destination path supplied, or not a string/list/dict!"
-        data = {
-            "op": "rename",
-            "path": path,
-            "path_to": path_to,
-        }
+        data = dict(
+            op="rename",
+            path=path,
+            path_to=path_to,
+        )
         response = self._event("PUT", "workspace/file", data)
         if response:
             return response["result"]
@@ -1049,11 +1240,11 @@ class Session(object):
         assert 0 < len(path_dst or "") and (
             Session._is_str(path_dst) or isinstance(path_dst, dict) or isinstance(path_dst, list)
         ), "No destination path supplied, or not a string/list/dict!"
-        data = {
-            "op": "move",
-            "path": path_src,
-            "path_to": path_dst,
-        }
+        data = dict(
+            op="move",
+            path=path_src,
+            path_to=path_dst,
+        )
         response = self._event("PUT", "workspace/file", data)
         if response:
             return response["result"]
@@ -1072,10 +1263,10 @@ class Session(object):
         assert 0 < len(path or "") and (
             Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
         ), "No path supplied, or not a string/list/dict!"
-        data = {
-            "op": "mkdir",
-            "path": path,
-        }
+        data = dict(
+            op="mkdir",
+            path=path,
+        )
         response = self._event("POST", "workspace/file", data)
         if response:
             return response["result"]
@@ -1430,16 +1621,16 @@ class Session(object):
     ) -> Dict[str, Any]:
         """Utility; Construct an event and send using REST to accsyn backend."""
         assert self._uid, "Login before posting event!"
-        event = {
-            "audience": "api",
-            "workspace": self._workspace,
-            "eid": str(uuid.uuid4()),
-            "session": self._session_id,
-            "uri": uri,
-            "ident": self._username,
-            "created": datetime.datetime.now(),
-            "hostname": Session.get_hostname(),
-        }
+        event = dict(
+            audience="api",
+            workspace=self._workspace,
+            eid=str(uuid.uuid4()),
+            session=self._session_id,
+            uri=uri,
+            ident=self._username,
+            created=datetime.datetime.now(),
+            hostname=Session.get_hostname(),
+        )
         did_compress_payload = False
         if data is not None and 0 < len(data):
             # Check if should compress payload
@@ -1478,7 +1669,7 @@ class Session(object):
             event["query"] = query
         if entityid:
             event["id"] = entityid
-        retval = self._rest(
+        response = self._rest(
             method,
             hostname=self._hostname,
             uri="/event",
@@ -1488,7 +1679,7 @@ class Session(object):
             port=self._port,
             quiet=quiet,
         )
-        return retval
+        return response
 
     def _decode_query(self, query: str) -> Dict[str, str]:
         # Scenarios:
