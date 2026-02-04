@@ -34,7 +34,7 @@ To list all volumes::
     volumes = session.find('Volume')
 
 
-A list of dictionaries will be returned containing root share attributes::
+A list of dictionaries will be returned containing volume attributes::
 
     {
         "code": "projects",
@@ -185,7 +185,7 @@ Return value will be True if operation was successful. Ongoing jobs will not be 
 
 .. note::
 
-    * The server has to be authenticated with and admin user account to be able to serve root shares.
+    * The server has to be authenticated with and admin user account to be able to serve volumes.
     * All file transfer endpoints are called 'clients' within accsyn, server is a role which a client can have and means it will be the party listening for the incoming TCP connection from remote p2p client.
 
 
@@ -229,12 +229,12 @@ User having the role "employee" has no default access to a volume, access must b
 
 .. note::
 
-    The backend acl entity is not directly exposed through the API, these are among other things also used to bind users to deliveries internally within accsyn.
+    The backend acl entity is not directly exposed through the API, these are among other things is also used to bind users to deliveries internally within accsyn.
 
 
 To grant access to an employee, use the session assign function::
 
-    acl = session.grant("Volume", "664b6d76e43eb396e5e55419", "user", "61779c54b80099ea066b0604")
+    acl = session.grant("User", "61779c54b80099ea066b0604", "Volume", "664b6d76e43eb396e5e55419")
 
 Return value will be a dictionary with same form as the access list query would return. 
 
@@ -254,7 +254,7 @@ Revoke access to a volume
 
 To revoke access to a volume::
 
-    acl = session.revoke("Volume", "664b6d76e43eb396e5e55419", "user", "61779c54b80099ea066b0604")
+    acl = session.revoke("User", "61779c54b80099ea066b0604", "Volume", "664b6d76e43eb396e5e55419")
 
 Return value will be true if operation was successful. False will be returned if the user did not have access to the volume.
 
@@ -275,8 +275,8 @@ Return value will be True if operation was successful.
     * No files or folders on disk will be touched.
 
 
-Working with shared folders
-===========================
+Working with shared folders and homes
+=====================================
 
 List folders
 ------------
@@ -349,7 +349,7 @@ Here follow a listing of share statuses:
      - Share is offline and disabled - all related file transfers are put on hold.
      - YES
    * - offline
-     - Share is enabled but the root share is offline - not server, missing or have other issues.
+     - Share is enabled but the volume is offline - no server, missing or have other issues.
      -
    * - disabled-offline
      - Share is online but disabled - all related file transfers are put on hold.
@@ -376,6 +376,15 @@ In both cases, if creation was successful, a dictionary will be returned on the 
 Create a home
 -------------
 
+To create a home, you just need to supply the user email address(code) or ID::
+
+    home = session.create("Home", {
+        "user": "693bf3168d4e0d0c2afe1d53",
+    })
+
+A dictionary will be returned containing home attributes on the same format as a folder query would return.
+
+
 Granting access to a shared folder/home
 ----------------------------------------
 
@@ -384,7 +393,7 @@ A shared folder or home is not automatically accessible to any user, access must
 
 To grant access to a user, use the session assign function::
 
-    acl = session.grant("Folder", "673cb38dea344d0d17969018", "user",  "61779c54b80099ea066b0604", {
+    acl = session.grant("User", "61779c54b80099ea066b0604", "Folder", "673cb38dea344d0d17969018", {
         "path": "FROM_VENDORS/acmevfx",
         "read": True,
         "write": True,
@@ -416,7 +425,7 @@ Revoke access to a shared folder/home
 
 To remove an ACL, use the session deassign function::
 
-    acl = session.revoke("Folder", "673cb38dea344d0d17969018", "user", "61779c54b80099ea066b0604")
+    acl = session.revoke("User", "61779c54b80099ea066b0604", "Folder", "673cb38dea344d0d17969018")
 
 Return value will be True if operation was successful, false if the user did not have access to the folder.
 
@@ -426,36 +435,60 @@ Modify a shared folder/home
 
 To disable a share::
 
-    session.update('Share', '614d660de50d45bb027c9bdd', {'status':"disabled"})
+    session.update("Folder", "614d660de50d45bb027c9bdd", {"status" :"disabled"})
 
 Configuring a queue which will become default for new jobs using share::
 
-    session.update('Share', '614d660de50d45bb027c9bdd', {'queue':"5ac60a8b1da7ee7eb4d146cf"})
+    session.update("Folder", "614d660de50d45bb027c9bdd", {"queue" :"5ac60a8b1da7ee7eb4d146cf"})
 
+
+Working with collections
+========================
+
+A collection is a virtual shared folder containing one or more files and/or folders to be granted access through ACLs to one or more standard users.
+The files can stem from multiple source volumes, folders and/or homes.
+
+To create a collection, you need to supply the source volumes, folders and/or homes IDs::
+
+    collection = session.create("Collection", {
+        "name": "Project assets",
+        "files": ["volume=(default)/projects/theproject/assets", "folder=theproject/deliverables/specs.doc"],
+    })
 
 Offline
 =======
 
-A share can be offlined, which means it will be removed from accsyn but still eglible for restore if you again create a share with the same name::
+A share (volume, folder, home, collection) can be deactivated, which means it will be removed from accsyn
+but still eglible for audit & restore if you again create a share with the same name::
 
-    session.offline_one('Share', '61779c54b80099ea066b0604')
+    session.deactivate_one("Volume", "61779c54b80099ea066b0604")
 
 .. note::
 
-    * Offline a root share also causes all descendant shares to be archived.
+    * Offline a volume also causes all descendant shares to be archived.
     * No jobs that uses the share can be active.
     * ACLs are offlined with share.
+    * Offline shares have the attribute inactive set to True.
+
+
+
+Re-activate a share
+===================
+
+To re-activate a share, supply the user email address(code) or ID::
+
+    session.activate_one("Volume", "61779c54b80099ea066b0604")
 
 
 Delete
 ======
 
-To delete a share::
+To delete a shared folder/home::
 
-    session.delete_one('Share', '61779c54b80099ea066b0604')
+    session.delete_one("Folder", "61779c54b80099ea066b0604")
 
 
 .. note::
 
-    * If you delete a share, all associated jobs are aborted. Deleting a root share also causes all related shares to be deleted.
+    * If you delete a share, all associated jobs are aborted. Deleting a volume also causes all related shares to be deleted.
     * For audit/security reasons, deleted shares with associated data (acls) are kept in the archive for query.

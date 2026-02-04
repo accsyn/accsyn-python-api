@@ -82,35 +82,42 @@ Modify
 
 To disable a user::
 
-    session.update('User', '61bf395c46ed6081a2b2afc0', {'status':"disabled"})
+    session.update("User", "61bf395c46ed6081a2b2afc0", {"status" :"disabled"})
 
 
 To change user clearance/role::
 
-    session.update('User', '61bf395c46ed6081a2b2afc0', {'role':"disabled"})
+    session.update("User", "61bf395c46ed6081a2b2afc0", {"role" :"disabled"})
 
 
 
 Offline
 =======
 
-An user can be put offline, which means it will be removed from accsyn but still eglible
-for restore if you again create a user with the same identification (code)::
+An user can be deactivates, which means it will be removed from accsyn but still eglible
+for audit & restore if you again create/invite a user with the same identification (code)::
 
-    session.offline_one('User', '61bf395c46ed6081a2b2afc0')
+    session.deactivate_one('User', '61bf395c46ed6081a2b2afc0')
 
 .. note::
 
     * Offlining a user also causes user home share to be put offline together with ACLs.
     * No jobs that involves the user can be active.
+    * Offline users have the attribute inactive set to True.
 
+Re-activate a user
+==================
+
+To re-activate a user, supply the user email address(code) or ID::
+
+    session.activate_one("User", "61bf395c46ed6081a2b2afc0")
 
 Delete
 ======
 
 To delete a user::
 
-    session.delete_one('User', '61bf38d22650852bc50d5869')
+    session.delete_one("User", "61bf38d22650852bc50d5869")
 
 .. note::
 

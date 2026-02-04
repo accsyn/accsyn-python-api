@@ -283,9 +283,7 @@ class Session(object):
                 if "message" in response:
                     raise AccsynException(response["message"])
                 result = response.get('result', dict())
-                assert "hostname" in result, "No API endpoint hostname were provided for workspace dict()!".format(
-                    workspace
-                )
+                assert "hostname" in result, f"No API endpoint hostname were provided for workspace {workspace}!"
                 self._hostname = result["hostname"]
                 if self._port is None:
                     self._port = result["port"]
@@ -426,7 +424,8 @@ class Session(object):
         query: str,
         attributes: Optional[List[str]] = None,
         finished: Optional[bool] = None,
-        offline: Optional[bool] = None,
+        inactive: Optional[bool] = None,
+        offline: Optional[bool] = None, # Deprecated
         archived: Optional[bool] = None,
         limit: Optional[int] = None,
         skip: Optional[int] = None,
@@ -439,7 +438,8 @@ class Session(object):
         :param query: The query, a string on accsyn query format.
         :param attributes: The attributes to return, default is to return all attributes with access.
         :param finished: (job) Search among inactive jobs.
-        :param offline: (user,share) Search among offline entities.
+        :param inactive: (user,share) Search among inactive entities.
+        :param offline: (user,share) Search among offline entities. (Deprecated)
         :param archived: Search among archived (deleted/purged) entities.
         :param limit: The maximum amount of entities to return.
         :param skip: The amount of entities to skip.
@@ -479,8 +479,11 @@ class Session(object):
             # Send query to server, first determine uri
             if finished is not None:
                 data["finished"] = finished
-            if offline is not None:
-                data["offline"] = offline
+            if inactive is not None:
+                data["inactive"] = inactive
+            elif offline is not None:
+                logging.warning(f"[WARNING] The 'offline' parameter is deprecated, use 'inactive' instead.")
+                data["inactive"] = offline
             if archived is not None:
                 data["archived"] = archived
             if limit:
@@ -707,8 +710,8 @@ class Session(object):
             user_id = data.get("user")
             assert re.match("^[a-z0-9]{24}$", (user_id or "")), "Please supply entity ID as 'user' with assignment data!"
             payload = dict(
-                entity="user:{}".format(user_id),
-                target="share:{}".format(volume_id),
+                entity=f"user:{user_id}",
+                target=f"share:{volume_id}",
                 read=data.get("read", True),
                 write=data.get("write", True),
                 notify=data.get("notify", True),
@@ -810,16 +813,16 @@ class Session(object):
 
         .. versionadded:: 3.2
 
-        :param entitytype: The entity type to grant access to.
-        :param entitityid: The id of the entity to grant access to.
-        :param targettype: The entity type to grant access.
-        :param targetid: The id of the entity to grant access.
+        :param entitytype: The entity type that should be granted access.
+        :param entitityid: The id of the entity that should be granted access.
+        :param targettype: The entity type to grant access to.
+        :param targetid: The id of the entity to grant access to.
         :param data: ACL data, should permissions and other data.
         :return: True if assignment was a success, exception otherwise.
         """
         assert 0 < len(entitytype or "") and Session._is_str(
             entitytype
-        ), "Invalid parent entity type supplied, must be of string type!"
+        ), "Invalid entity type supplied, must be of string type!"
         entitytype = entitytype.lower().strip()
         assert 0 < len(entitityid or "") and Session._is_str(
             entitityid
@@ -837,14 +840,12 @@ class Session(object):
         assert re.match("^[a-z0-9]{24}$", (targetid or "")), "Please supply a target valid ID!"
         assert (
             not data is None and isinstance(data, dict) and (0 < len(data or dict()))
-        ), "Invalid assignment data supplied, must be a dict with values!"
+        ), "Invalid grant access data supplied, must be a dict with values!"
         result = None
-        if entitytype in ["delivery"] and targettype in ["user"]:
+        if entitytype == "user" and targettype in ["delivery"]:
             # Assign a user to a delivery, expect delivery and user supplied
-            delivery_id = entitityid
-            assert re.match("^[a-z0-9]{24}$", (delivery_id or "")), "Please supply parent entity ID as 'delivery' with acl data!"
-            user_id = targetid
-            assert re.match("^[a-z0-9]{24}$", (user_id or "")), "Please supply entity ID as 'user' with acl data!"
+            user_id = entitityid
+            delivery_id = targetid
             response = self._event(
                 "PUT",
                 f"job/recipient/add",
@@ -852,15 +853,13 @@ class Session(object):
                 entityid=delivery_id,
             )
             result = response["result"]
-        elif entitytype in ["volume","folder","home","collection"] and targettype in ["user"]:
+        elif entitytype == "user" and targettype in ["volume","folder","home","collection"]:
             # Assign an employee user to a volume
-            volume_id = entitityid
-            assert re.match("^[a-z0-9]{24}$", (volume_id or "")), "Please supply parent entity ID as 'volume' with acl data!"
-            user_id = targetid
-            assert re.match("^[a-z0-9]{24}$", (user_id or "")), "Please supply entity ID as 'user' with acl data!"
+            user_id = entitityid
+            volume_id = targetid
             payload = dict(
-                entity="user:{}".format(user_id),
-                target="share:{}".format(volume_id),
+                entity=f"user:{user_id}",
+                target=f"share:{volume_id}",
                 read=data.get("read", True),
                 write=data.get("write", True),
                 notify=data.get("notify", True),
@@ -885,7 +884,7 @@ class Session(object):
         else:
             raise Exception("Unsupported grant access operation!")
 
-    def access(self, entitytype: str, entityid: str) -> List[Dict[str, Any]]:
+    def access(self, targettype: str, targetid: str) -> List[Dict[str, Any]]:
         """
         Return list of ACLs for an entity.
 
@@ -893,29 +892,36 @@ class Session(object):
 
         .. versionadded:: 3.2
 
-        :param entitytype: The entity type to list access for (delivery, volume, folder, home, collection).
-        :param entityid: The id of the entity to list access for.
+        :param targettype: The entity type to list access for (delivery, volume, folder, home, collection).
+        :param targetid: The id of the entity to list access for.
         :return: List of dictionaries.
         """
-        assert 0 < len(entitytype or "") and Session._is_str(
-            entitytype
-        ), "Invalid parent entity type supplied, must be of string type!"
-        if entitytype.lower() in ["delivery"]:
+        assert 0 < len(targettype or "") and Session._is_str(
+            targettype
+        ), "Invalid parent target type supplied, must be of string type!"
+        targettype = targettype.lower().strip()
+        assert 0 < len(targetid or "") and Session._is_str(
+            targetid
+        ), "Invalid target id supplied, must be of string type!"
+        targetid = targetid.lower().strip()
+        assert re.match("^[a-z0-9]{24}$", (targetid or "")), "Please supply a valid entity ID!"
+
+        if targettype.lower() in ["delivery"]:
             # List recipients assigned to a delivery
             response = self._event(
                 "GET",
                 f"job/recipients",
                 dict(),
-                entityid=entityid,
+                entityid=targetid,
             )
             return response["result"]
-        elif entitytype.lower() in ["volume", "folder", "home","collection"]:
+        elif targettype.lower() in ["volume", "folder", "home","collection"]:
             # List users with access to a share
             response = self._event(
                 "GET",
                 f"acl/find",
                 dict(),
-                query="acl WHERE target=share:{}".format(entityid),
+                query=f"acl WHERE target=share:{targetid}",
             )
             result = []
             for acl in response["result"]:
@@ -943,19 +949,22 @@ class Session(object):
 
         .. versionadded:: 3.2
 
-        :param entity: The parent entity type to revoke access from.
-        :param target: The entity type to revoke access.
+        :param entity: The entity type to revoke access for.
+        :param entityid: The id of the entity to revoke access for.
+        :param target: The entity type to revoke access from.
+        :param targetid: The id of the entity to revoke access from.
         :param data: ACL data, should contain parent entity id and entity ids.
         :return: True if revocation was a success, exception otherwise.
         """
         assert 0 < len(entitytype or "") and Session._is_str(
             entitytype
-        ), "Invalid parent entity type supplied, must be of string type!"
+        ), "Invalid entity type supplied, must be of string type!"
         entitytype = entitytype.lower().strip()
         assert 0 < len(entityid or "") and Session._is_str(
             entityid
         ), "Invalid entity id supplied, must be of string type!"
         entityid = entityid.lower().strip()
+        assert re.match("^[a-z0-9]{24}$", (entityid or "")), "Please supply a valid entity ID!"
         assert 0 < len(targettype or "") and Session._is_str(
             targettype
         ), "Invalid target entity type supplied, must be of string type!"
@@ -964,30 +973,27 @@ class Session(object):
             targetid
         ), "Invalid target entity id supplied, must be of string type!"
         targetid = targetid.lower().strip()
+        assert re.match("^[a-z0-9]{24}$", (targetid or "")), "Please supply a valid entity ID!"
         response = None
-        if entitytype in ["delivery"] and targettype == "user":
-            # De-assign a user from a delivery, expect delivery and user supplied
-            delivery_id = entityid
-            assert re.match("^[a-z0-9]{24}$", (delivery_id or "")), "Please supply parent entity ID as 'delivery' with revoke data!"
-            user_id = targetid
-            assert re.match("^[a-z0-9]{24}$", (user_id or "")), "Please supply entity ID as 'user' with revoke data!"
+        if targettype in ["delivery"] and entitytype == "user":
+            # Revoke user access from a delivery, expect delivery and user supplied
+            delivery_id = targetid
+            user_id = entityid
             response = self._event(
                 "DELETE",
                 f"job/recipient",
                 dict(recipient=user_id),
                 entityid=delivery_id,
             )
-        elif entitytype in ["volume","folder","home","collection"] and targettype == "user":
-            # De-assign a user from a share
-            share_id = entityid
-            assert re.match("^[a-z0-9]{24}$", (share_id or "")), "Please supply parent entity ID as 'folder', 'home' or 'collection' with revoke data!"
-            user_id = targetid
-            assert re.match("^[a-z0-9]{24}$", (user_id or "")), "Please supply entity ID as 'user' with revoke data!"
+        elif targettype in ["volume","folder","home","collection"] and entitytype == "user":
+            # Revoke user access from a share
+            share_id = targetid
+            user_id = entityid
             # First, located the ACL
-            response = self._event("GET", f"acl/find", dict(), query="acl WHERE entity=user:{} AND target=share:{}".format(user_id, share_id))
+            response = self._event("GET", f"acl/find", dict(), query=f"acl WHERE entity=user:{user_id} AND target=share:{share_id}")
             acls = response["result"]
             if len(acls) == 0:
-                raise AccsynException("No ACL found for user {} and share {}".format(user_id, share_id))
+                raise AccsynException(f"No ACL found for user {user_id} and share {share_id}")
             response = self._event(
                 "DELETE",
                 f"acl/delete",
@@ -1002,7 +1008,7 @@ class Session(object):
 
     # Deactivate/Delete an entity
 
-    def deactivate_one(self, entitytype: str, entityid: str) -> Any:
+    def offline_one(self, entitytype: str, entityid: str) -> Any:
         """
             .. deprecated:: 3.2.0
             Use the :func:`deactivate` function instead
@@ -1055,6 +1061,30 @@ class Session(object):
             f"{entitytype}/delete",
             dict(),
             entityid=entityid,
+        )
+        if response:
+            return response["result"]
+
+    # Activate an entity
+
+    def activate_one(self, entitytype: str, entityident: str) -> Any:
+        """
+        Activate an entity - bring back from deactivated(offline) state.
+        """
+        assert 0 < len(entitytype or "") and Session._is_str(
+            entitytype
+        ), "Invalid entity type supplied, must be of string type!"
+        entitytype = entitytype.lower().strip()
+        assert 0 < len(entityident or "") and Session._is_str(
+            entityident
+        ), "Invalid entity identification supplied, must be of string type!"
+        entityident = entityident.lower().strip()
+        response = self._event(
+            "POST",
+            f"{entitytype}/activate",
+            dict(),
+            entityid=entityident if re.match("^[a-z0-9]{24}$", (entityident or "")) else None,
+            query=entityident if not re.match("^[a-z0-9]{24}$", (entityident or "")) else None
         )
         if response:
             return response["result"]

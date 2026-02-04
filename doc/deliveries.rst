@@ -66,7 +66,7 @@ Add a recipient to a delivery
 
 To add a recipient to a delivery, use the assign API function::
 
-    retval = session.grant("Delivery", delivery["id"], "user", "6676f3e9c7ef4e27da254e57")
+    retval = session.grant("User", "6676f3e9c7ef4e27da254e57", "Delivery", delivery["id"])
 
 Return value will a dictionary with same form as the access list query would return. 
 The user will receive an email with a link to the delivery and instructions on how to action it.
@@ -99,7 +99,7 @@ Remove a recipient from a delivery
 
 To remove a recipient from a delivery, use the deassign API function::
 
-    retval = session.revoke("Delivery", delivery["id"], "user", "6676f3e9c7ef4e27da254e57")
+    retval = session.revoke("User", "6676f3e9c7ef4e27da254e57", "Delivery", delivery["id"])
 
 
 This will return True if operation was successful.

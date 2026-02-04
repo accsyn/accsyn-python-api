@@ -159,5 +159,5 @@ To delete a client::
 .. note::
 
     * Client have to be offline in order for deletion to succeed.
-    * If client is serving and root shares, these assignments will also be removed.
+    * If client is serving and volumes, these assignments will also be removed.
 
