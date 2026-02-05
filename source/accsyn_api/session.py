@@ -422,10 +422,11 @@ class Session(object):
     def find(
         self,
         query: str,
+        parent: Optional[str] = None,
         attributes: Optional[List[str]] = None,
         finished: Optional[bool] = None,
         inactive: Optional[bool] = None,
-        offline: Optional[bool] = None, # Deprecated
+        offline: Optional[bool] = None, # Deprecated, use inactive instead
         archived: Optional[bool] = None,
         limit: Optional[int] = None,
         skip: Optional[int] = None,
@@ -436,6 +437,7 @@ class Session(object):
         Return (GET) a list of entities/entitytypes/attributes based on *query*.
 
         :param query: The query, a string on accsyn query format.
+        :param parent: The parent entity ID, required for sub entities "task" and "file".
         :param attributes: The attributes to return, default is to return all attributes with access.
         :param finished: (job) Search among inactive jobs.
         :param inactive: (user,share) Search among inactive entities.
@@ -477,6 +479,8 @@ class Session(object):
                 retval = d["result"]
         else:
             # Send query to server, first determine uri
+            if parent is not None:
+                data["parent"] = parent
             if finished is not None:
                 data["finished"] = finished
             if inactive is not None:
@@ -633,7 +637,7 @@ class Session(object):
         ), "Invalid entity type supplied, must be of string type!"
         entitytype = entitytype.lower().strip()
         assert entitytype == "task", 'Only multiple "task" entities can be updated!'
-        if entitytype.lower() == "task":
+        if entitytype == "task":
             assert 0 < len(entityid or "") and (
                 Session._is_str(entityid)
             ), "Invalid entity ID supplied, must be of string type!"
@@ -1010,8 +1014,11 @@ class Session(object):
 
     def offline_one(self, entitytype: str, entityid: str) -> Any:
         """
-            .. deprecated:: 3.2.0
-            Use the :func:`deactivate` function instead
+        Deactivate an entity - remove from accsyn but keep in database for audit/later restoration.
+
+        .. deprecated:: 3.2.0
+            Use the :func:`deactivate_one` function instead
+
         """
         return self.deactivate_one(entitytype, entityid)
 
@@ -1051,11 +1058,11 @@ class Session(object):
         """
         assert 0 < len(entitytype or "") and Session._is_str(
             entitytype
-        ), "Invalid entity type supplied, must be of string type!"
+        ), "Invalid entity type supplied, provided and be of string type!"
         entitytype = entitytype.lower().strip()
         assert 0 < len(entityid or "") and (
             Session._is_str(entityid)
-        ), "Invalid entity ID supplied, must be of string type!"
+        ), "Invalid entity ID supplie, provided and be of string type!"
         response = self._event(
             "DELETE",
             f"{entitytype}/delete",

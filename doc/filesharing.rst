@@ -376,13 +376,17 @@ In both cases, if creation was successful, a dictionary will be returned on the 
 Create a home
 -------------
 
-To create a home, you just need to supply the user email address(code) or ID::
+To create a home share, you can either create it like a shared folder or just supply the user ID or email address(code)::
 
     home = session.create("Home", {
         "user": "693bf3168d4e0d0c2afe1d53",
     })
 
 A dictionary will be returned containing home attributes on the same format as a folder query would return.
+
+.. note::
+
+   * The user will not be automatically granted access to the home, access must be granted through ACLs (see below).
 
 
 Granting access to a shared folder/home
@@ -448,27 +452,45 @@ Working with collections
 A collection is a virtual shared folder containing one or more files and/or folders to be granted access through ACLs to one or more standard users.
 The files can stem from multiple source volumes, folders and/or homes.
 
-To create a collection, you need to supply the source volumes, folders and/or homes IDs::
+To create a collection, you need to supply the source volumes, folders and/or homes IDs. In this example we are adding
+files both from a separate volume (assets) and a shared folder (theproject) on a default volume::
 
     collection = session.create("Collection", {
-        "name": "Project assets",
-        "files": ["volume=(default)/projects/theproject/assets", "folder=theproject/deliverables/specs.doc"],
+        "name": "Project startup",
+        "files": ["volume=assets/ASSETS/templates/vendor_structure", "folder=theproject/admin/theproject-specs-v1.2.doc"],
     })
 
-Offline
-=======
+A dictionary will be returned containing collection attributes on the same format as a folder query would return.
 
-A share (volume, folder, home, collection) can be deactivated, which means it will be removed from accsyn
+.. note::
+
+    * The file paths cannot be absolute, they have to be on accsyn format and point to a file on a volume, folder or home.
+
+List files in a collection
+--------------------------
+
+To list files in a collection::
+
+    files = session.find('File WHERE share.id=698452ee3bce6dbca4b68619')
+
+Return value will be a list of dictionaries containing file attributes.
+
+
+Deactivate
+==========
+
+A share (volume, folder, collection) can be deactivated, which means it will be removed from accsyn
 but still eglible for audit & restore if you again create a share with the same name::
 
     session.deactivate_one("Volume", "61779c54b80099ea066b0604")
 
 .. note::
 
-    * Offline a volume also causes all descendant shares to be archived.
-    * No jobs that uses the share can be active.
+    * Deactivating a volume also causes all descendant shares to be archived.
+    * No jobs that uses the share can be active, they will need to be aborted.
     * ACLs are offlined with share.
-    * Offline shares have the attribute inactive set to True.
+    * Inactive shares have the attribute inactive set to True.
+    * Home shares cannot be deactivated, deactivate the user instead.
 
 
 
@@ -483,12 +505,12 @@ To re-activate a share, supply the user email address(code) or ID::
 Delete
 ======
 
-To delete a shared folder/home::
+To delete a share::
 
     session.delete_one("Folder", "61779c54b80099ea066b0604")
 
 
 .. note::
 
-    * If you delete a share, all associated jobs are aborted. Deleting a volume also causes all related shares to be deleted.
-    * For audit/security reasons, deleted shares with associated data (acls) are kept in the archive for query.
+    * Deleting a share is preceded by an deactivation.
+    * For audit/security reasons, deleted shares with associated data (acls) are kept in the archive for deep audit.

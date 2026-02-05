@@ -220,18 +220,30 @@ deleting task is not possible neither changing their path. Instead of deleting a
 Query tasks
 ***********
 
-Job tasks are fetched by supplying the transfer job ID query merged with task query::
+Job tasks are a sub entity of job, and not a true accsyn entity. To query tasks, supply the parent job ID separately from query::
 
-   session.find('Task WHERE job.id=5a7325f8b7ef72f5f9d74bf4')
-   session.find('task WHERE job.id=5a7325f8b7ef72f5f9d74bf4 AND status<>executing')
+    tasks = session.find("Task", parent="5a7325f8b7ef72f5f9d74bf4")
+
+Find all tasks that have a certain status::
+
+    tasks = session.find("Task WHERE status=onhold", parent="5a7325f8b7ef72f5f9d74bf4")
 
 A list if tasks is returned as dictionaries::
 
     {
-        "id": "26468234-c9ee-48d6-8d28-e900b5957129",
-        "uri": "0"
-        "status": "queued",
         "created": "2020-08-04T09:52:27",
+        "destination": {
+            "client": "5da09b9ae1b3c330746529ec",
+            "path": "/Users/tommy/Downloads/A001_C011_09187Ia.mov",
+            "path_abs_final": "/Users/tommy/Downloads/A001_C011_09187Ia.mov",
+            "user": "5d91b33ac71c12871d1fc3c2"
+        },
+        "finished": "2020-08-04T10:12:26",
+        "id": "26468234-c9ee-48d6-8d28-e900b5957129",
+        "job": "69732302fd379c8fff1089d0",
+        "job_hr": "README.txt[7](6971e16fceadd67b955b1995)",
+        "priority": 1,
+        "size": 128868496,
         "source": {
             "client": "5da08873b0eb10fade60b3f7",
             "path": "A001_C011_09187Ia.mov",
@@ -239,28 +251,23 @@ A list if tasks is returned as dictionaries::
             "v": "5c5bf52a1da7ee0165105b85",
             "user": "5d91b33ac71c12871d1fc3c2"
         },
-        "destination": {
-            "client": "5da09b9ae1b3c330746529ec",
-            "path": "/Users/tommy/Downloads/A001_C011_09187Ia.mov",
-            "path_abs_final": "/Users/tommy/Downloads/A001_C011_09187Ia.mov",
-            "user": "5d91b33ac71c12871d1fc3c2"
-        },
-        "priority": 1,
-        "size": 128868496,
-        "finished": "2020-08-04T10:12:26",
+        "status": "queued",
         "time": 110239,
+        "uri": "0",
     }
 
-* ``id``: The internal accsyn ID of task.
-* ``uri``: The uri - unique name/code of task, usually sequential number "0", "1" and so on (string format).
-* ``status``: The status of task, see below. can be "pending"(waiting for user to choose download location),"queued", "booting","executing","failed","done,"onhold","excluded".
 * ``created``: The date of task creation.
-* ``source``: Dictionary containing information about the source file/directory (or compute client) party.
 * ``destination``: Dictionary containing information about the destination file/directory party.
+* ``finished``: The date task finished execution.
+* ``id``: The internal accsyn ID of task.
+* ``job``: The ID of the parent job.
+* ``job_hr``: The parent job on human readable form.
 * ``priority``: The task priority, see job priority.
 * ``size``: The size of source file/directory.
-* ``finished``: The date task finished execution.
+* ``source``: Dictionary containing information about the source file/directory (or compute client) party.
+* ``status``: The status of task, see below. can be "pending"(waiting for user to choose download location),"queued", "booting","executing","failed","done,"onhold","excluded".
 * ``time``: The time it took the execute this task.
+* ``uri``: The uri - unique name/code of task, usually sequential number "0", "1" and so on (string format).
 
 The contents of ``source`` and ``destination`` parties varies depending on sender and receiver - site(Server) or user(Desktop app/User server):
 
