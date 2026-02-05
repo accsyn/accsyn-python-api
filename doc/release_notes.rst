@@ -109,7 +109,7 @@ Release Notes
 
     .. change:: change
 
-        * Replaced update_one and update_many; Code sryle
+        * Replaced update_one and update_many; Code style
 
 
 .. release:: 2.0.1

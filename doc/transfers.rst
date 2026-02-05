@@ -326,8 +326,6 @@ The contents of ``source`` and ``destination`` parties varies depending on sende
 * :sup:`1` This status can be set with a modify call (see below)
 
 
-
-
 Create tasks
 ************
 
@@ -345,13 +343,13 @@ supply attribute allow_duplicates=False to create call.
 
 Add with new destination path::
 
-    session.create("task", {
-        "tasks":[
-            {
-                "source":"share=projects/_REF/creatures_showreel_2018.mov",
-                "destination":"share=projects/TMP/creatures_showreel_2018_tmp.mov"
-            }
-        ]
+    session.create("Task", {
+      "tasks":[
+        {
+          "source":"share=projects/_REF/creatures_showreel_2018.mov",
+          "destination":"share=projects/TMP/creatures_showreel_2018_tmp.mov"
+        }
+      ]
     }, transfer["id"])
 
 .. note::
@@ -359,7 +357,7 @@ Add with new destination path::
     * Only users themselves own the right to add files from/to their local harddrive/storage for upload/download.
     * Pending files (tasks without destination path:s) can not be added to a job that remote user already have started downloading.
     * Operation will fail if another task exists with same source and destination path
-    * Ongoing executing tasks will not be interrupted when new tasks are added, to
+    * Ongoing executing tasks will not be interrupted when new tasks are added.
 
 
 Modifying tasks
@@ -371,10 +369,10 @@ Tasks are always updated in group with values supplied as a list of dicts instea
 
     transfer = session.find('Transfer where id=5a7325f8b7ef72f5f9d74bf4')
 
-    updated_transfer = session.update_many("Task", [{
+    updated_transfer = session.update_many("Task", transfer["id"], [{
         "id":"cc5f2afa-9ae4-46e0-9273-82ac802b20ff",
         "status":"onhold"
-    }], entityid=transfer["id"])
+    }])
 
 Will return the updated tasks, as would have been returned by a task find query.
 

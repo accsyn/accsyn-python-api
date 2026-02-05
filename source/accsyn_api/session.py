@@ -398,13 +398,16 @@ class Session(object):
             if isinstance(data, list):
                 data = dict(tasks=data)
             assert data is not None and 0 < len(data), "Empty create data submitted!"
+        uri="create"
         if entitytype == "task" and "tasks" not in data:
             data = dict(tasks=data)
+        if entitytype == "file":
+            uri="add"
         if entitytype in ["transfer", "compute", "delivery", "request", "stream", "job", "task"]:
             data["allow_duplicates"] = allow_duplicates
         d = self._event(
             "POST",
-            f"{entitytype}/create",
+            f"{entitytype}/{uri}",
             data,
             query=entitytype_id,
         )
@@ -422,7 +425,7 @@ class Session(object):
     def find(
         self,
         query: str,
-        parent: Optional[str] = None,
+        entityid: Optional[str] = None,
         attributes: Optional[List[str]] = None,
         finished: Optional[bool] = None,
         inactive: Optional[bool] = None,
@@ -437,7 +440,7 @@ class Session(object):
         Return (GET) a list of entities/entitytypes/attributes based on *query*.
 
         :param query: The query, a string on accsyn query format.
-        :param parent: The parent entity ID, required for sub entities "task" and "file".
+        :param entityid: The parent entity ID, required for sub entities "task" and "file".
         :param attributes: The attributes to return, default is to return all attributes with access.
         :param finished: (job) Search among inactive jobs.
         :param inactive: (user,share) Search among inactive entities.
@@ -479,8 +482,8 @@ class Session(object):
                 retval = d["result"]
         else:
             # Send query to server, first determine uri
-            if parent is not None:
-                data["parent"] = parent
+            if entityid is not None:
+                data["parent"] = entityid
             if finished is not None:
                 data["finished"] = finished
             if inactive is not None:
@@ -574,13 +577,16 @@ class Session(object):
     # Update an entity
 
     def update(
-        self, entitytype: str, entityid: str, data: Dict[str, Any]
+        self, 
+        entitytype: str, 
+        entityid: str, 
+        data: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
         """
         Update/modify an entity.
 
         :param entitytype: The type of entity to update (job, share, acl, ..)
-        :param entityid: The id of the entity.
+        :param entityid: The entity ID of the parent entity to update (job).
         :param data: The dictionary containing attributes to update.
         :return: The updated entity data, as dictionary.
         """
@@ -602,7 +608,10 @@ class Session(object):
             return response["result"][0]
 
     def update_one(
-        self, entitytype: str, entityid: str, data: Dict[str, Any]
+        self, 
+        entitytype: str, 
+        entityid: str, 
+        data: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
         '''
         Update/modify an entity.
@@ -619,28 +628,33 @@ class Session(object):
         return self.update(entitytype, entityid, data)
 
     def update_many(
-        self, entitytype: str, data: List[Dict[str, Any]], entityid: str
+        self, 
+        entitytype: str, 
+        entityid: str,
+        data: List[Dict[str, Any]], 
     ) -> Optional[List[Dict[str, Any]]]:
         """
         Update/modify multiple entities - tasks beneath a job.
 
         :param entitytype: The type of parent entity to update (job)
+        :param entityid: The id of the parent entity job to update
         :param data: The list dictionaries containing sub entity (task) id and attributes to update.
-        :param entityid: The id of the parent entity to update (job)
         :return: The updated sub entities (tasks), as dictionaries.
 
-        .. deprecated:: 2.0.2
-            Since version 2.0.2 you should use the :func:`update` function instead
+        .. changed:: 3.2.0
+            The entityid and data parameters have switched places.
+
         """
         assert 0 < len(entitytype or "") and Session._is_str(
             entitytype
         ), "Invalid entity type supplied, must be of string type!"
         entitytype = entitytype.lower().strip()
         assert entitytype == "task", 'Only multiple "task" entities can be updated!'
-        if entitytype == "task":
-            assert 0 < len(entityid or "") and (
-                Session._is_str(entityid)
-            ), "Invalid entity ID supplied, must be of string type!"
+        assert 0 < len(entityid or "") and (
+            Session._is_str(entityid)
+        ), "Entity ID must be provided and be of string type!"
+        if not re.match("^[a-z0-9]{24}$", (entityid or "")):
+            raise Exception("Invalid parent entity ID supplied!")
         assert 0 < len(data or []) and isinstance(data, list), "Invalid data supplied, must be a list!"
         response = self._event(
             "PUT",
@@ -1067,6 +1081,38 @@ class Session(object):
             "DELETE",
             f"{entitytype}/delete",
             dict(),
+            entityid=entityid,
+        )
+        if response:
+            return response["result"]
+
+    def delete_many(self, entitytype: str, entityid: str, data: Dict[str, Any]) -> Any:
+        """
+        Delete multiple sub entities (files) beneath a parent entity.
+
+        :param entitytype: The type of parent entity to delete (job)
+        :param entityid: The id of the parent entity job to delete
+        :param data: The dictionary containing attributes to delete.
+        :return: True if deleted, an exception is thrown otherwise.
+        """
+        assert 0 < len(entitytype or "") and Session._is_str(
+            entitytype
+        ), "Invalid entity type supplied, must be of string type!"
+        entitytype = entitytype.lower().strip()
+        assert 0 < len(entityid or "") and (
+            Session._is_str(entityid)
+        ), "Invalid entity ID supplied, must be of string type!"
+        if not re.match("^[a-z0-9]{24}$", (entityid or "")):
+            raise AccsynException("Invalid parent entity ID supplied!")
+        assert 0 < len(data or dict()) and isinstance(data, dict), "Invalid data supplied, must be dict and have content!"
+        if entitytype == "collection":
+            uri = "file/remove"
+        else:
+            raise AccsynException(f"Unsupported entity type for deletion: {entitytype}")
+        response = self._event(
+            "DELETE",
+            f"{entitytype}/{uri}",
+            data,
             entityid=entityid,
         )
         if response:

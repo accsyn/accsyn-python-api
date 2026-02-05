@@ -466,14 +466,43 @@ A dictionary will be returned containing collection attributes on the same forma
 
     * The file paths cannot be absolute, they have to be on accsyn format and point to a file on a volume, folder or home.
 
+
 List files in a collection
 --------------------------
 
 To list files in a collection::
 
-    files = session.find('File WHERE share.id=698452ee3bce6dbca4b68619')
+    files = session.find("File", parent="698452ee3bce6dbca4b68619")
 
 Return value will be a list of dictionaries containing file attributes.
+
+
+Add files to a collection
+-------------------------
+
+To add a file to a collection::
+
+    session.create("File", {
+      "files":[
+        "share=theproject/ref/mp_ref.tif"
+      ]
+    }, collection["id"])
+
+Return value will be a dictionary containing file attributes on the same format as a file query would return.
+
+
+Remove files from a collection
+------------------------------
+
+To remove a file from a collection::
+
+    session.delete_many("Collection", "698452ee3bce6dbca4b68619", {
+      "files":[
+        "12d89033-2a8c-4029-992b-3a02b4ecc2cd"
+      ]
+    })
+
+Return value will be True if operation was successful, false if the file did not exist in the collection.
 
 
 Deactivate
