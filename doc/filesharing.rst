@@ -417,11 +417,20 @@ Return value will be a dictionary containing ACL attributes.
 List ACLs
 ---------
 
+To list ACLs for a volume folder::
+
+    acls = session.access("Volume", "61779c54b80099ea066b0604")
+
+Return value will be a list of dictionaries containing ACL attributes.
+
+List all ACLs beneath a volume, including shared folders and homes::
+
+    acls = session.access("Volume", "61779c54b80099ea066b0604", recursive=True)
+
 To list ACLs for a shared folder::
 
     acls = session.access("Folder", "673cb38dea344d0d17969018")
 
-Return value will be a list of dictionaries containing ACL attributes.
 
 
 Revoke access to a shared folder/home

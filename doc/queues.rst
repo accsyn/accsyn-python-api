@@ -7,10 +7,10 @@
 Queues
 ******
 
-A queue is an ordered list of jobs with a given priority set. As jobs do not have priorities
-by default, they inherit the priority from queue, which enables job management.
+A queue is an ordered list of jobs (transfers, compute jobs, deliveries, requests, streams) with a given priority set. As jobs do not have priorities
+, they inherit the priority from queue, which enables job management. Internally in accsyn, a queue is of same entity type as jobs ("job") and share common attributes.
 
-A priority is an integer between 0 (lowest) and 1000 (highest), and applies
+A priority is an integer between 0 (lowest) and 1000 (highest), and decidees which jobs are executed first.
 
 Query
 =====
@@ -26,46 +26,49 @@ Create
 To create a queue::
 
     queue = session.create("Queue",{
-        "code":"high_prio",
-        "priority":999
+        "name":"Panic,
+        "priority":1000,
+        "description":"Queue for panic deliveries superseeding high prio jobs."
     })
 
 
-A dict will be returned containing user attributes::
+A dict will be returned containing queue attributes::
 
     {
-        "id": "61cd853e44b630d9e10cfb2e",
-        "code": "high_prio",
-        "priority": 999,
-        "status": "waiting",
+        "code": "panic",
+        "compute_default": false,
+        "created": "2026-02-09T09:17:45+01:00",
+        "creator": "demo.admin@accsyn.com",
         "default": false,
-        "uri": "acmevfx/high_prio",
-        "description": "",
+        "description": "Queue for panic deliveries superseeding high prio jobs.",
+        "id": "6989982945131d8f16277b71",
         "metadata": {},
-        "created": "2021-12-30T11:09:02",
-        'user': '5d91b33ac71c12871d1fc3c2',
-        'user_hr': 'user:employee@acmevfx.com(employee)',
-        "modified": "2021-10-26T08:12:36",
-        "modifier": "61bf395c46ed6081a2b2afc0"
+        "modified": "2026-02-09T09:17:45+01:00",
+        "modifier": "",
+        "name": "Panic",
+        "priority": 1000,
+        "status": "waiting",
+        "uri": "acmevfx"
     }
 
 
 
 Explanation of the returned attributes:
 
-* ``id``: The internal accsyn user id, use this when modifying the queue later on.
-* ``code``: The unique name of the queue.
-* ``priority``: The priority value, from 0 (lowest) to 1000 (highest).
-* ``status``: The status of queue, can be "waiting" (enabled) or "disabled" - all jobs within queue are put on hold.
-* ``default``: If default or not, the default queue is were new jobs are put id not explicitly set.
-* ``uri``: The URI of queue, used for nested queues.
-* ``description``: Description of the queue.
-* ``metadata``: Queue metadata dict.
+* ``code``: The unique API identifier of the queue, is auto generated from name if not provided. Can be used when referring to the queue in API calls, must be unique across all queues in the workspace.
+* ``compute_default``: If True, this queue will be the default queue for compute jobs.
 * ``created``: Date of creation.
-* ``user``: The ID of user that created the queue.
-* ``user_hr``: Human readable user entry.
+* ``creator``: The user who created the queue, 'accsyn' means it is created by the backend.
+* ``default``: If default or not, the default queue is were new jobs are put id not explicitly set.
+* ``description``: Description of the queue.
+* ``id``: The internal accsyn user id, use this when modifying the queue later on.
+* ``metadata``: Queue metadata dict.
 * ``modified``: Date of last modification.
-* ``modifier``: The user that most recently modified the user.
+* ``modifier``: The user that most recently modified the queue.
+* ``name``: The name of the queue.
+* ``priority``: The priority value, from 0 (lowest) to 1000 (highest).
+* ``status``: The status of queue, can be "waiting" (enabled) or "paused" (disabled) - all jobs within queue are put on hold.
+* ``uri``: The URI of queue, used for nested queues. Always starts with the default workspace queue having the same name as the workspace.
 
 
 Modify

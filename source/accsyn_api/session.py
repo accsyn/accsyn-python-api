@@ -74,6 +74,15 @@ class JSONEncoder(json.JSONEncoder):
 
     def default(self, obj: Any) -> Any:
         if isinstance(obj, datetime.date) or isinstance(obj, datetime.datetime):
+            # Convert to UTC if datetime, otherwise use as-is for date
+            if isinstance(obj, datetime.datetime):
+                # If naive (no timezone), assume local timezone
+                if obj.tzinfo is None:
+                    # Get local timezone and apply it
+                    local_tz = datetime.datetime.now().astimezone().tzinfo
+                    obj = obj.replace(tzinfo=local_tz)
+                # Convert to UTC before sending to backend
+                obj = obj.astimezone(datetime.timezone.utc)
             return obj.strftime("%Y-%m-%dT%H:%M:%S")
         return super().default(obj)
 
@@ -100,25 +109,24 @@ class JSONDecoder(json.JSONDecoder):
                             str(Session._safely_printable(d[key])),
                         ):
                             if len(d[key].split("-")[0]) == 4:
-                                d[key] = datetime.datetime.strptime(d[key], "%Y-%m-%dT%H:%M:%S")
+                                dt = datetime.datetime.strptime(d[key], "%Y-%m-%dT%H:%M:%S")
                             else:
-                                d[key] = datetime.datetime.strptime(d[key], "%y-%m-%dT%H:%M:%S")
+                                dt = datetime.datetime.strptime(d[key], "%y-%m-%dT%H:%M:%S")
+                            # Backend sends UTC, convert to local timezone
+                            dt = dt.replace(tzinfo=datetime.timezone.utc)
+                            d[key] = dt.astimezone()
                         # With millis
                         elif re.match(
                             "^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:" "[0-9]{2}:[0-9]{2}.[0-9]{3}$",
                             str(Session._safely_printable(d[key])),
                         ):
                             if len(d[key].split("-")[0]) == 4:
-                                d[key] = datetime.datetime.strptime(d[key], "%Y-%m-%dT%H:%M:%S.%f")
+                                dt = datetime.datetime.strptime(d[key], "%Y-%m-%dT%H:%M:%S.%f")
                             else:
-                                d[key] = datetime.datetime.strptime(d[key], "%y-%m-%dT%H:%M:%S.%f")
-                        # DEPRECATED
-                        elif str(Session._safely_printable(d[key])).find("{USD::date}") > -1:
-                            s = d[key][d[key].find("}") + 1 :]
-                            d[key] = datetime.datetime.strptime(
-                                s,
-                                "%Y%m%d %H:%M:%S" if s.find("+") == -1 else "%Y%m%d+%H:%M:%S",
-                            )
+                                dt = datetime.datetime.strptime(d[key], "%y-%m-%dT%H:%M:%S.%f")
+                            # Backend sends UTC, convert to local timezone
+                            dt = dt.replace(tzinfo=datetime.timezone.utc)
+                            d[key] = dt.astimezone()
             return d
 
         return recursive_decode(json_data)
@@ -594,6 +602,8 @@ class Session(object):
             entitytype
         ), "Invalid entity type supplied, must be of string type!"
         entitytype = entitytype.lower().strip()
+        if entitytype == "acl":
+            raise AccsynException("ACLs cannot be updated, use the grant function to grant access.")
         assert 0 < len(entityid or "") and Session._is_str(
             entityid
         ), "Invalid entity ID supplied, must be of string type!"
@@ -649,7 +659,9 @@ class Session(object):
             entitytype
         ), "Invalid entity type supplied, must be of string type!"
         entitytype = entitytype.lower().strip()
-        assert entitytype == "task", 'Only multiple "task" entities can be updated!'
+        assert entitytype == "task", "Only multiple 'task' entities can be updated!"
+        if entitytype == "acl":
+            raise AccsynException("ACLs cannot be updated, use the grant function to grant access.")
         assert 0 < len(entityid or "") and (
             Session._is_str(entityid)
         ), "Entity ID must be provided and be of string type!"
@@ -902,7 +914,7 @@ class Session(object):
         else:
             raise Exception("Unsupported grant access operation!")
 
-    def access(self, targettype: str, targetid: str) -> List[Dict[str, Any]]:
+    def access(self, targettype: str, targetid: str, recursive: bool = False) -> List[Dict[str, Any]]:
         """
         Return list of ACLs for an entity.
 
@@ -912,6 +924,7 @@ class Session(object):
 
         :param targettype: The entity type to list access for (delivery, volume, folder, home, collection).
         :param targetid: The id of the entity to list access for.
+        :param recursive: If True, list ACLs for all shares beneath the target volume, folder or home.
         :return: List of dictionaries.
         """
         assert 0 < len(targettype or "") and Session._is_str(
@@ -938,7 +951,7 @@ class Session(object):
             response = self._event(
                 "GET",
                 f"acl/find",
-                dict(),
+                dict(recursive=recursive),
                 query=f"acl WHERE target=share:{targetid}",
             )
             result = []
@@ -946,6 +959,8 @@ class Session(object):
                 result.append(dict(
                     user=acl["entity"].split(":")[1],
                     user_hr=acl.get("entity_hr", ""),
+                    share=acl["target"].split(":")[1],
+                    share_hr=acl.get("target_hr", ""),
                     read=acl["read"],
                     write=acl["write"],
                     acknowledged=acl.get("acknowledged", False),
@@ -1074,6 +1089,8 @@ class Session(object):
             entitytype
         ), "Invalid entity type supplied, provided and be of string type!"
         entitytype = entitytype.lower().strip()
+        if entitytype == "acl":
+            raise AccsynException("ACLs cannot be deleted, use the revoke function to revoke access.")
         assert 0 < len(entityid or "") and (
             Session._is_str(entityid)
         ), "Invalid entity ID supplie, provided and be of string type!"
