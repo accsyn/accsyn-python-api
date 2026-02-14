@@ -7,11 +7,11 @@
 File operations
 ***************
 
-Besides working with entities, the API supports file operation on share level (admins, employees) or on a specific share (admins, employees and restricted users depending on ACLs).
+Besides working with entities, the API supports file operation on volumes (admins, employees) or on a specific shared folder / home / collection (admins, employees and restricted users depending on ACLs).
 
 
-List files on remote server
-===========================
+List files on storage
+=====================
 
 
 To list files on the share “thefilm-DIT”, subfolder TO_ACMEFILM::
@@ -81,15 +81,21 @@ To exclude files matching a regular expression, use the ``exclude`` argument::
 
     session.ls("share=Documentation", exclude="re('_Draft.*')")
 
+.. note::
+
+    Include and exclude can be combined, include has precedence over exclude.
 
 To make it case insensitive::
 
     session.ls("share=thefilm-DIT/TO_ACMEFILM", exclude="re('_draft.*', 'I')")
 
+List files in a collection using its unique code identifier:
 
-.. note::
+    files = session.ls("collection=filecollection")
 
-    Include and exclude can be combined, include has precedence over exclude.
+List files in a delivery:
+
+    files = session.ls("delivery=69732302fd379c8fff1089d0")
 
 
 Failure scenarios
@@ -122,10 +128,11 @@ Failure scenarios
  * Server is down; server at organization is not online to perform the requested operation.
  * Share/Path does not exists;
 
+
 Get size on disk
 ================
 
-Get total size of file or all files beneath a directory::
+Get total size of file or all files beneath a directory (requires read access to the share)::
 
     session.getsize("share=thefilm-DIT/TO_ACMEFILM")
 
@@ -150,10 +157,11 @@ An exception will be thrown if listing fails. Possible reasons include:
 * Server is down; server at organization is not online to perform the requested operation.
 * Share/Path does not exists;
 
+
 Create directory
 ================
 
-To create directory “__UPLOAD” at the share “projects”::
+To create directory “__UPLOAD” at the share “projects” (requires write access to the share)::
 
     session.mkdir("share=projects/__UPLOAD")
 
@@ -170,7 +178,7 @@ Failure scenarios
 Rename a file or directory
 ===============================
 
-Rename file “share=thefilm-DIT/TO_ACMEFILM/pitch.mov” to “share=thefilm-DIT/TO_ACMEFILM/pitch_new.mov”::
+Rename file “share=thefilm-DIT/TO_ACMEFILM/pitch.mov” to “share=thefilm-DIT/TO_ACMEFILM/pitch_new.mov” (requires write access to the share)::
 
     session.rename("share=thefilm-DIT/TO_ACMEFILM/pitch.mov","share=thefilm-DIT/TO_ACMEFILM/pitch_new.mov")
 
@@ -187,7 +195,7 @@ Failure scenarios
 Move a file or directory
 ===============================
 
-Move file “share=thefilm-DIT/TO_ACMEFILM/pitch.mov” to “share=thefilm-DIT/TO_ACMEFILM/QT/pitch.mov”::
+Move file “share=thefilm-DIT/TO_ACMEFILM/pitch.mov” to “share=thefilm-DIT/TO_ACMEFILM/QT/pitch.mov” (requires write access to the share)::
 
     session.mv("share=thefilm-DIT/TO_ACMEFILM/pitch.mov","share=thefilm-DIT/TO_ACMEFILM/QT/pitch.mov")
 
@@ -207,9 +215,9 @@ Delete a file or directory
 
 .. warning::
 
-    Automising file removal through API calls can cause unwanted directories to be deleted, always test/dry run your calls before you put  them into production!
+    Automising file removal through API calls can cause unwanted directories to be deleted, always safequard andtest/dry run your API calls before you put them into production!
 
-Remove the directory “share=thefilm-DIT/TO_ACMEFILM/QT”::
+Remove the directory “share=thefilm-DIT/TO_ACMEFILM/QT” (requires write access to the share)::
 
     session.rm("share=thefilm-DIT/TO_ACMEFILM/QT")
 

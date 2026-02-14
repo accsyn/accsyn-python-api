@@ -13,6 +13,7 @@ import json
 import uuid
 import hashlib
 import copy
+import webbrowser
 
 import urllib.parse
 import base64
@@ -337,11 +338,6 @@ class Session(object):
                 logging.info("-" * 80)
         return s
 
-    @staticmethod
-    def str(d: Optional[Dict[str, Any]], indent: int = 4) -> str:
-        """Return a string representation of a dict"""
-        return json.dumps(d, default=Session._json_serial, indent=indent) if d is not None else "None"
-
     def get_last_message(self) -> Optional[str]:
         """Retreive error message from last API call."""
         return self._last_message
@@ -651,7 +647,7 @@ class Session(object):
         :param data: The list dictionaries containing sub entity (task) id and attributes to update.
         :return: The updated sub entities (tasks), as dictionaries.
 
-        .. changed:: 3.2.0
+        .. versionchanged:: 3.2.0
             The entityid and data parameters have switched places.
 
         """
@@ -1199,7 +1195,7 @@ class Session(object):
             path=path,
             download=True,
             recursive=recursive,
-            getsize=getsize,
+            getsize=getsize
         )
         if maxdepth:
             data["maxdepth"] = maxdepth
@@ -1512,7 +1508,24 @@ class Session(object):
 
     # Help
     def help(self) -> None:
-        print("Please have a look at the Python API reference: " "https://accsyn-python-api.readthedocs.io/en/latest/")
+        documentation_url = "https://accsyn-python-api.readthedocs.io/en/latest/"
+        print(f"Please have a look at the Python API reference: {documentation_url}, attempting to open in default browser...")
+       # Open the documentation url in the browser
+        webbrowser.open(documentation_url)
+ 
+    @staticmethod
+    def dump(d: Optional[Dict[str, Any]], indent: int = 4) -> str:
+        """
+        Return a string representation of an dictionary.
+        
+        .. versionchanged:: 3.2.0
+            Was 'str' function.
+
+        :param d: The dictionary to dump.
+        :param indent: The number of spaces to indent the output.
+        :return: A string representation of the dictionary.
+        """
+        return Session._safe_dumps(d, indent=indent) if d is not None else "None"
 
     # Internal utility functions
 
@@ -1534,7 +1547,7 @@ class Session(object):
                     last_pos = idx_start
         return s
 
-    # Network
+    # Rest API
 
     def _rest(
         self,
@@ -1603,7 +1616,7 @@ class Session(object):
                 try:
                     import socks
                 except ImportError as ie:
-                    logging.error("socks module is not installed, please install it with 'pip install socks' or add it to your PYTHONPATH")
+                    logging.error("Socks module is not installed, please install it with 'pip install socks' or add it to your PYTHONPATH")
                     raise ie
 
                 socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, proxy_hostname, proxy_port)
@@ -1872,7 +1885,7 @@ class Session(object):
 
     @staticmethod
     def _safe_dumps(d: Any, indent: Optional[int] = None) -> str:
-        return json.dumps(d if not isinstance(d, list) else list(d.values()), cls=JSONEncoder, indent=indent)
+        return json.dumps(d, cls=JSONEncoder, indent=indent)
 
     @staticmethod
     def _safely_printable(s: Optional[str]) -> str:
@@ -1885,13 +1898,6 @@ class Session(object):
     @staticmethod
     def _url_quote(url: Any) -> str:
         return urllib.parse.quote(Session._safe_dumps(url))
-
-    @staticmethod
-    def _json_serial(obj: Any) -> str:
-        """JSON serializer for *obj not serializable by default json code."""
-        if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
-            return obj.isoformat()
-        raise TypeError(f"Type {type(obj)} not serializable")
 
     @staticmethod
     def _base64_encode(s: str) -> str:

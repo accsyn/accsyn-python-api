@@ -131,7 +131,7 @@ Retreive a job by it's name (code), using quation marks to support whitespaces i
 
 To pretty print a job and its attribute, use the built in meth:`Session.str` function::
 
-    print(session.str(transfer))
+    print(session.dump(transfer))
 
 
 To list all jobs spawned by a certain user::
