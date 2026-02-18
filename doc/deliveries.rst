@@ -7,7 +7,7 @@
 Deliveries
 **********
 
-A an accsyn file delivery is a persistent job that delivers one or more files to one or more recipients and 
+An accsyn file delivery is a persistent job that delivers one or more files to one or more recipients and 
 is similar to a shared collection of files, but streamlined to make it simple for the recipient to 
 download and action the delivery using a standard web browser.
 
@@ -19,6 +19,42 @@ have files uploaded to it and then be submitted, or be created
 from existing files on an accsyn storage volume/share and submitted immediately.
 
 
+Query deliveries
+================
+
+Fetch all active deliveries
+---------------------------
+To fetch all deliveries, use the find API function::
+
+    deliveries = session.find("Delivery")
+
+This will return a list of deliveries.
+
+To fetch finished deliveries, use the finished=True argument::
+
+    deliveries = session.find("Delivery", finished=True)
+
+
+Fetch a delivery by its ID
+--------------------------
+
+To fetch a delivery by its ID, use the get_entity API function::
+
+    delivery = session.get_entity("Delivery", delivery_id)
+
+This will return the delivery, as would have been returned by a delivery find query.
+
+
+Find delivery by its name
+--------------------------
+
+To fetch a delivery by its name, use the find_one API function::
+
+    delivery = session.find_one("Delivery where name='Project references'")
+
+This will return the delivery, as would have been returned by a delivery find query.
+
+
 
 Create a temporary delivery
 ===========================
@@ -28,10 +64,7 @@ A pending delivery will have its files uploaded to a temp folder on default accs
 
 To create a temporary delivery, supply the name and the init status::
 
-    delivery = session.create("Delivery",{
-        "name":"Project references",
-        "status":"init"
-    })
+    delivery = session.create("Delivery",{"name":"Project references"})
 
 This will return the created delivery, as would have been returned by a delivery find query.
 
@@ -64,9 +97,9 @@ To upload the file(s) to the delivery::
 Add a recipient to a delivery
 -----------------------------
 
-To add a recipient to a delivery, use the assign API function::
+To add a recipient to a delivery, use the assign API function with either user id or email::
 
-    retval = session.grant("User", "6676f3e9c7ef4e27da254e57", "Delivery", delivery["id"])
+    retval = session.grant("User", "demo.user@accsyn.com", "Delivery", delivery["id"])
 
 Return value will a dictionary with same form as the access list query would return. 
 The user will receive an email with a link to the delivery and instructions on how to action it.
@@ -74,6 +107,7 @@ The user will receive an email with a link to the delivery and instructions on h
 .. note::
     
     The user will be invited to your workspace if it does not exist. First time users will be given clear instructions on how to sign up their personal accsyn account.
+    Supply {"invite": False} as data argument to prevent invitation.
 
 
 List recipients of a delivery
@@ -85,7 +119,7 @@ To list recipients of a delivery, use the assignments API function::
 
 Return value will be a list of dictionaries with recipient data:
 
-    [{'actioned': True, 'user': '6676f3e9c7ef4e27da254e57', 'user_hr': 'demo.user@accsyn.com'}]
+    [{"actioned": True, "user": "6676f3e9c7ef4e27da254e57", "user_hr": "demo.user@accsyn.com"}]
 
 Actioned is True if the recipient has already actioned the delivery, False if not.
 
@@ -114,10 +148,9 @@ Submit delivery
 
 To submit a delivery, update its status to pending:
 
-    delivery = session.update("Delivery", delivery["id"], {"status": "pending"})
+    session.update("Delivery", delivery["id"], {"status": "pending"})
 
-This will return the updated delivery, as would have been returned by a delivery find query.
-
+Deliveries will have theirs size calculated, and then emails will be sent to the recipients with instructions on how to action the delivery.
 
 .. note::
 
@@ -131,12 +164,21 @@ To create and submit a file delivery with two files, supply the source files as 
 
     delivery = session.create("Delivery",{
         "name":"Project reference",
-        "tasks":["project/reference.png", "project/description.txt"],
+        "tasks":["myproject/reference.png", "logo.jpeg"],
+        "recipients":["demo.user@accsyn.com"]
+    })
+
+The files is assumed to be on the default accsyn storage volume, to specify a different volume or share:
+
+    delivery = session.create("Delivery",{
+        "name":"Project reference",
+        "tasks":["share=myproject/reference.png", "volume=assets/logo.jpeg"],
         "recipients":["demo.user@accsyn.com"]
     })
 
 The delivery will be submitted and the user will receive an email with a link to the delivery. 
 The files will be available for download for the default duration of one month.
+
 
 List files and folders associated with a delivery
 -------------------------------------------------
@@ -225,7 +267,7 @@ This will return True if operation was successful.
 Working with upload requests
 ============================
 
-An upload request can either be a temporary request that will have files stored in a temp folder on default accsyn storage 
+An upload request is a reverse delivery that can either be a temporary request that will have files stored in a temp folder on default accsyn storage 
 volume and then deleted on expiration, or be created pointing to an folder on and accsyn storage volume/share and submitted immediately.
 
 A request is similar to a delivery when it comes to adding recipients and submitting the request.

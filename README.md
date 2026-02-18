@@ -101,7 +101,14 @@ poetry run pytest tests/test_find_entitytypes.py
 poetry run pytest -k "admin"
 poetry run pytest -k "employee"
 poetry run pytest -k "standard"
+
+# Run by category (base first, then extended in same session so entities are shared)
+poetry run pytest -m base
+poetry run pytest -m extended
+poetry run pytest -m "base or extended"
 ```
+
+**Categories:** Use `@pytest.mark.base` for tests that create entities; use `@pytest.mark.extended` and `@pytest.mark.order(2)` (or higher) for tests that depend on those entities. Run `pytest -m "base or extended"` to run both in order in one session.
 
 **Note:** Tests that require a specific role will be skipped if the corresponding `.env` file is missing.
 

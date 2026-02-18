@@ -81,3 +81,7 @@ disallow_untyped_defs = true
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 addopts = "--cov=accsyn_api --cov-report=term-missing"
+markers = [
+    "base: Phase 1 tests that create entities (run first).",
+    "extended: Phase 2 tests that depend on entities created by base (run after base).",
+]

@@ -13,15 +13,7 @@ def _list_contains_code(value: list) -> bool:
                 return True
     return False
 
-
-
-def test_find_attributes_delivery_contains_code(session_standard):
-    attributes = session_standard.find("attributes WHERE entitytype=delivery")
-    assert isinstance(attributes, list)
-    assert _list_contains_code(attributes)
-
-
-# Role-based tests
+@pytest.mark.base
 def test_find_entitytypes_as_admin(session_admin):
     """
     Test finding entitytypes as admin role.
@@ -31,27 +23,7 @@ def test_find_entitytypes_as_admin(session_admin):
     assert len(entitytypes) > 2
     assert "user" in {str(x).lower() for x in entitytypes}
 
-
-def test_find_entitytypes_as_employee(session_employee):
-    """
-    Test finding entitytypes as employee role.
-    """
-    entitytypes = session_employee.find("entitytypes")
-    assert isinstance(entitytypes, list)
-    assert len(entitytypes) > 2
-    assert "user" in {str(x).lower() for x in entitytypes}
-
-
-def test_find_entitytypes_as_standard(session_standard):
-    """
-    Test finding entitytypes as standard (restricted end user) role.
-    """
-    entitytypes = session_standard.find("entitytypes")
-    assert isinstance(entitytypes, list)
-    assert len(entitytypes) > 2
-    assert "user" in {str(x).lower() for x in entitytypes}
-
-
+@pytest.mark.base
 def test_find_attributes_delivery_contains_code_as_admin(session_admin):
     """
     Test finding delivery attributes as admin role.
@@ -61,6 +33,37 @@ def test_find_attributes_delivery_contains_code_as_admin(session_admin):
     assert _list_contains_code(attributes)
 
 
+# Extended tests, an only run when users has been invited properly after the base tests have been run
+
+
+@pytest.mark.extended
+def test_find_attributes_delivery_contains_code(session_standard):
+    attributes = session_standard.find("attributes WHERE entitytype=delivery")
+    assert isinstance(attributes, list)
+    assert _list_contains_code(attributes)
+
+
+@pytest.mark.extended
+def test_find_entitytypes_as_employee(session_employee):
+    """
+    Test finding entitytypes as employee role.
+    """
+    entitytypes = session_employee.find("entitytypes")
+    assert isinstance(entitytypes, list)
+    assert len(entitytypes) > 2
+    assert "user" in {str(x).lower() for x in entitytypes}
+
+@pytest.mark.extended
+def test_find_entitytypes_as_standard(session_standard):
+    """
+    Test finding entitytypes as standard (restricted end user) role.
+    """
+    entitytypes = session_standard.find("entitytypes")
+    assert isinstance(entitytypes, list)
+    assert len(entitytypes) > 2
+    assert "user" in {str(x).lower() for x in entitytypes}
+
+@pytest.mark.extended
 def test_find_attributes_delivery_contains_code_as_employee(session_employee):
     """
     Test finding delivery attributes as employee role.
@@ -69,7 +72,7 @@ def test_find_attributes_delivery_contains_code_as_employee(session_employee):
     assert isinstance(attributes, list)
     assert _list_contains_code(attributes)
 
-
+@pytest.mark.extended
 def test_find_attributes_delivery_contains_code_as_standard(session_standard):
     """
     Test finding delivery attributes as standard (restricted end user) role.

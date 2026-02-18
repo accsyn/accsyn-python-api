@@ -94,7 +94,7 @@ The Python accsyn API support submission of accsyn render jobs, here follows an 
 * ``parameters/remote_os``: (Optional)The operating system submit is made from.
 * ``parameters/site``: (Optional, since v2.0) Site specific setting overrides, see below.
 * ``range``: (If app supports split into items/frames) The integer range to render. Can be on or more(space or comma separated list of) entries on the form "1-10"(range), "4"(single) or "5-250x5"(consider only every 5 item/frames).
-* ``settings``: Standard accsyn settings to that will apply across all file involved file transfers, see https://support.accsyn.com/admin-manual.
+* ``settings``: Standard accsyn settings to that will apply across all file involved file transfers, see `https://support.accsyn.com <https://support.accsyn.com/admin-manual>`_.
 
 
 Filters
