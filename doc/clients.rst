@@ -7,9 +7,10 @@
 Clients
 *******
 
-The accsyn client is the underlaying entity type representing an instance that can run processes - act as a file transfer endpoint, execute compute jobs or hooks. 
+The accsyn client is the base entity type representing an instance that can run processes - act as a file transfer endpoint, execute compute jobs or hooks. 
 Clients are availble through the api as these entity types:
 
+ * Client; Base client entity type, all clients are of this type.
  * App(type:0); The client that is spawned when launching the accsyn desktop application, in the user context. Provides uploads and downloads to and from a workspace as well as hook execution and file sharing with locally mapped shares.
  * Server(type:1); A client spawned in the workspace context, on an accsyn daemon host instance running as a service.
  * UserServer(type:2); A client spawned in the user context, on an accsyn daemon host instance running as a server. Facilitates the same features as an App, with additional features for unattended file deliveries.

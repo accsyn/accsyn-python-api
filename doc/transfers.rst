@@ -30,7 +30,7 @@ A dict will be returned containing transfer job attributes::
         "code": "README.txt",
         "created": "2026-01-22T08:35:59",
         "destination": "user:6676f3e9c7ef4e27da254e57",
-        "destination_hr": "user:demo.user@accsyn.com[standard](6676f3e9c7ef4e27da254e57)",
+        "destination_hr": "user:lisa@example.com[standard](6676f3e9c7ef4e27da254e57)",
         "etr": "",
         "finished": "2026-01-22T08:43:05",
         "id": "6971e16fceadd67b955b1995",
@@ -42,7 +42,7 @@ A dict will be returned containing transfer job attributes::
         "speed": -1.0,
         "status": "aborted",
         "user": "6676f3e9c7ef4e27da254e57",
-        "user_hr": "user:demo.user@accsyn.com[standard](6676f3e9c7ef4e27da254e57)"
+        "user_hr": "user:lisa@example.com[standard](6676f3e9c7ef4e27da254e57)"
     }
 
 
@@ -118,7 +118,7 @@ Job queries
 
 Retreive a job by it's name (code), using quation marks to support whitespaces in query::
 
-    transfer = session.find_one('Transfer where name="x and y.png"')
+    transfer = session.find_one('Transfer WHERE name="x and y.png"')
 
 
 .. note::
@@ -136,17 +136,17 @@ To pretty print a job and its attribute, use the built in meth:`Session.str` fun
 
 To list all jobs spawned by a certain user::
 
-    session.find_one('Transfer where user=user@mail.com')
+    session.find_one('Transfer WHERE user=user@mail.com')
 
 
 Or jobs having a certain destination (<user>, <site>)::
 
-    session.find_one('Transfer where destination=stockholm')
+    session.find_one('Transfer WHERE destination=stockholm')
 
 
 List all downloads - jobs having main site "hq" (default code) as source::
 
-    session.find_one('Transfer where source=hq')
+    session.find_one('Transfer WHERE source=hq')
 
 
 
@@ -157,14 +157,14 @@ When a transfer is finished or aborted, it is not live anymore and will not be r
 To retrieve finished jobs, supply the 'finished' attribute::
 
 
-    session.find('Transfer where status=aborted', finished=True)
+    session.find('Transfer WHERE status=aborted', finished=True)
 
 
 
 After default two weeks/14 days, inactive jobs are purged and archived. To retrieve jobs from the archive, 
 supply the 'archived' attribute, recall that this operation may take long time to execute::
 
-    session.find('Transfer where status=done', archived=True)
+    session.find('Transfer WHERE status=done', archived=True)
 
 
 Create
@@ -197,8 +197,8 @@ Modify
 
 To resume a transfer and how to abort it::
 
-    session.update('Transfer', '614d660de50d45bb027c9bdd', {'status':"waiting"})
-    session.update('Transfer', '614d660de50d45bb027c9bdd', {'status':"aborted"})
+    session.update("Transfer", '614d660de50d45bb027c9bdd', {'status':"waiting"})
+    session.update("Transfer", '614d660de50d45bb027c9bdd', {'status':"aborted"})
 
 
 
@@ -208,7 +208,7 @@ Delete
 
 To delete a Transfer::
 
-    session.delete_one('Transfer', '614d660de50d45bb027c9bdd')
+    session.delete_one("Transfer", "614d660de50d45bb027c9bdd")
 
 
 Tasks

@@ -18,9 +18,9 @@ logger.addHandler(_handler)
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-STANDARD_ADMIN_EMAIL = "byos.tester@accsyn.com"
-STANDARD_USER_EMAIL = "test.user@accsyn.com"
-STANDARD_EMPLOYEE_EMAIL = "test.employee@accsyn.com"
+TEST_ADMIN_EMAIL = "byos.tester@accsyn.com"
+TEST_USER_EMAIL = "test.user@accsyn.com"
+TEST_EMPLOYEE_EMAIL = "test.employee@accsyn.com"
 
 # Session fixtures for different roles
 

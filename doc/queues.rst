@@ -21,7 +21,7 @@ To list queues::
 
 To list all transfers in a queue::
 
-    queue_transfers = session.find("Transfer where parent=6989982945131d8f16277b71")
+    queue_transfers = session.find("Transfer WHERE parent=6989982945131d8f16277b71")
 
 
 Create

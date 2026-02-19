@@ -24,12 +24,12 @@ Query
 
 To list all users::
 
-    users = session.find('User')
+    users = session.find("User")
 
 
 List only employees::
 
-    employees = session.find("User where role=employee")
+    employees = session.find("User WHERE role=employee")
 
 
 Create

@@ -50,7 +50,7 @@ Find delivery by its name
 
 To fetch a delivery by its name, use the find_one API function::
 
-    delivery = session.find_one("Delivery where name='Project references'")
+    delivery = session.find_one("Delivery WHERE name='Project references'")
 
 This will return the delivery, as would have been returned by a delivery find query.
 
@@ -99,7 +99,7 @@ Add a recipient to a delivery
 
 To add a recipient to a delivery, use the assign API function with either user id or email::
 
-    retval = session.grant("User", "demo.user@accsyn.com", "Delivery", delivery["id"])
+    retval = session.grant("User", "lisa@example.com", "Delivery", delivery["id"])
 
 Return value will a dictionary with same form as the access list query would return. 
 The user will receive an email with a link to the delivery and instructions on how to action it.
@@ -119,7 +119,7 @@ To list recipients of a delivery, use the assignments API function::
 
 Return value will be a list of dictionaries with recipient data:
 
-    [{"actioned": True, "user": "6676f3e9c7ef4e27da254e57", "user_hr": "demo.user@accsyn.com"}]
+    [{"actioned": True, "user": "6676f3e9c7ef4e27da254e57", "user_hr": "user:lisa@example.com[standard](6676f3e9c7ef4e27da254e57)"}]
 
 Actioned is True if the recipient has already actioned the delivery, False if not.
 
@@ -165,15 +165,15 @@ To create and submit a file delivery with two files, supply the source files as 
     delivery = session.create("Delivery",{
         "name":"Project reference",
         "tasks":["myproject/reference.png", "logo.jpeg"],
-        "recipients":["demo.user@accsyn.com"]
+        "recipients":["lisa@example.com"]
     })
 
-The files is assumed to be on the default accsyn storage volume, to specify a different volume or share:
+The files is assumed to be on the default accsyn storage volume, to specify a different volume or share::
 
     delivery = session.create("Delivery",{
         "name":"Project reference",
         "tasks":["share=myproject/reference.png", "volume=assets/logo.jpeg"],
-        "recipients":["demo.user@accsyn.com"]
+        "recipients":["lisa@example.com"]
     })
 
 The delivery will be submitted and the user will receive an email with a link to the delivery. 
@@ -185,7 +185,7 @@ List files and folders associated with a delivery
 
 To list files and folders that has been sent with a delivery::
 
-    files = session.find(f"task where job.id={delivery['id']}")
+    files = session.find(f"task WHERE job.id={delivery['id']}")
 
 This will return a list of tasks.
 
@@ -195,7 +195,7 @@ List file transfers associated with a delivery
 
 To list file transfers beneath a delivery for a specific user::
 
-    transfers = session.find("Transfer where parent=69732302fd379c8fff1089d0 and user=6676f3e9c7ef4e27da254e57")
+    transfers = session.find("Transfer WHERE parent=69732302fd379c8fff1089d0 AND user=6676f3e9c7ef4e27da254e57")
 
 This will return a list of all active transfer jobs beneath the delivery, to fetch all finished transfer you need to supply finished=True argument.
 
@@ -279,7 +279,7 @@ To create a temporary upload request, supply the name and the init status::
 
     upload_request = session.create("Request",{
         "name":"Project material",
-        "recipients":["demo.user@accsyn.com"]
+        "recipients":["lisa@example.com"]
     })
 
 This will return the created upload request, as would have been returned by a request find query. The request will be 
@@ -304,7 +304,7 @@ To create an upload request to a folder on the the default volume supply the pat
     upload_request = session.create("Request",{
         "name":"Provide project material",
         "destination":"share=(default)/source/from_client",
-        "recipients":["demo.user@accsyn.com"]
+        "recipients":["lisa@example.com"]
     })
 
 This will return the created upload request, as would have been returned by a request find query. The request will be 

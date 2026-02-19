@@ -6,9 +6,9 @@
 
 .. currentmodule:: accsyn_api.session
 
-***************************
-Using the accsyn Python API
-***************************
+*****
+Using
+*****
 
 .. highlight:: python
 
@@ -29,19 +29,25 @@ supplied upon creation::
 
 The following environment variables are picked up if set within python parent process, and not provided as arguments to the Session constructor:
 
-"ACCSYN_WORKSPACE" => "workspace".
+.. list-table:: env mappings
+   :widths: 100 100
+   :header-rows: 1
 
-"ACCSYN_API_USER" => "username".
-
-"ACCSYN_API_KEY" => "api_key".
-
+   * - Environment:
+     - Parameter:
+   * - ACCSYN_WORKSPACE
+     - workspace
+   * - ACCSYN_API_USER
+     - username
+   * - ACCSYN_API_KEY
+     - api_key
 
 
 .. note::
 
     accsyn communicates over tcp port 443 (https wrapped CRUD REST calls), make sure to allow outgoing traffic towards accsyn backend (your-workspace.accsyn.com).
 
-    Your API key can be obtained online or from desktop app @ Prefs>Setup API environment, or by running "accsyn user get_api_key" from your terminal/unix shell.
+    Your API key can be obtained at `https://accsyn.io/developer <https://accsyn.io/developer>`_ or from desktop app @ Settings>API.
 
     Remember to treat the API key as a secret password as it will grant access to listing and modifying files on your accsyn shared storage.
 
@@ -102,24 +108,65 @@ Returns a list of all download jobs (workspace code/domain is "myworkspace").
 
 Example of a nested complex query::
 
-    session.find('transfer WHERE ((user=demo.user@accsyn.com AND destination=hq) OR status<>failed) AND code="* backup"')
+    session.find('transfer WHERE ((user=lisa@example.com AND destination=hq) OR status<>failed) AND code="* backup"')
 
-This query returns all transfers where the user is demo.user@accsyn.com and the destination is site hq, or the status is not failed, and the code(name) ends with " backup" (* is a wildcard).
+This query returns all transfers where the user is lisa@example.com and the destination is site hq, or the status is not failed, and the code(name) ends with " backup" (* is a wildcard).
+
 
 Operators
 *********
 
 The accsyn API supports the following operators:
 
-* = (equal to)
-* != (not equal to)
-* <> (not equal to)
-* < (less than)
-* > (greater than)
-* <= (less than or equal to)
-* >= (greater than or equal to)
-* in (matches one of the values in the list)
-* not in (does not match any of the values in the list)
+.. list-table:: accsyn query operators
+   :widths: 20 100
+   :header-rows: 1
+
+   * - Operator:
+     - Description:
+   * - =
+     - Equal to the value on the right hand side.
+   * - !=
+     - Not equal to the value on the right hand side.
+   * - <>
+     - Not equal to the value on the right hand side.
+   * - <
+     - Less than the value on the right hand side.
+   * - >
+     - Greater than the value on the right hand side.
+   * - <=
+     - Less than or equal to the value on the right hand side.
+   * - >=
+     - Greater than or equal to the value on the right hand side.
+   * - in
+     - Matches one of the values in the comma(,) separated list on the right hand side string expression.
+   * - not in
+     - Does not match any of the values in the comma(,) separated list on the right hand side string expression.
+   * - contains
+     - Attribute (string) contains the given substring on the right hand side.
+   * - not contains
+     - Attribute (string) does not contain the given substring on the right hand side.
+   * - matches
+     - Attribute (string) matches the regular expression on the right hand side
+   * - not matches
+     - Attribute (string) does not match the regular expression on the right hand side.
+
+Example of substring match::
+
+    session.find('Transfer WHERE name CONTAINS "backup"')
+
+Example of regular expression match::
+
+    session.find('Transfer WHERE name matches "backup.*\\.zip"')
+
+.. note::
+
+    All comparisons are case insensitive.
+    If string value contains whitespace, it must be enclosed in quotes(').
+    The attribute to compare must be on the left hand side of the operator, and the value to compare must be on the right hand side. For example, "name=X" is valid, but "X=name" is not.
+    Regular expression syntax is that of the accsyn backend (commonly Python-style).
+
+
 
 Limit
 *****
