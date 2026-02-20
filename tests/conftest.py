@@ -16,11 +16,7 @@ logger.setLevel(logging.INFO)
 logger.addHandler(_handler)
 
 from dataclasses import dataclass, field
-from typing import Any, Callable
-
-TEST_ADMIN_EMAIL = "byos.tester@accsyn.com"
-TEST_USER_EMAIL = "test.user@accsyn.com"
-TEST_EMPLOYEE_EMAIL = "test.employee@accsyn.com"
+from typing import Any, Callable, List, Optional
 
 # Session fixtures for different roles
 
@@ -152,8 +148,9 @@ def _make_entities_registry(session: Any, run_id: str) -> EntityRegistry:
     """
     # Map "kind" -> delete function
     deleters = {
-        "delivery": lambda _id: session.delete_one("Delivery", _id),
-        "user": lambda _id: session.delete_one("User", _id),
+        "transfer": lambda _id: session.delete_one("Transfer", _id, dict(force=True)),
+        "delivery": lambda _id: session.delete_one("Delivery", _id, dict(force=True)),
+        "user": lambda _id: session.delete_one("User", _id, dict(force=True)),
     }
     return EntityRegistry(run_id=run_id, deleters=deleters)
 
@@ -174,3 +171,91 @@ def entities(run_id, session_admin):
         yield reg
     finally:
         reg.cleanup()
+
+
+class TestUtils:
+    """ Shared test utilities """
+    
+    @staticmethod
+    def get_user_ident(role: str) -> str:
+        """ Read the .env files and return the user ident for the given role """
+        path_envfile = os.path.join(os.path.dirname(os.path.dirname(__file__)), f".env.{role}")
+        assert os.path.exists(path_envfile), f"Missing test .env file: {path_envfile}"
+        with open(path_envfile, "r") as f:
+            for line in f:
+                if line.startswith("ACCSYN_API_USER="):
+                    return line.split("=")[1].strip()
+        raise ValueError(f"Missing user ident for role: {role}")
+
+    @staticmethod
+    def get_admin_ident() -> str:
+        return TestUtils.get_user_ident("admin")
+
+    @staticmethod
+    def get_employee_ident() -> str:
+        return TestUtils.get_user_ident("employee")
+
+    @staticmethod
+    def get_standard_ident() -> str:
+        return TestUtils.get_user_ident("standard")
+
+    @staticmethod
+    def get_data_path(file_name: str) -> str:
+        return os.path.join(os.path.dirname(__file__), "data", file_name)
+
+    @staticmethod
+    def _extract_codes(value: Any) -> set:
+        """Collect attribute codes (lowercase strings) from a dict or list of dicts/strings."""
+        codes: set = set()
+        if isinstance(value, dict):
+            for k, v in value.items():
+                if isinstance(k, str):
+                    codes.add(k.lower())
+                if isinstance(v, str):
+                    codes.add(v.lower())
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, str):
+                    codes.add(item.lower())
+                elif isinstance(item, dict):
+                    codes.update(TestUtils._extract_codes(item))
+        return codes
+
+    @staticmethod
+    def validate_response(
+        value: Any,
+        should_include: List[str],
+        should_exclude: Optional[List[str]] = None,
+    ) -> None:
+        """
+        Validate that response includes required codes and excludes forbidden ones.
+        value: dict or list of dicts (e.g. find("attributes") response).
+        If value is a list, every dict in the list is validated.
+        Uses assert; do not use in assert, call as TestUtils.validate_response(...).
+        """
+        should_exclude = should_exclude or []
+        if isinstance(value, list):
+            dict_items = [item for item in value if isinstance(item, dict)]
+            if dict_items:
+                for item in dict_items:
+                    TestUtils.validate_response(item, should_include, should_exclude)
+            else:
+                codes = TestUtils._extract_codes(value)
+                for s in should_include:
+                    assert s.lower() in codes, (
+                        f"Expected attribute {s!r} in response, got codes: {sorted(codes)}"
+                    )
+                for s in should_exclude:
+                    assert s.lower() not in codes, (
+                        f"Expected attribute {s!r} not in response, got codes: {sorted(codes)}"
+                    )
+            return
+        codes = TestUtils._extract_codes(value)
+        for s in should_include:
+            assert s.lower() in codes, (
+                f"Expected attribute {s!r} in response, got codes: {sorted(codes)}"
+            )
+        for s in should_exclude:
+            assert s.lower() not in codes, (
+                f"Expected attribute {s!r} not in response, got codes: {sorted(codes)}"
+            )

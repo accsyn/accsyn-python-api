@@ -1,9 +1,10 @@
 import pytest
 import logging
+import time
 
 from accsyn_api.session import AccsynException
 
-from conftest import TEST_ADMIN_EMAIL, TEST_EMPLOYEE_EMAIL, TEST_USER_EMAIL
+from conftest import TestUtils
 
 TEMP_DELIVERY_NAME = "Project references temp"
 TEMP_DELIVERY_NAME_EMPLOYEE = "Project references temp (EMP)"
@@ -15,26 +16,31 @@ DELIVERY_NAME_STANDARD = "Project references (STA)"
 @pytest.mark.order(1)
 def test_prepare_deliveries(session_admin, entities):
     # Prepare tests, remove employee and standard user if they exist
-    admin_user = session_admin.find_one(f"User WHERE code='{TEST_ADMIN_EMAIL}'")
-    employee_user = session_admin.find_one(f"User WHERE code='{TEST_EMPLOYEE_EMAIL}'")
+    admin_user = session_admin.find_one(f"User WHERE code='{TestUtils.get_admin_ident()}'")
+    employee_user = session_admin.find_one(f"User WHERE code='{TestUtils.get_employee_ident()}'")
     if employee_user:
         session_admin.delete_one("User", employee_user["id"])
         entities.remove_from_cleanup(kind="e1", entity_id=employee_user["id"])
-    standard_user = session_admin.find_one(f"User WHERE code='{TEST_USER_EMAIL}'")
+    standard_user = session_admin.find_one(f"User WHERE code='{TestUtils.get_standard_ident()}'")
     if standard_user:
         session_admin.delete_one("User", standard_user["id"])
         entities.remove_from_cleanup(kind="s1", entity_id=standard_user["id"])
     # Make sure server is running
     server = session_admin.find_one(f"Server WHERE roles CONTAINS storage")
     assert server is not None, "No storage server found"
-    assert server.status == "online", "Storage server is not online"
+    assert server["status"] == "online", "Storage server is not online"
     # Make sure admin has a client running, app or user server type
     client = session_admin.find_one(f"Client WHERE user={admin_user['id']} AND type in 0,2")
     assert client is not None, "No client found for admin, please login app or setup a user server"
-    assert client.status == "online", "Client is not online"
+    assert client["status"] == "online", "Client is not online"
+    # Invite employee to workspace
+    employee = session_admin.create("User",{
+        "code":TestUtils.get_employee_ident(),
+        "role":"employee"
+    })
+    entities.remember(kind="user", temp_name="e1", entity_id=employee["id"])
 
-# Create temp
-
+# Create temp delivery
 @pytest.mark.order(2)
 def test_create_temp_delivery(session_admin, entities):
     # Create a pending delivery living in a temp folder on default volume
@@ -48,20 +54,10 @@ def test_create_temp_delivery(session_admin, entities):
         session_admin.update("Delivery", delivery["id"], {"status": "pending"})
     # Add unknown recipient to delivery, with invitation not allowed should fail
     with pytest.raises(AccsynException):
-        session_admin.grant("User", TEST_USER_EMAIL, "Delivery", delivery["id"], {"invite": False})
-    # Add unknown recipient to delivery, should be invited
-    session_admin.grant("User", TEST_USER_EMAIL, "Delivery", delivery["id"])
-    # Submit now should fail - have no files uploaded yet
+        session_admin.grant("User", TestUtils.get_standard_ident(), "Delivery", delivery["id"], {"invite": False})
+    # Submit now should fail - have no files or recipients yet
     with pytest.raises(AccsynException):
         session_admin.update("Delivery", delivery["id"], {"status": "pending"})
-    # TODO: Upload file and wait for completion
-    # TODO: Submit and verify delivery
-    # Invite employee to workspace
-    employee = session_admin.create("User",{
-        "code":TEST_EMPLOYEE_EMAIL,
-        "role":"employee"
-    })
-    entities.remember(kind="user", temp_name="e1", entity_id=employee["id"])
 
 @pytest.mark.order(3)
 def test_create_temp_delivery_as_employee(session_employee, entities):
@@ -79,14 +75,110 @@ def test_create_temp_delivery_as_standard(session_standard, entities):
             "name":TEMP_DELIVERY_NAME_STANDARD
         })
 
-# Upload
 @pytest.mark.order(5)
-def test_upload_file_to_temp_delivery(session_admin, entities):
-    # Assume 
+def test_read_temp_delivery_as_admin(session_admin, entities):
     delivery_id = entities.get_id("delivery", "d1")
     delivery = session_admin.get_entity("Delivery", delivery_id)
     assert delivery is not None
-    
+    TestUtils.validate_response(delivery, ["name", "status", "public", "user"], 
+    should_exclude=["data","config","tasks","files","transfers"])
+
+@pytest.mark.order(6)
+def test_read_temp_delivery_as_employee(session_employee, entities):
+    # Should fail as employee have no access to any volumes
+    delivery_id = entities.get_id("delivery", "d1")
+    delivery = session_employee.get_entity("Delivery", delivery_id)
+    assert delivery is None
+
+@pytest.mark.order(7)
+def test_read_temp_delivery_as_standard(session_standard, entities):
+    # Should fail as standard user have no access to delivery
+    delivery_id = entities.get_id("delivery", "d1")
+    delivery = session_standard.get_entity("Delivery", delivery_id)
+    assert delivery is None
+
+@pytest.mark.order(8)
+def test_add_recipient_to_temp_delivery_as_admin(session_admin, entities):
+    delivery_id = entities.get_id("delivery", "d1")
+    result = session_admin.grant("User", TestUtils.get_standard_ident(), "Delivery", delivery_id)
+    assert result is True
+    # Verify recipient is added
+    recipients = session_admin.access("Delivery", delivery_id)
+    assert len(recipients) == 1
+    assert recipients[0]["user_hr"] == TestUtils.get_standard_ident()
+    # Test submit, should fail - have no files uploaded yet
+    with pytest.raises(AccsynException):
+        session_admin.update("Delivery", delivery_id, {"status": "pending"})
+
+@pytest.mark.order(9)
+def test_add_recipient_to_temp_delivery_as_employee(session_employee, entities):
+    # Should fail as employee has no access to volume related to delivery
+    delivery_id = entities.get_id("delivery", "d1")
+    with pytest.raises(AccsynException):
+        session_employee.grant("User", TestUtils.get_standard_ident(), "Delivery", delivery_id)
+
+@pytest.mark.order(10)
+def test_add_recipient_to_temp_delivery_as_standard(session_standard, entities):
+    # Should fail as standard user has no access to deliveries
+    delivery_id = entities.get_id("delivery", "d1")
+    with pytest.raises(AccsynException):
+        session_standard.grant("User", TestUtils.get_standard_ident(), "Delivery", delivery_id)
+
+
+# Upload and submit
+@pytest.mark.order(20)
+def test_upload_file_to_temp_delivery(session_admin, entities):
+    # Assume delivery is created and ready to receive files
+    delivery_id = entities.get_id("delivery", "d1")
+    delivery = session_admin.get_entity("Delivery", delivery_id)
+    assert delivery is not None
+    transfer = session_admin.create("Transfer", {
+        "parent": delivery["id"],
+        "source": TestUtils.get_data_path("bad_buck_bunny.png")
+    })
+    assert transfer is not None
+    # Wait for transfer to complete
+    logging.info(f"Waiting for upload {transfer['name']} to complete")
+    while transfer["status"] != "done":
+        time.sleep(1)
+        transfer = session_admin.get_entity("Transfer", transfer["id"])
+        logging.info(f"Transfer {transfer['name']} is {transfer['status']}")
+        if transfer["status"] in ["failed", "aborted"]:
+            raise AccsynException(f"{transfer['name']} derailed!")
+    logging.info(f"Upload {transfer['name']} completed")
+    entities.remember(kind="transfer", temp_name="t1", entity_id=transfer["id"])
+
+@pytest.mark.order(21)
+def test_upload_file_to_temp_delivery_as_employee(session_employee, entities):
+    # Should fail as employee have no access to any volumes
+    with pytest.raises(AccsynException):
+        delivery_id = entities.get_id("delivery", "d1")
+        delivery = session_employee.get_entity("Delivery", delivery_id)
+        assert delivery is not None
+        session_employee.create("Transfer", {
+            "parent": delivery["id"],
+            "source": TestUtils.get_data_path("bad_buck_bunny.png")
+        })
+
+@pytest.mark.order(22)
+def test_upload_file_to_temp_delivery_as_standard(session_standard, entities):
+    # Should fail as standard user have no access to deliveries
+    with pytest.raises(AccsynException):
+        delivery_id = entities.get_id("delivery", "d1")
+        delivery = session_standard.get_entity("Delivery", delivery_id)
+        assert delivery is not None
+        session_standard.create("Transfer", {
+            "parent": delivery["id"],
+            "source": TestUtils.get_data_path("bad_buck_bunny.png")
+        })
+
+@pytest.mark.order(23)
+def test_submit_temp_delivery(session_admin, entities):
+    delivery_id = entities.get_id("delivery", "d1")
+    delivery = session_admin.get_entity("Delivery", delivery_id)
+    assert delivery is not None
+    session_admin.update("Delivery", delivery["id"], {"status": "pending"})
+    assert delivery["status"] != "init"
 
 #@pytest.mark.extended
 @pytest.mark.order(99)

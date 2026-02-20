@@ -1,18 +1,7 @@
 import pytest
 
-from conftest import TEST_EMPLOYEE_EMAIL, TEST_USER_EMAIL
+from conftest import TestUtils
 
-def _list_contains_code(value: list) -> bool:
-    for item in value:
-        if isinstance(item, str) and item.lower() == "code":
-            return True
-        if isinstance(item, dict):
-            # Be resilient if backend returns attribute objects rather than strings
-            if any(isinstance(k, str) and k.lower() == "code" for k in item.keys()):
-                return True
-            if any(isinstance(v, str) and v.lower() == "code" for v in item.values()):
-                return True
-    return False
 
 @pytest.mark.order(1)
 def test_find_entitytypes_as_admin(session_admin):
@@ -25,30 +14,29 @@ def test_find_entitytypes_as_admin(session_admin):
     assert "user" in {str(x).lower() for x in entitytypes}
 
 @pytest.mark.order(2)
-def test_find_attributes_delivery_contains_code_as_admin(session_admin):
+def test_find_and_validate_delivery_attributes_as_admin(session_admin):
     """
     Test finding delivery attributes as admin role.
     """
     attributes = session_admin.find("attributes WHERE entitytype=delivery")
     assert isinstance(attributes, list)
-    assert _list_contains_code(attributes)
-
+    TestUtils.validate_response(attributes, should_include=["code", "name", "public"], should_exclude=["data","config"])
 
 @pytest.mark.order(3)
 def test_create_users(session_admin, entities):
     # Invate employee and standard user if they don't exist
-    employee = session_admin.find_one(f"User where code='{TEST_EMPLOYEE_EMAIL}'")
+    employee = session_admin.find_one(f"User where code='{TestUtils.get_employee_ident()}'")
     if not employee:
         employee = session_admin.create("User",{
-            "code":TEST_EMPLOYEE_EMAIL,
+            "code":TestUtils.get_employee_ident(),
             "role":"employee"
         })
         assert employee is not None
         entities.remember(kind="user", temp_name="e1", entity_id=employee["id"])
-    standard = session_admin.find_one(f"User where code='{TEST_USER_EMAIL}'")
+    standard = session_admin.find_one(f"User where code='{TestUtils.get_standard_ident()}'")
     if not standard:
         standard = session_admin.create("User",{
-            "code":TEST_USER_EMAIL,
+            "code":TestUtils.get_standard_ident(),
             "role":"standard"
         })
         assert standard is not None
@@ -58,7 +46,7 @@ def test_create_users(session_admin, entities):
 def test_find_attributes_delivery_contains_code(session_standard):
     attributes = session_standard.find("attributes WHERE entitytype=delivery")
     assert isinstance(attributes, list)
-    assert _list_contains_code(attributes)
+    TestUtils.validate_response(attributes, should_include=["code"])
 
 @pytest.mark.order(5)
 def test_find_entitytypes_as_employee(session_employee):
@@ -87,7 +75,7 @@ def test_find_attributes_delivery_contains_code_as_employee(session_employee):
     """
     attributes = session_employee.find("attributes WHERE entitytype=delivery")
     assert isinstance(attributes, list)
-    assert _list_contains_code(attributes)
+    TestUtils.validate_response(attributes, should_include=["code"])
 
 @pytest.mark.order(8)
 def test_find_attributes_delivery_contains_code_as_standard(session_standard):
@@ -96,4 +84,4 @@ def test_find_attributes_delivery_contains_code_as_standard(session_standard):
     """
     attributes = session_standard.find("attributes WHERE entitytype=delivery")
     assert isinstance(attributes, list)
-    assert _list_contains_code(attributes)
+    TestUtils.validate_response(attributes, should_include=["code"])

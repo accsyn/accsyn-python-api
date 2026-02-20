@@ -567,6 +567,8 @@ class Session(object):
         response = self._event("GET", f"{entitytype}/find", dict(), entityid=entityid)
         if response:
             result = response["result"]
+            if not result:
+                return None
             retval = result[0]
             if 1<len(result):
                 Session._warning(f"Multiple entities retreived({len(result)}), returning first one.")
@@ -858,7 +860,7 @@ class Session(object):
     def grant(
         self,
         entitytype: str,
-        entitityid: str,
+        entityid: str,
         targettype: str,
         targetid: str,
         data: Dict[str, Any] = None,
@@ -869,7 +871,7 @@ class Session(object):
         .. versionadded:: 3.2
 
         :param entitytype: The entity type that should be granted access.
-        :param entitityid: The id of the entity that should be granted access.
+        :param entityid: The id of the entity that should be granted access.
         :param targettype: The entity type to grant access to.
         :param targetid: The id of the entity to grant access to.
         :param data: ACL data, should permissions and other data.
@@ -880,27 +882,27 @@ class Session(object):
             entitytype
         ), "Invalid entity type supplied, must be of string type!"
         entitytype = entitytype.lower().strip()
-        assert 0 < len(entitityid or "") and Session._is_str(
-            entitityid
+        assert 0 < len(entityid or "") and Session._is_str(
+            entityid
         ), "Invalid entity ID supplied, must be of string type!"
-        entitityid = entitityid.lower().strip()
-        if not re.match("^[a-z0-9]{24}$", (entitityid or "")):
+        entityid = entityid.lower().strip()
+        if not re.match("^[a-z0-9]{24}$", (entityid or "")):
             # Try to find entity by code if possible
             if entitytype in UNIQUE_ENTITY_TYPES:
                 response = self._event(
                     "GET",
                     f"{entitytype}/find",
-                    query=f"code='{entitityid}'",
+                    query=f"code='{entityid}'",
                 )
-                if 0<len(response["result"]):
+                if 0<len(response.get("result", [])):
                     # Use the correct ID
-                    entitityid = response["result"][0]["id"]
+                    entityid = response["result"][0]["id"]
                 else:
                     # Allow this - user will be invited
                     if (data or dict()).get("invite", True) is False:
-                        raise AccsynException(f"No {entitytype} found with code '{entitityid}', and invite is not allowed!")
+                        raise AccsynException(f"No {entitytype} found with code '{entityid}', and invite is not allowed!")
                     else:
-                        Session._warning(f"No {entitytype} found with code '{entitityid}', will be invited!")
+                        Session._warning(f"No {entitytype} found with code '{entityid}', will be invited!")
             else:
                 raise AccsynException(f"Please supply a valid {entitytype} ID!")
         # Validate target entity type and id
@@ -925,52 +927,53 @@ class Session(object):
             else:
                 raise AccsynException(f"Please supply a valid {targettype} ID!")
         result = None
-        if entitytype == "user" and targettype in ["delivery","request","stream"]:
-            # Assign a user to a delivery, expect delivery and user supplied
-            user_id = entitityid
-            delivery_id = targetid
-            payload = dict(
-                recipient=user_id,
-                invite=(data or dict()).get("invite", True),
-            )
-            response = self._event(
-                "PUT",
-                f"job/recipient/add",
-                payload,
-                entityid=delivery_id,
-            )
-            result = response["result"]
-        elif entitytype == "user" and targettype in ["volume","folder","home","collection"]:
-            # Assign an employee user to a volume
-            assert (
-                data is not None and isinstance(data, dict) and (0 < len(data or dict()))
-            ), "Invalid grant access data supplied, must be a dict with values!"
-            user_id = entitityid
-            volume_id = targetid
-            payload = dict(
-                entity=f"user:{user_id}",
-                target=f"share:{volume_id}",
-                read=data.get("read", True),
-                write=data.get("write", True),
-                notify=data.get("notify", True),
-                message=data.get("message", ""),
-                path=data.get("path", "/"),
-            )
-            if (data or dict()).get("invite", True) is False:
-                payload["invite"] = False
-            response = self._event(
-                "POST",
-                f"acl/create",
-                payload
-            )
-            acl = response["result"][0]
-            result = dict(
-                user=acl["entity"].split(":")[1],
-                user_hr=acl.get("entity_hr", ""),
-                read=acl["read"],
-                write=acl["write"],
-                acknowledged=acl.get("acknowledged", False),
-            )
+        if entitytype == "user":
+            if targettype in ["delivery","request","stream"]:
+                # Assign a user to a delivery, expect delivery and user supplied
+                user_id = entityid
+                delivery_id = targetid
+                payload = dict(
+                    recipient=user_id,
+                    invite=(data or dict()).get("invite", True),
+                )
+                response = self._event(
+                    "PUT",
+                    f"job/recipient/add",
+                    payload,
+                    entityid=delivery_id,
+                )
+                result = response["result"]
+            elif targettype in ["volume","folder","home","collection"]:
+                # Assign an employee user to a volume
+                assert (
+                    data is not None and isinstance(data, dict) and (0 < len(data or dict()))
+                ), "Invalid grant access data supplied, must be a dict with values!"
+                user_id = entityid
+                volume_id = targetid
+                payload = dict(
+                    entity=f"user:{user_id}",
+                    target=f"share:{volume_id}",
+                    read=data.get("read", True),
+                    write=data.get("write", True),
+                    notify=data.get("notify", True),
+                    message=data.get("message", ""),
+                    path=data.get("path", "/"),
+                )
+                if (data or dict()).get("invite", True) is False:
+                    payload["invite"] = False
+                response = self._event(
+                    "POST",
+                    f"acl/create",
+                    payload
+                )
+                acl = response["result"][0]
+                result = dict(
+                    user=acl["entity"].split(":")[1],
+                    user_hr=acl.get("entity_hr", ""),
+                    read=acl["read"],
+                    write=acl["write"],
+                    acknowledged=acl.get("acknowledged", False),
+                )
         if result is not None:
             return result
         else:
@@ -1059,6 +1062,21 @@ class Session(object):
             entityid
         ), "Invalid entity id supplied, must be of string type!"
         entityid = entityid.lower().strip()
+        if not re.match("^[a-z0-9]{24}$", (entityid or "")):
+            # Try to find entity by code if possible
+            if entitytype in UNIQUE_ENTITY_TYPES:
+                response = self._event(
+                    "GET",
+                    f"{entitytype}/find",
+                    query=f"code='{entityid}'",
+                )
+                if 0<len(response.get("result", [])):
+                    # Use the correct ID
+                    entityid = response["result"][0]["id"]
+                else:
+                    raise AccsynException(f"No {entitytype} found with code '{entityid}' found!")
+            else:
+                raise AccsynException(f"Please supply a valid {entitytype} ID!")
         assert re.match("^[a-z0-9]{24}$", (entityid or "")), "Please supply a valid entity ID!"
         assert 0 < len(targettype or "") and Session._is_str(
             targettype
@@ -1139,12 +1157,14 @@ class Session(object):
         if response:
             return response["result"]
 
-    def delete_one(self, entitytype: str, entityid: str) -> Any:
+    def delete_one(self, entitytype: str, entityid: str, data: Dict[str, Any] = None) -> Any:
         """
         Delete(archive) an entity.
 
         :param entitytype: The type of entity to delete (job, share, acl, ..)
         :param entityid: The id of the entity.
+        :param data: (Optional) The dictionary containing additional delete options, such as force=True to delete even if there are active related entities.
+
         :return: True if deleted, an exception is thrown otherwise.
         """
         assert 0 < len(entitytype or "") and Session._is_str(
@@ -1159,7 +1179,7 @@ class Session(object):
         response = self._event(
             "DELETE",
             f"{entitytype}/delete",
-            dict(),
+            data,
             entityid=entityid,
         )
         if response:
