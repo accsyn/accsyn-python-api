@@ -1,5 +1,5 @@
 # :coding: utf-8
-# :copyright: Copyright (c) 2016-2022 accsyn / HDR AB
+# :copyright: Copyright (c) 2016-2026 accsyn / HDR AB
 
 import sys
 import os
@@ -1841,7 +1841,7 @@ class Session(object):
                     if isinstance(o, dict):
                         d = o
                         for key, value in list(d.items()):
-                            result += len(key) + recursive_estimate_dict_size(value)
+                            result += len(str(key)) + recursive_estimate_dict_size(value)
                     elif isinstance(o, list):
                         l = o
                         for _o in l:

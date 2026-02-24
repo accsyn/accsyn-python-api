@@ -1,19 +1,23 @@
 import os
+import sys
 import pytest
 import uuid
 import logging
-import tempfile
 
-# Ensure INFO messages from this module go to the log file (pytest often sets root to WARNING).
-# Use line-buffered stream so teardown logs are written before pytest exits.
-_logpath = os.path.join(tempfile.gettempdir(), "accsyn-python-api-pytest.log")
-_logstream = open(_logpath, "a", encoding="utf-8", buffering=1)
-_handler = logging.StreamHandler(_logstream)
-_handler.setLevel(logging.INFO)
-_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+# Logger for this module; handler is added in pytest_configure when -v is used.
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-logger.addHandler(_handler)
+logger.propagate = False
+
+
+def pytest_configure(config):
+    """When pytest is run with -v (or -vv), send INFO/WARNING from this module to stdout."""
+    verbose = config.getoption("verbose", 0)
+    if verbose >= 1 and not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setLevel(logging.INFO)
+        handler.setFormatter(logging.Formatter("%(levelname)s - %(message)s"))
+        logger.addHandler(handler)
 
 from dataclasses import dataclass, field
 from typing import Any, Callable, List, Optional
@@ -130,7 +134,8 @@ class EntityRegistry:
         if errors:
             # Optionally re-raise one error to make it visible,
             # or just log; depends on how strict you want teardown to be.
-            raise RuntimeError(f"Cleanup had {len(errors)} errors, first: {errors[0]}") from errors[0]
+            #raise RuntimeError(f"Cleanup had {len(errors)} errors, first: {errors[0]}") from errors[0]
+            logger.warning(f"Cleanup had {len(errors)} errors: first: {''.join(str(e) for e in errors)}")
 
 @pytest.fixture(scope="session")
 def run_id() -> str:

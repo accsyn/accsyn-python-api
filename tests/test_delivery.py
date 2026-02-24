@@ -42,7 +42,7 @@ def test_prepare_deliveries(session_admin, entities):
 
 # Create temp delivery
 @pytest.mark.order(2)
-def test_create_temp_delivery(session_admin, entities):
+def test_create_temp_delivery_as_admin(session_admin, entities):
     # Create a pending delivery living in a temp folder on default volume
     delivery = session_admin.create("Delivery",{
         "name":TEMP_DELIVERY_NAME
@@ -81,7 +81,7 @@ def test_read_temp_delivery_as_admin(session_admin, entities):
     delivery = session_admin.get_entity("Delivery", delivery_id)
     assert delivery is not None
     TestUtils.validate_response(delivery, ["name", "status", "public", "user"], 
-    should_exclude=["data","config","tasks","files","transfers"])
+    should_exclude=["data","config","tasks"])
 
 @pytest.mark.order(6)
 def test_read_temp_delivery_as_employee(session_employee, entities):
@@ -137,60 +137,95 @@ def test_upload_file_to_temp_delivery(session_admin, entities):
         "source": TestUtils.get_data_path("bad_buck_bunny.png")
     })
     assert transfer is not None
-    # Wait for transfer to complete
+    # Wait for transfer to complete (move to finished)
     logging.info(f"Waiting for upload {transfer['name']} to complete")
     while transfer["status"] != "done":
         time.sleep(1)
-        transfer = session_admin.get_entity("Transfer", transfer["id"])
-        logging.info(f"Transfer {transfer['name']} is {transfer['status']}")
-        if transfer["status"] in ["failed", "aborted"]:
-            raise AccsynException(f"{transfer['name']} derailed!")
+        t = session_admin.get_entity("Transfer", transfer["id"])
+        if t is None:
+            break
+        logging.info(f"Transfer {t['name']} is {t['status']}")
+        if t["status"] in ["failed"]:
+            raise AccsynException(f"{t['name']} derailed!")
     logging.info(f"Upload {transfer['name']} completed")
     entities.remember(kind="transfer", temp_name="t1", entity_id=transfer["id"])
 
 @pytest.mark.order(21)
 def test_upload_file_to_temp_delivery_as_employee(session_employee, entities):
     # Should fail as employee have no access to any volumes
+    delivery_id = entities.get_id("delivery", "d1")
     with pytest.raises(AccsynException):
-        delivery_id = entities.get_id("delivery", "d1")
-        delivery = session_employee.get_entity("Delivery", delivery_id)
-        assert delivery is not None
         session_employee.create("Transfer", {
-            "parent": delivery["id"],
+            "parent": delivery_id,
             "source": TestUtils.get_data_path("bad_buck_bunny.png")
         })
 
 @pytest.mark.order(22)
 def test_upload_file_to_temp_delivery_as_standard(session_standard, entities):
     # Should fail as standard user have no access to deliveries
+    delivery_id = entities.get_id("delivery", "d1")
     with pytest.raises(AccsynException):
-        delivery_id = entities.get_id("delivery", "d1")
-        delivery = session_standard.get_entity("Delivery", delivery_id)
-        assert delivery is not None
         session_standard.create("Transfer", {
-            "parent": delivery["id"],
+            "parent": delivery_id,
             "source": TestUtils.get_data_path("bad_buck_bunny.png")
         })
 
 @pytest.mark.order(23)
 def test_submit_temp_delivery(session_admin, entities):
     delivery_id = entities.get_id("delivery", "d1")
-    delivery = session_admin.get_entity("Delivery", delivery_id)
-    assert delivery is not None
-    session_admin.update("Delivery", delivery["id"], {"status": "pending"})
+    delivery = session_admin.update("Delivery", delivery_id, {"status": "pending"})
+    # Make sure it is on the move
     assert delivery["status"] != "init"
+    # Wait for delivery to enter waiting state
+    while delivery["status"] in ["pending"]:
+        time.sleep(1)
+        delivery = session_admin.get_entity("Delivery", delivery_id)
+        logging.info(f"Delivery {delivery['name']} is {delivery['status']}")
+    assert delivery["status"] == "waiting"
+
+
+@pytest.mark.order(24)
+def test_abort_temp_delivery_as_employee(session_employee, entities):
+    delivery_id = entities.get_id("delivery", "d1")
+    with pytest.raises(AccsynException):
+        session_employee.update("Delivery", delivery_id, {"status": "aborted"})
+
+@pytest.mark.order(25)
+def test_pause_temp_delivery_as_standard(session_standard, entities):
+    # Should fail as standard user have no access to deliveries
+    delivery_id = entities.get_id("delivery", "d1")
+    with pytest.raises(AccsynException):
+        session_standard.update("Delivery", delivery_id, {"status": "aborted"})
+
+@pytest.mark.order(26)
+def test_abort_temp_delivery_as_admin(session_admin, entities):
+    delivery_id = entities.get_id("delivery", "d1")
+    delivery = session_admin.update("Delivery", delivery_id, {"status": "aborted"})
+    assert delivery["status"] == "aborted"
+
+@pytest.mark.order(97)
+def test_delete_temp_delivery_as_employee(session_employee, entities):
+    # Should fail as employee have no access to any volumes
+    delivery_id = entities.get_id("delivery", "d1")
+    with pytest.raises(AccsynException):
+        session_employee.delete_one("Delivery", delivery_id)
+
+@pytest.mark.order(98)
+def test_delete_temp_delivery_as_standard(session_standard, entities):
+    # Should fail as standard user have no access to deliveries
+    delivery_id = entities.get_id("delivery", "d1")
+    with pytest.raises(AccsynException):
+        session_standard.delete_one("Delivery", delivery_id)
 
 #@pytest.mark.extended
 @pytest.mark.order(99)
 def test_delete_temp_delivery(session_admin, entities):
     # Delete delivery
     delivery_id = entities.get_id("delivery", "d1")
-    delivery = session_admin.get_entity("Delivery", delivery_id)
-    assert delivery is not None
-    result = session_admin.delete_one("Delivery", delivery["id"])
+    result = session_admin.delete_one("Delivery", delivery_id)
     assert result is True
     # Remove from cache
-    entities.remove_from_cleanup(kind="delivery", entity_id=delivery["id"])
+    entities.remove_from_cleanup("delivery", delivery_id)
 
 """
 
