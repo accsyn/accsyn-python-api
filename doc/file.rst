@@ -219,7 +219,7 @@ Delete a file or directory
 
 Remove the directory “share=thefilm-DIT/TO_ACMEFILM/QT” (requires write access to the share)::
 
-    session.rm("share=thefilm-DIT/TO_ACMEFILM/QT")
+    session.delete("share=thefilm-DIT/TO_ACMEFILM/QT")
 
 Will return {“result”:true}  if  successful, otherwise an exception to be thrown, obtain the message by calling session.get_last_message()):
 

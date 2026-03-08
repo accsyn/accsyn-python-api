@@ -4,7 +4,7 @@ import time
 
 from accsyn_api.session import AccsynException
 
-from conftest import TestUtils
+from conftest import TestUtils, TEST_FILE
 
 TEMP_DELIVERY_NAME = "Project references temp"
 TEMP_DELIVERY_NAME_EMPLOYEE = "Project references temp (EMP)"
@@ -134,16 +134,16 @@ def test_upload_file_to_temp_delivery(session_admin, entities):
     assert delivery is not None
     transfer = session_admin.create("Transfer", {
         "parent": delivery["id"],
-        "source": TestUtils.get_data_path("bad_buck_bunny.png")
+        "source": TestUtils.get_data_path(TEST_FILE)
     })
     assert transfer is not None
     # Wait for transfer to complete (move to finished)
     logging.info(f"Waiting for upload {transfer['name']} to complete")
     while transfer["status"] != "done":
         time.sleep(1)
-        t = session_admin.get_entity("Transfer", transfer["id"])
+        t = session_admin.find_one(f"Transfer WHERE id={transfer['id']}")
         if t is None:
-            break
+            break # Job done
         logging.info(f"Transfer {t['name']} is {t['status']}")
         if t["status"] in ["failed"]:
             raise AccsynException(f"{t['name']} derailed!")
@@ -157,7 +157,7 @@ def test_upload_file_to_temp_delivery_as_employee(session_employee, entities):
     with pytest.raises(AccsynException):
         session_employee.create("Transfer", {
             "parent": delivery_id,
-            "source": TestUtils.get_data_path("bad_buck_bunny.png")
+            "source": TestUtils.get_data_path(TEST_FILE)
         })
 
 @pytest.mark.order(22)

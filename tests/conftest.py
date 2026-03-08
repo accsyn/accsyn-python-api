@@ -4,6 +4,10 @@ import pytest
 import uuid
 import logging
 
+TEST_FILE="jonssonligan-dyker-upp-igen.jpg"
+TEST_FILE2= "bad_buck_bunny.png"
+TEST_FILE3="Flesh wound.jpeg"
+
 # Logger for this module; handler is added in pytest_configure when -v is used.
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

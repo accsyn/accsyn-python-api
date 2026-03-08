@@ -160,11 +160,14 @@ To retrieve finished jobs, supply the 'finished' attribute::
     session.find('Transfer WHERE status=aborted', finished=True)
 
 
-
 After default two weeks/14 days, inactive jobs are purged and archived. To retrieve jobs from the archive, 
 supply the 'archived' attribute, recall that this operation may take long time to execute::
 
     session.find('Transfer WHERE status=done', archived=True)
+
+To return a single job, regardless if it is finished or archived, use the get_entity function::
+
+    transfer = session.get_entity("Transfer", transfer_id)
 
 
 Create
@@ -211,10 +214,11 @@ To delete a Transfer::
     session.delete_one("Transfer", "614d660de50d45bb027c9bdd")
 
 
+
 Tasks
 =====
 
-A task is a file/directory (or a compute item/frame) to execute within a job. Task access through API is restricted, for example
+A task is a file/directory to execute within a job. Task access through API is restricted, for example
 deleting task is not possible neither changing their path. Instead of deleting a task, they can be excluded.
 
 Query tasks
@@ -222,11 +226,11 @@ Query tasks
 
 Job tasks are a sub entity of job, and not a true accsyn entity. To query tasks, supply the parent job ID separately from query::
 
-    tasks = session.find("Task", parent="5a7325f8b7ef72f5f9d74bf4")
+    tasks = session.find("Task", entityid="5a7325f8b7ef72f5f9d74bf4")
 
 Find all tasks that have a certain status::
 
-    tasks = session.find("Task WHERE status=onhold", parent="5a7325f8b7ef72f5f9d74bf4")
+    tasks = session.find("Task WHERE status=onhold", entityid="5a7325f8b7ef72f5f9d74bf4")
 
 A list if tasks is returned as dictionaries::
 
@@ -339,23 +343,23 @@ supply attribute allow_duplicates=False to create call.
 
 .. note::
 
-    tasks without destination can only be created for jobs sending files with mirrored paths.
+    Tasks without no destination provided can only be created with jobs sending files with mirrored paths.
 
-Add with new destination path::
+Add a single task to a download job::
 
     session.create("Task", {
-      "tasks":[
-        {
-          "source":"share=projects/_REF/creatures_showreel_2018.mov",
-          "destination":"share=projects/TMP/creatures_showreel_2018_tmp.mov"
-        }
-      ]
-    }, transfer["id"])
+      "tasks":{
+        "source":"_REF/creatures_showreel_2018.mov",
+        "destination":"/Users/johndoe/Downloads/creatures_showreel_2018.mov"
+      }
+    }, entityid=transfer["id"])
+
+The single task will be returned as a dictionary, providing task ID, status and other attributes. If adding
+multiple tasks, a list of tasks will be returned.
 
 .. note::
 
     * Only users themselves own the right to add files from/to their local harddrive/storage for upload/download.
-    * Pending files (tasks without destination path:s) can not be added to a job that remote user already have started downloading.
     * Operation will fail if another task exists with same source and destination path
     * Ongoing executing tasks will not be interrupted when new tasks are added.
 
@@ -363,13 +367,13 @@ Add with new destination path::
 Modifying tasks
 ***************
 
-Only the ``status``, ``priority`` or ``metadata`` of a task can currently be modified.
+Only the ``status``, ``priority`` or ``metadata`` attributes of a task can currently be modified.
 
 Tasks are always updated in group with values supplied as a list of dicts instead of a single dict::
 
     transfer = session.find('Transfer where id=5a7325f8b7ef72f5f9d74bf4')
 
-    updated_transfer = session.update_many("Task", transfer["id"], [{
+    updated_tasks = session.update_many("Task", transfer["id"], [{
         "id":"cc5f2afa-9ae4-46e0-9273-82ac802b20ff",
         "status":"onhold"
     }])

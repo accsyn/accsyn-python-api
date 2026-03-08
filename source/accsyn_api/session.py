@@ -377,7 +377,7 @@ class Session(object):
         self,
         entitytype: str,
         data: Union[str, Dict[str, Any], List[Dict[str, Any]]],
-        entitytype_id: Optional[str] = None,
+        entityid: Optional[str] = None,
         allow_duplicates: bool = True,
     ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """
@@ -385,7 +385,7 @@ class Session(object):
 
         :param entitytype: The type of entity to create (job, share, acl)
         :param data: The entity data as a dictionary.
-        :param entitytype_id: For creating sub entities (tasks), this is the parent (job) id.
+        :param entityid: For creating sub entities (tasks), this is the parent (job) id.
         :param allow_duplicates: (jobs and tasks) Allow duplicates to be created.
         :return: The created entity data, as dictionary.
         """
@@ -419,7 +419,7 @@ class Session(object):
             "POST",
             f"{entitytype}/{uri}",
             data,
-            query=entitytype_id,
+            entityid=entityid,
         )
         if d:
             if "result" in d:
@@ -452,7 +452,7 @@ class Session(object):
         :param query: The query, a string on accsyn query format.
         :param entityid: The parent entity ID, required for sub entities "task" and "file".
         :param attributes: The attributes to return, default is to return all attributes with access.
-        :param finished: (job) Search among inactive jobs.
+        :param finished: (job) Search among finished/aborted jobs.
         :param inactive: (user,share) Search among inactive entities.
         :param offline: (user,share) Search among offline entities. (Deprecated)
         :param archived: Search among archived (deleted/purged) entities.
@@ -483,6 +483,10 @@ class Session(object):
                 "Please query attributes by expressions on the form " '"attributes WHERE entitytype=job"'
             )
             entitytype = parts[1].strip().replace("'", "").replace('"', "")
+            if create is not None and not isinstance(create, bool):
+                raise AccsynException("Create must be a boolean!")
+            if update is not None and not isinstance(update, bool):
+                raise AccsynException("Update must be a boolean!")
             response = self._event(
                 "GET",
                 "attributes",
@@ -491,6 +495,25 @@ class Session(object):
             if response:
                 retval = response["result"]
         else:
+            # Validate parameters
+            if attributes:
+                if not isinstance(attributes, list):
+                    raise AccsynException("Attributes must be a list of strings!")
+                if not all(isinstance(a, str) for a in attributes):
+                    raise AccsynException("Attributes must be a list of strings!")
+                if not all(len(a.strip()) > 0 for a in attributes):
+                    raise AccsynException("Attributes must be a list of non-empty strings!")
+                attributes = [a.strip() for a in attributes]
+            if inactive is not None and not isinstance(inactive, bool):
+                raise AccsynException("Inactive must be a boolean!")
+            if finished is not None and not isinstance(finished, bool):
+                raise AccsynException("Finished must be a boolean!")
+            if archived is not None and not isinstance(archived, bool):
+                raise AccsynException("Archived must be a boolean!")
+            if limit is not None and not isinstance(limit, int):
+                raise AccsynException("Limit must be an integer!")
+            if skip is not None and not isinstance(skip, int):
+                raise AccsynException("Skip must be an integer!")
             # Send query to server, first determine uri
             if entityid is not None:
                 data["parent"] = entityid
@@ -519,6 +542,7 @@ class Session(object):
         query: str,
         attributes: Optional[List[str]] = None,
         finished: Optional[bool] = None,
+        inactive: Optional[bool] = None,
         offline: Optional[bool] = None,
         archived: Optional[bool] = None,
     ) -> Optional[Dict[str, Any]]:
@@ -527,8 +551,9 @@ class Session(object):
 
         :param query: The query, a string on accsyn query format.
         :param attributes: The attributes to return, default is to return all attributes with access.
-        :param finished: (job) Search among inactive jobs.
-        :param offline: (user,share) Search among offline entities.
+        :param finished: (job) Search among finished/aborted jobs.
+        :param inactive: (user,share) Search among inactive entities.
+        :param offline: (user,share) Search among offline entities. (Deprecated)
         :param archived: Search among archived (purged/deleted) entities.
         :return: If found, a single dictionary. None otherwise.
         """
@@ -539,7 +564,7 @@ class Session(object):
             query,
             attributes=attributes,
             finished=finished,
-            offline=offline,
+            inactive=inactive or offline,
             archived=archived,
         )
         if result and 0 < len(result):
@@ -551,7 +576,8 @@ class Session(object):
 
     def get_entity(self, entitytype: str, entityid: str) -> Optional[Dict[str, Any]]:
         """
-        Return an entity by its *entitytype* and *entityid*.
+        Return an entity by its *entitytype* and *entityid*, regardless
+        if it is inactive or archived.
 
         :param entitytype: The type of entity to return (job, share, acl, ..)
         :param entityid: The id of the entity.
@@ -662,6 +688,7 @@ class Session(object):
             Since version 2.0.2 you should use the :func:`update` function instead
 
         '''
+        Session._warning("The update_one function is deprecated, use the update function instead.")
         return self.update(entitytype, entityid, data)
 
     def update_many(
@@ -1433,23 +1460,26 @@ class Session(object):
         if response:
             return response["result"]
 
-    def rm(
-        self, path: Union[str, Dict[str, Any], List[str]]
+    def delete(
+        self, path: Union[str, Dict[str, Any], List[str]],
+        force: bool = False,
     ) -> Optional[Any]:
         """
-        Remove a file/directory on a share.
+        Delete a file/directory on a share.
 
         .. versionadded:: 2.0
 
         :param path: The accsyn path, on the form 'share=<the share>/<path>/<somewhere>'.
+        :param force: Force removal of non-empty directory.
         :return: True if file exists, False otherwise.
         """
         assert 0 < len(path or "") and (
             Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
         ), "No path supplied, or not a string/list/dict!"
         data = dict(
-            op="mkdir",
+            op="delete",
             path=path,
+            force=force,
         )
         response = self._event("POST", "workspace/file", data)
         if response:
