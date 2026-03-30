@@ -80,7 +80,7 @@ disallow_untyped_defs = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
-addopts = "--cov=accsyn_api --cov-report=term-missing"
+addopts = "--cov=accsyn_api --cov-report=term-missing -x"
 markers = [
     "base: Phase 1 tests that create entities (run first).",
     "extended: Phase 2 tests that depend on entities created by base (run after base).",

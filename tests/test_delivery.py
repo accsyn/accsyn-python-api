@@ -111,7 +111,7 @@ def test_add_recipient_to_temp_delivery_as_admin(session_admin, entities):
         session_admin.update("Delivery", delivery_id, {"status": "pending"})
 
 @pytest.mark.order(9)
-def test_add_recipient_to_temp_delivery_as_employee(session_employee, entities):
+def test_add_recipient_to_temp_delivery_as_employee_should_fail(session_employee, entities):
     # Should fail as employee has no access to volume related to delivery
     delivery_id = entities.get_id("delivery", "d1")
     with pytest.raises(AccsynException):
@@ -141,12 +141,12 @@ def test_upload_file_to_temp_delivery(session_admin, entities):
     logging.info(f"Waiting for upload {transfer['name']} to complete")
     while transfer["status"] != "done":
         time.sleep(1)
-        t = session_admin.find_one(f"Transfer WHERE id={transfer['id']}")
-        if t is None:
+        transfer = session_admin.find_one(f"Transfer WHERE id={transfer['id']}")
+        if transfer is None:
             break # Job done
-        logging.info(f"Transfer {t['name']} is {t['status']}")
-        if t["status"] in ["failed"]:
-            raise AccsynException(f"{t['name']} derailed!")
+        logging.info(f"Transfer {transfer['name']} is {transfer['status']}")
+        if transfer["status"] in ["failed"]:
+            raise AccsynException(f"{transfer['name']} derailed!")
     logging.info(f"Upload {transfer['name']} completed")
     entities.remember(kind="transfer", temp_name="t1", entity_id=transfer["id"])
 

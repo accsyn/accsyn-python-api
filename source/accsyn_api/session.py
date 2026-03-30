@@ -378,7 +378,7 @@ class Session(object):
         entitytype: str,
         data: Union[str, Dict[str, Any], List[Dict[str, Any]]],
         entityid: Optional[str] = None,
-        allow_duplicates: bool = True,
+        allow_duplicates: Optional[bool] = None,
     ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """
         Create a new accsyn entity.
@@ -413,7 +413,7 @@ class Session(object):
             data = dict(tasks=data)
         if entitytype == "file":
             uri="add"
-        if entitytype in ["transfer", "compute", "delivery", "request", "stream", "job", "task"]:
+        if allow_duplicates is not None and entitytype in ["transfer", "compute", "delivery", "request", "stream", "job", "task"]:
             data["allow_duplicates"] = allow_duplicates
         d = self._event(
             "POST",
@@ -724,7 +724,7 @@ class Session(object):
         assert 0 < len(data or []) and isinstance(data, list), "Invalid data supplied, must be a list!"
         response = self._event(
             "PUT",
-            f"{entitytype['entitytype']}/edit",
+            f"{entitytype}/edit",
             data,
             entityid=entityid,
         )
@@ -993,14 +993,7 @@ class Session(object):
                     f"acl/create",
                     payload
                 )
-                acl = response["result"][0]
-                result = dict(
-                    user=acl["entity"].split(":")[1],
-                    user_hr=acl.get("entity_hr", ""),
-                    read=acl["read"],
-                    write=acl["write"],
-                    acknowledged=acl.get("acknowledged", False),
-                )
+                result = response["result"][0]
         if result is not None:
             return result
         else:
@@ -1630,7 +1623,18 @@ class Session(object):
         print(f"Please have a look at the Python API reference: {documentation_url}, attempting to open in default browser...")
        # Open the documentation url in the browser
         webbrowser.open(documentation_url)
- 
+    
+    @staticmethod
+    def str(d: Optional[Dict[str, Any]], indent: int = 4) -> str:
+        """
+        Return a string representation of an dictionary.
+        
+        .. deprecated:: 3.2.0
+            Use the :func:`dump` function instead
+        """
+        logging.warning("Session.str is deprecated, use Session.dump instead")
+        return Session.dump(d, indent=indent)
+
     @staticmethod
     def dump(d: Optional[Dict[str, Any]], indent: int = 4) -> str:
         """

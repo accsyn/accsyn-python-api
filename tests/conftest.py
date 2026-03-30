@@ -1,12 +1,19 @@
 import os
 import sys
+import time
 import pytest
 import uuid
 import logging
+import tempfile
+
+from accsyn_api.session import AccsynException
 
 TEST_FILE="jonssonligan-dyker-upp-igen.jpg"
 TEST_FILE2= "bad_buck_bunny.png"
 TEST_FILE3="Flesh wound.jpeg"
+SHARED_FOLDER="shared-folder"
+SHARED_FOLDER2="not-shared"
+TEST_FOLDER3="standard-cannot-share"
 
 # Logger for this module; handler is added in pytest_configure when -v is used.
 logger = logging.getLogger(__name__)
@@ -213,22 +220,38 @@ class TestUtils:
         return os.path.join(os.path.dirname(__file__), "data", file_name)
 
     @staticmethod
-    def _extract_codes(value: Any) -> set:
+    def get_tmp_path(file_name: str) -> str:
+        return os.path.join(tempfile.gettempdir(), ".accsyn", file_name)
+
+    @staticmethod
+    def wait_transfer_done(session: Any, transfer: dict) -> None:
+        """
+        Poll until transfer status is ``done`` or the job disappears from active queries.
+        Raises AccsynException on ``failed`` or ``aborted``.
+        """
+        logging.info(f"Waiting for transfer {transfer['name']} to complete")
+        while transfer["status"] != "done":
+            time.sleep(1)
+            transfer = session.find_one(f"Transfer WHERE id={transfer['id']}")
+            if transfer is None:
+                break
+            logging.info(f"Transfer '{transfer['name']}'({transfer['id']}) is {transfer['status']}")
+            if transfer["status"] in ["failed", "aborted"]:
+                raise AccsynException(f"{transfer['name']} derailed!")
+
+    @staticmethod
+    def _extract_attributes(value: Any) -> set:
         """Collect attribute codes (lowercase strings) from a dict or list of dicts/strings."""
-        codes: set = set()
+        attributes: set = set()
         if isinstance(value, dict):
             for k, v in value.items():
                 if isinstance(k, str):
-                    codes.add(k.lower())
-                if isinstance(v, str):
-                    codes.add(v.lower())
+                    attributes.add(k.lower())
         elif isinstance(value, list):
             for item in value:
-                if isinstance(item, str):
-                    codes.add(item.lower())
-                elif isinstance(item, dict):
-                    codes.update(TestUtils._extract_codes(item))
-        return codes
+                if isinstance(item, dict):
+                    attributes.update(TestUtils._extract_attributes(item))
+        return attributes
 
     @staticmethod
     def validate_response(
@@ -249,22 +272,22 @@ class TestUtils:
                 for item in dict_items:
                     TestUtils.validate_response(item, should_include, should_exclude)
             else:
-                codes = TestUtils._extract_codes(value)
+                attributes = TestUtils._extract_attributes(value)
                 for s in should_include:
-                    assert s.lower() in codes, (
-                        f"Expected attribute {s!r} in response, got codes: {sorted(codes)}"
+                    assert s.lower() in attributes, (
+                        f"Expected attribute {s!r} in response, got attributes: {sorted(attributes)}"
                     )
                 for s in should_exclude:
-                    assert s.lower() not in codes, (
-                        f"Expected attribute {s!r} not in response, got codes: {sorted(codes)}"
+                    assert s.lower() not in attributes, (
+                        f"Expected attribute {s!r} not in response, got attributes: {sorted(attributes)}"
                     )
             return
-        codes = TestUtils._extract_codes(value)
+        attributes = TestUtils._extract_attributes(value)
         for s in should_include:
-            assert s.lower() in codes, (
-                f"Expected attribute {s!r} in response, got codes: {sorted(codes)}"
+            assert s.lower() in attributes, (
+                f"Expected attribute {s!r} in response, got attributes: {sorted(attributes)}"
             )
         for s in should_exclude:
-            assert s.lower() not in codes, (
-                f"Expected attribute {s!r} not in response, got codes: {sorted(codes)}"
+            assert s.lower() not in attributes, (
+                f"Expected attribute {s!r} not in response, got attributes: {sorted(attributes)}"
             )

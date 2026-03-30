@@ -66,8 +66,11 @@ poetry run black .
 Testing:
 --------
 
-The test suite requires role-specific credential files to test different user permissions.
+The test suite requires role-specific credential files to test different user permissions,
 Tests will be skipped if the required .env files are not present.
+The tests also requires active accsyn clients running on behalf of the users, to be able to fully
+test file transfers and compute. This requires all tests to run interactively, to be able to action
+prompts that may appear during execution.
 
 **Prepare test credentials:**
 
@@ -89,23 +92,17 @@ ACCSYN_API_KEY=your_api_key
 
 ```bash
 # Run all tests
-poetry run pytest
+poetry run pytest -x -s
 
 # Run with coverage report
-poetry run pytest --cov=accsyn_api --cov-report=term-missing
+poetry run pytest -x -s --cov=accsyn_api --cov-report=term-missing
 
 # Run a specific test file
-poetry run pytest tests/test_find_entitytypes.py
+poetry run pytest -x -s tests/test_find_entitytypes.py
 
-# Run tests for a specific role
-poetry run pytest -k "admin"
-poetry run pytest -k "employee"
-poetry run pytest -k "standard"
+# Some tests have dependencies in form of running clients, run interactively:
+poetry run pytest -x -s tests/test_find_entitytypes.py
 
-# Run by category (base first, then extended in same session so entities are shared)
-poetry run pytest -m base
-poetry run pytest -m extended
-poetry run pytest -m "base or extended"
 ```
 
 **Categories:** Use `@pytest.mark.base` for tests that create entities; use `@pytest.mark.extended` and `@pytest.mark.order(2)` (or higher) for tests that depend on those entities. Run `pytest -m "base or extended"` to run both in order in one session.

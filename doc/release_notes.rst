@@ -13,6 +13,34 @@ Release Notes
 
     `https://support.accsyn.com/changelog <https://support.accsyn.com/changelog>`_.
 
+.. release:: 3.2.0
+    :date: 2026-03-30
+
+    .. change:: new
+
+        * Added support for managing Deliveries through the API.
+        * Added support for managing (Upload)Requests through the API.
+        * Added support for managing Sites through the API.
+        * Added test suites for entitytypes, transfers, deliveries, requests and file sharing operations.
+        * New 'get_entity' function to fetch an entity by its ID, regardless if it is disabled or archived(inactive).
+        * New 'delete_many' function to delete multiple entities at once. Currently for deleting files within a Collection share.
+        * Added 'grant' function to grant access to an entity to a user, with complementary 'revoke' function to revoke access.
+
+    .. change:: changed
+
+        * Removed generic "Job" and "Share" entity types, replaced with more specific entity types.
+        * "Job" entity type is still backward compatible and maps to "Transfer" entity type, but deprecated and will be removed in a future release.
+        * "Share" entity type is still backward compatible and maps to "Folder" entity type, but deprecated and will be removed in a future release.
+        * Session.str function deprecated, use Session.dump instead.
+        * Replaced 'offline_one' function with 'deactivate_one' function. Replaced 'online_one' function with 'activate_one' function.
+        * 'update_many' function now expects the entityid parameter to be last, and data parameter to be first.
+
+    .. change:: fix
+
+        * Properly throw AccsynException when API returns an exception.
+        * Proper timezone support for date/time attributes.
+
+       
 .. release:: 3.1.0
     :date: 2025-11-12
 

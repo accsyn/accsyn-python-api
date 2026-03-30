@@ -43,7 +43,7 @@ def test_create_users(session_admin, entities):
         entities.remember(kind="user", temp_name="s1", entity_id=standard["id"])
 
 @pytest.mark.order(4)
-def test_find_attributes_delivery_contains_code(session_standard):
+def test_find_attributes_delivery_contains_code_as_standard(session_standard):
     attributes = session_standard.find("attributes WHERE entitytype=delivery")
     assert isinstance(attributes, list)
     TestUtils.validate_response(attributes, should_include=["code"])
