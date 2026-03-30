@@ -13,7 +13,7 @@ Release Notes
 
     `https://support.accsyn.com/changelog <https://support.accsyn.com/changelog>`_.
 
-.. release:: 3.2.0
+.. release:: 3.2.3
     :date: 2026-03-30
 
     .. change:: new
@@ -34,6 +34,7 @@ Release Notes
         * Session.str function deprecated, use Session.dump instead.
         * Replaced 'offline_one' function with 'deactivate_one' function. Replaced 'online_one' function with 'activate_one' function.
         * 'update_many' function now expects the entityid parameter to be last, and data parameter to be first.
+        * 'find_one' is now a bit more relaxed and looks among finished entities if nothing is found among active entities.
 
     .. change:: fix
 

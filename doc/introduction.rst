@@ -13,7 +13,7 @@ direct encrypted communication with accsyn via the low level REST :term:`API` ov
 With the API you can for example:
 
 - Create automated file transfer or render farm workflows where jobs can be created programmatically.
-- Fetch and display accsyn a transfer :term:`job` in your own user interface, also enabling control in terms of pause, resume and abort.
+- Fetch and display accsyn a :term:`transfer` in your own user interface, also enabling control in terms of pause, resume and abort.
 - Manage shares programmatically, allowing expose of project dedicated file areas with one or more external users, upon an event in your production systems.
 
 

@@ -64,12 +64,16 @@ modindex_common_prefix = ["accsyn_api."]
 
 # -- HTML output --------------------------------------------------------------
 
-if not os.environ.get("READTHEDOCS", None) == "True" or True:
-    # Only import and set the theme if building locally.
-    import sphinx_rtd_theme
+if os.environ.get("READTHEDOCS", None) != "True":
+    # Try to use RTD theme locally when it is installed.
+    try:
+        import sphinx_rtd_theme
 
-    html_theme = "sphinx_rtd_theme"
-    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+        html_theme = "sphinx_rtd_theme"
+        html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+    except ModuleNotFoundError:
+        # Fall back to the default theme if optional docs deps are missing.
+        pass
 
 html_static_path = ["_static"]
 html_style = "accsyn.css"

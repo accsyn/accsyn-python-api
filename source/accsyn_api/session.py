@@ -468,6 +468,7 @@ class Session(object):
         skip: Optional[int] = None,
         create: bool = False,
         update: bool = False,
+        single_entity_query: bool = False,
     ) -> Optional[List[Dict[str, Any]]]:
         """
         Return (GET) a list of entities/entitytypes/attributes based on *query*.
@@ -483,6 +484,7 @@ class Session(object):
         :param skip: The amount of entities to skip.
         :param create: (attributes) Return create (POST) attributes.
         :param update: (attributes) Return update (PUT) attributes.
+        :param single_entity_query: It is a single entity query, tell backend to be more relaxed regarding status scope.
         :return: List of dictionaries.
         """
         assert 0 < len(query or "") and Session._is_str(query), "Invalid query type supplied, must be of string type!"
@@ -555,9 +557,18 @@ class Session(object):
                 data["skip"] = skip
             if attributes:
                 data["attributes"] = attributes
+            if single_entity_query:
+                data["single_entity_query"] = single_entity_query
             response = self._event("GET", f"{d['entitytype']}/find", data, query=d.get("expression"))
             if response:
                 retval = response["result"]
+        if single_entity_query:
+            if retval and 0 < len(retval):
+                if 1 < len(retval):
+                    Session._warning(f"Multiple entities retreived({len(retval)}), returning first one.")
+                single_retval = retval[0]
+                return single_retval
+            return None
         return retval
 
     def find_one(
@@ -583,19 +594,14 @@ class Session(object):
         assert 0 < len(query or "") and (
             Session._is_str(query)
         ), "Invalid query type supplied, must be of string type!"
-        result = self.find(
+        return self.find(
             query,
             attributes=attributes,
             finished=finished,
             inactive=inactive or offline,
             archived=archived,
+            single_entity_query=True,
         )
-        if result and 0 < len(result):
-            retval = result[0]
-            if 1 < len(result):
-                Session._warning(f"Multiple entities retreived({len(result)}), returning first one.")
-            return retval
-        return None
 
     def get_entity(self, entitytype: str, entityid: str) -> Optional[Dict[str, Any]]:
         """
