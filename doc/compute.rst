@@ -18,7 +18,7 @@ Submitting a render job
 
 The Python accsyn API support submission of accsyn render jobs, here follows an example for rendering a Nuke 2D compositing job::
 
-    jobs = session.create("job",{
+    jobs = session.create("Compute",{
         "name": "test_v002.nk render",
         "input": "C:\\projects\\nuke\\vfx\\test_v002.nk",
         "parameters": {

@@ -16,7 +16,7 @@ Glossary
         the language website at http://www.python.org
 
     domain
-        The accsyn backend instance orchestrating file transfers/compute jobs across servers and clients.
+        The accsyn backend instance orchestrating file transfers/compute jobs across servers and clients. Identified by the workspace 'code' attribute.
 
     user
         A user entity, identifying a human interacting with accsyn. See :ref:`users`.
@@ -26,24 +26,42 @@ Glossary
         global API keys. Three different roles currently exist: Admin, Employee and Standard/restricted(default) user.
         See :ref:`users`.
 
-    root share
-        The base folder entity, on a server, that accsyn can server files from. See :ref:`shares`.
+    volume
+        The base folder entity, on a server, that accsyn can server files from. See :ref:`filesharing`.
 
-    share
-        A sub folder entity, beneath a root share, were standard/restricted users can be
-        given access to by a :term:`acl`. See :ref:`shares`.
+    folder
+        A sub folder entity, beneath a volume, were standard/restricted users can be
+        given access to by a :term:`acl`. See :ref:`filesharing`.
+
+    home
+        A dedicated user sub folder entity, beneath a volume, were standard/restricted users can be
+        given access to by a :term:`acl`. See :ref:`filesharing`.
+
+    collection
+        A collection of arbitrary files and/or folders beneath one or more volumes, were standard/restricted users can be
+        given access to by a :term:`acl`. See :ref:`filesharing`.
 
     acl
         Access Control List entity, normally defining a share (or a directory) beneath
         a share were a standard/restricted user have download (and upload) access.
 
-    job
-        A entity which holds a set of tasks - files and/or directories to be synchronized between two network
-        endpoints (P2P), or a compute job for processing data. See :ref:`jobs`.
+    transfer
+        A job entity which holds a set of tasks - files and/or directories to be synchronized between two network
+        endpoints (P2P), or a compute job for processing data. See :ref:`transfers`.
+
+    compute
+        A job entity that defines a set of long running compute intensive tasks for processing data. Also
+        called a "render job". See :ref:`compute`.
+
+    delivery
+        A job entity that defines a set of files and/or directories to be delivered to one or more recipients. See :ref:`deliveries`.
+
+    request
+        A job entity that defines a set of files and/or directories to be requested(uploaded) from one or more senders. See :ref:`deliveries`.
 
     task
         A file and/or directory to be synchronized between two network
-        endpoints (P2P), or a compute task for processing data. See :ref:`jobs`.
+        endpoints (P2P), or a compute task for processing data. See :ref:`transfers`.
 
     queue
         A container entity for jobs, having it's own priority in which jobs are dispatched in queue order. See :ref:`queues`.
@@ -59,9 +77,9 @@ Glossary
         which connects to a remote :term:`server` during transfer process.
 
     server
-        The accsyn server background daemon designed for unattended transmission of data and computations. Represents a
-        :term:`client` which, in case configured to serve a :term:`root share`, listens for incoming connections from another
-        :term:`app`, :term:`site server` or :term:`user server`.
+        The accsyn server background daemon designed for unattended transmission of data and computations. Runs a
+        :term:`client` configued to serve on or more volumes (see :ref:`filesharing`), listens for incoming connections from another
+        :term:`client` running in the context of the accsyn Desktop Application, Web browser, :term:`site server` or :term:`user server`.
 
     site server
         A special type of server, responsible for managing file transfer to and from a main :term:`server` at a remote site, for one or more root shares.
@@ -72,8 +90,8 @@ Glossary
     client
         An instance of the accsyn desktop application, or background daemon capable of perform file transfers or executing computations.
 
-    app
-        An entity defining a compute app and its Python wrapper script.
+    engine
+        An entity defining a compute(render) engine and its Python wrapper script. See :ref:`compute`.
 
     metadata
         Custom data bound to an entity, in JSON format, divided into an internal (invisible to standard users) and external (visible to all users). Can be used for workflow purposes - are supplied to hooks during execution.

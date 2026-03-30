@@ -5,7 +5,7 @@
 
 import os
 import re
-from pkg_resources import get_distribution, DistributionNotFound
+from importlib.metadata import PackageNotFoundError, version as pkg_version
 
 # -- General ------------------------------------------------------------------
 
@@ -33,9 +33,9 @@ copyright = u"2023, accsyn/HDR AB"
 # Get version from Poetry pyproject.toml or installed package
 try:
     # Try to get version from installed package first
-    release = get_distribution("accsyn-python-api").version
+    release = pkg_version("accsyn-python-api")
     VERSION = release.split("-")[0]
-except DistributionNotFound:
+except PackageNotFoundError:
     # Fallback to reading from pyproject.toml
     try:
         import tomllib
