@@ -15,14 +15,16 @@ Welcome to the accsyn :term:`Python` :term:`API` documentation.
     installing
     using
     datatypes
-    jobs
-    shares
+    transfers
+    deliveries
+    filesharing
     users
     queues
     clients
+    sites
     file
     publish
-    render
+    compute
     misc
     api_reference/index
     release_notes

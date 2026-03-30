@@ -7,102 +7,93 @@
 Clients
 *******
 
-An accsyn client is an instance of the accsyn desktop application, or background daemon capable of perform file transfers or executing computations. Clients can have different types(roles):
+The accsyn client is the base entity type representing an instance that can run processes - act as a file transfer endpoint, execute compute jobs or hooks. 
+Clients are availble through the api as these entity types:
 
- * App(type:0); The accsyn desktop application, that connects to a server during file transfers.
- * Server(type:1); The accsyn daemon installed by and admin to run in the background and launch with computer, receives connections from remote apps during file transfers. Servers can also act as compute nodes - executing tasks.
- * User server(type:2); The accsyn daemon installed as a user, either having rolve Employee or standard User. Enables unattended file transfers to locally configured proxy share locations.
- * Browser(type:3); A temporary web browser client spawned only during file transfer.
- * Compute lane (type:5); A virtual client used for parallelizing compute processes on the same client.
+ * Client; Base client entity type, all clients are of this type.
+ * App(type:0); The client that is spawned when launching the accsyn desktop application, in the user context. Provides uploads and downloads to and from a workspace as well as hook execution and file sharing with locally mapped shares.
+ * Server(type:1); A client spawned in the workspace context, on an accsyn daemon host instance running as a service.
+ * UserServer(type:2); A client spawned in the user context, on an accsyn daemon host instance running as a server. Facilitates the same features as an App, with additional features for unattended file deliveries.
+ * Browser(type:3); A temporary web browser client spawned only during file transfer, stored with a cookie in the browser and re-used if possible.
+ * Lane (type:5); A virtual server facilitating mulitple compute processes on the same machine.
+
+
+Hosts
+=====
+
+A host is a running instance of accsyn, in the context of a user. When logging in to the accsyn desktop application as another user, another host is created within that instance. 
+
+.. note::
+    
+    Servers can currently only have one host, there is no way to add a secondary host.
+
 
 Query
 =====
 
-To list clients::
+To list App clients::
 
-    all_clients = session.find('Client')
-    servers = session.find('Client where type=1')
+    apps = session.find("App")
 
-Each client entity will be a dict containing its attributes::
+To list Server clients::
+
+    servers = session.find("Server")
+
+A list of clients will be returned, each client being a dict containing its attributes::
 
     {
-        "id": "5da08873b0eb10fade60b3f7",
-        "code": "WIN_SERVER",
-        "user": "5d91b33ac71c12871d1fc3c2",
-        "user_hr": "user:demo.admin@accsyn.com(admin)",
-        "created": "2022-01-20T07:51:57",
-        "type": 1,
-        "site": "2374e137-ed06-4f40-9cb2-ce42965afec6",
-        "site_hr": "hq",
-        "description": "Main server",
-        "host_id": "DE:A1:48:F1:01:22, 12:00:7C:18:F1:11",
-        "last_checkin": "2022-01-21T07:51:57",
-        "status": "online",
+        "benchmark": -1,
+        "code": "MacServer.local",
+        "created": "2024-05-20T16:27:04",
+        "description": "Lokal BYOS dev test server",
+        "host_ident": "8E:74:1B:A9:66:2C, 96:C8:52:7A:1F:E4",
+        "id": "664b5db8ed9dc749a06f9bd6",
+        "last_checkin": "2026-02-12T13:28:16",
+        "metrics": {..},
+        "modified": "2026-02-12T13:28:15",
+        "modifier": "demo.admin@accsyn.com",
         "os": "mac",
-        "type_hr": "server",
-        "username": "root",
-        "version": "1.4-4_27",
-        "wan_ip": "123.123.123.123,
         "parent": null,
-        "benchmark": null,
-        "metrics": {
-            "c": 16,
-            "in": {
-                "s": -1.0,
-                "s_a": -1.0,
-                "s_t": -1.0
-            },
-            "l": 23.134328358208954,
-            "m": 76.0,
-            "mpf": 7954137088,
-            "mpt": 34359738368,
-            "mvf": 1776025600,
-            "mvt": 18253611008,
-            "out": {
-                "s": -1.0,
-                "s_a": -1.0,
-                "s_t": -1.0
-            }
-        },
-        "metadata": {
-            "external": {
-                "location": "custom"
-            },
-            "internal": {
-                "key": "hj39847tghenkls"
-            }
-        },
-        "modified": "2022-01-21T07:51:57",
-        "modifier": "5d91b33ac71c12871d1fc3c2"
+        "roles": "storage,compute",
+        "site": "66fc222ebeabd25ad64f04ec",
+        "site_hr": "hq(66fc222ebeabd25ad64f04ec)",
+        "status": "online",
+        "user": "661014984428048969323147",
+        "user_hr": "user:demo.admin@accsyn.com[admin](661014984428048969323147)",
+        "username": "henriknorin",
+        "version": "3.5-2_3",
+        "wan_ip": "127.0.0.1"
     }
 
 
 
 Explanation of the returned attributes:
 
-* ``id``; The internal accsyn user id, use this when modifying the client later on.
-* ``code``: The hostname of the client, does not need to be unique.
-* ``user``: The ID of user that registered and owns the client.
-* ``user_hr``: Human readable user entry.
+* ``benchmark``: The compute benchmark (float), higher value means higher probability task will be dispatch to client/lane.
+* ``code``: The hostname of the client, not necessarily unique.
 * ``created``: Date of creation.
-* ``type``: The type of client.
-* ``type_hr``: Human readable client type.
-* ``site``: The physical site client is located at.
-* ``site_hr``: Human readable site type.
 * ``description``: Description of the client.
 * ``host_id``: Comma separated list of detected machine network interface MAC addresses.
+* ``id``; The internal accsyn user id, use this when modifying the client later on.
 * ``last_checkin:`` Last time client reported in.
-* ``status:`` The status of client, see below.
+* ``metadata``: Client metadata dict.
+* ``metrics``: (Compute) The realtime metrics of client.
+* ``modified``: Date of last modification.
+* ``modifier``: The user that most recently modified the user.
+* ``name``: The name of the client, same as code.
 * ``os``: The machine operating system, can be either "windows", "linux", "mac",  "raspbian", "solaris""
+* ``parent``: If a compute lane, this is the ID of the client lane belongs to.
+* ``roles``: (Server) Comma separated list of roles server has, can be "storage"(servers volumes at main site), "compute" (has lanes with engines assigned), "site" (serves volumes at a remote site), "accsyn" (hosted accsyn cloud server).
+* ``site_hr``: Human readable site type.
+* ``site``: The physical site client is located at.
+* ``status:`` The status of client, see below.
+* ``type_hr``: Human readable client type.
+* ``type``: The type of client.
+* ``user_hr``: Human readable user entry.
+* ``user``: The ID of user that registered and owns the client.
 * ``username``: The operating system user name running the client executable.
 * ``version``: The accsyn version of client.
 * ``wan_ip``: The remote IP number, as seen from accsyn when client is reporting in.
-* ``parent``: If a compute lane, this is the ID of the client lane belongs to.
-* ``benchmark``: The compute benchmark (float), higher value means higher probability task will be dispatch to client/lane.
-* ``metrics``: (Compute) The realtime metrics of client.
-* ``metadata``: Client metadata dict.
-* ``modified``: Date of last modification.
-* ``modifier``: The user that most recently modified the user.
 
 
 Client states
@@ -122,7 +113,7 @@ Client states
      - Client has not checked in and are considered offline (grace: 15 minutes)
      - NO
    * - disabled
-     - Client is online but disabled - cannot execute file transfers or compute tasks
+     - Client is online but disabled - cannot execute processes
      - YES :sup:`3`
    * - disabled-offline
      - Client is offline and disabled
@@ -138,7 +129,11 @@ Client states
 Create
 ======
 
-Clients cannot be created through the API, it can only be installed and authenticated throught the accsyn Daemon or Desktop app installer.
+Clients cannot be created through the API, it can only be spawned and authenticated through the accsyn Daemon, desktop app or web browser.
+
+User servers are spawned from `https://accsyn.io/hosts <https://accsyn.io/hosts>`_ page.
+
+To adjust the number of lanes a server has, update server 'client_compute_lanes' setting.
 
 
 Modify
@@ -146,7 +141,11 @@ Modify
 
 To disable a client::
 
-    session.update('Client', '61cd853e44b630d9e10cfb2e', {'status':"disabled"})
+    session.update("Lane", "664b5db8ed9dc749a06f9bd6", {"status" :"disabled"})
+
+To enable a client::
+
+    session.update("Lane", "664b5db8ed9dc749a06f9bd6", {"status" :"enabled"})
 
 
 Delete
@@ -154,10 +153,11 @@ Delete
 
 To delete a client::
 
-    session.delete_one('Client', '61cd853e44b630d9e10cfb2e')
+    session.delete_one("App", "664b5db8ed9dc749a06f9bd6")
 
 .. note::
 
-    * Client have to be offline in order for deletion to succeed.
-    * If client is serving and root shares, these assignments will also be removed.
+    * Clients have to be offline in order for deletion to succeed.
+    * If server is serving any volumes, these assignments will also be removed.
+    * A lane can not be deleted, adjust the number of lanes instead.
 
