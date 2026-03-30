@@ -125,6 +125,8 @@ poetry config repositories.testpypi https://test.pypi.org/legacy/
 poetry publish -r testpypi
 ```
 
+Poetry can use saved credentials (`poetry config pypi-token.pypi <token>`) or username/password flags such as `poetry publish --username <user> --password <pass>`.
+
 accsyn(r) - secure high speed file delivery and workflow sync
 https://accsyn.com 
 https://support.accsyn.com

@@ -8,12 +8,12 @@ import tempfile
 
 from accsyn_api.session import AccsynException
 
-TEST_FILE="jonssonligan-dyker-upp-igen.jpg"
-TEST_FILE2= "bad_buck_bunny.png"
-TEST_FILE3="Flesh wound.jpeg"
-SHARED_FOLDER="shared-folder"
-SHARED_FOLDER2="not-shared"
-TEST_FOLDER3="standard-cannot-share"
+TEST_FILE = "jonssonligan-dyker-upp-igen.jpg"
+TEST_FILE2 = "bad_buck_bunny.png"
+TEST_FILE3 = "Flesh wound.jpeg"
+SHARED_FOLDER = "shared-folder"
+SHARED_FOLDER2 = "not-shared"
+TEST_FOLDER3 = "standard-cannot-share"
 
 # Logger for this module; handler is added in pytest_configure when -v is used.
 logger = logging.getLogger(__name__)
@@ -30,23 +30,25 @@ def pytest_configure(config):
         handler.setFormatter(logging.Formatter("%(levelname)s - %(message)s"))
         logger.addHandler(handler)
 
+
 from dataclasses import dataclass, field
 from typing import Any, Callable, List, Optional
 
 # Session fixtures for different roles
 
+
 @pytest.fixture(scope="session")
 def session_admin():
     """
     Integration test session with admin role.
-    
+
     Requires .env file: .env.admin
     """
     import accsyn_api
-    
+
     if not os.path.exists(".env.admin"):
         pytest.skip("Missing required .env file: .env.admin")
-    
+
     return accsyn_api.Session(path_envfile=".env.admin", connect_timeout=10, timeout=30)
 
 
@@ -54,14 +56,14 @@ def session_admin():
 def session_employee():
     """
     Integration test session with employee role.
-    
+
     Requires .env file: .env.employee
     """
     import accsyn_api
-    
+
     if not os.path.exists(".env.employee"):
         pytest.skip("Missing required .env file: .env.employee")
-    
+
     return accsyn_api.Session(path_envfile=".env.employee", connect_timeout=10, timeout=30)
 
 
@@ -69,18 +71,19 @@ def session_employee():
 def session_standard():
     """
     Integration test session with standard (restricted end user) role.
-    
+
     Requires .env file: .env.standard
     """
     import accsyn_api
-    
+
     if not os.path.exists(".env.standard"):
         pytest.skip("Missing required .env file: .env.standard")
-    
+
     return accsyn_api.Session(path_envfile=".env.standard", connect_timeout=10, timeout=30)
 
 
 # Temp entity storage
+
 
 @dataclass
 class CreatedEntity:
@@ -88,10 +91,12 @@ class CreatedEntity:
     id: str
     meta: dict[str, Any] = field(default_factory=dict)
 
+
 class EntityRegistry:
     """
     Stores entities by (kind, temp_name) -> id and keeps a LIFO list for cleanup.
     """
+
     def __init__(self, run_id: str, deleters: dict[str, Callable[[str], None]]):
         self.run_id = run_id
         self._deleters = deleters
@@ -145,8 +150,9 @@ class EntityRegistry:
         if errors:
             # Optionally re-raise one error to make it visible,
             # or just log; depends on how strict you want teardown to be.
-            #raise RuntimeError(f"Cleanup had {len(errors)} errors, first: {errors[0]}") from errors[0]
+            # raise RuntimeError(f"Cleanup had {len(errors)} errors, first: {errors[0]}") from errors[0]
             logger.warning(f"Cleanup had {len(errors)} errors: first: {''.join(str(e) for e in errors)}")
+
 
 @pytest.fixture(scope="session")
 def run_id() -> str:
@@ -157,7 +163,7 @@ def run_id() -> str:
 def _make_entities_registry(session: Any, run_id: str) -> EntityRegistry:
     """
     Factory function to create an EntityRegistry for a given session.
-    
+
     :param session: The session object (admin, employee, or standard)
     :param run_id: Unique run ID for namespacing
     :return: EntityRegistry instance
@@ -190,11 +196,11 @@ def entities(run_id, session_admin):
 
 
 class TestUtils:
-    """ Shared test utilities """
-    
+    """Shared test utilities"""
+
     @staticmethod
     def get_user_ident(role: str) -> str:
-        """ Read the .env files and return the user ident for the given role """
+        """Read the .env files and return the user ident for the given role"""
         path_envfile = os.path.join(os.path.dirname(os.path.dirname(__file__)), f".env.{role}")
         assert os.path.exists(path_envfile), f"Missing test .env file: {path_envfile}"
         with open(path_envfile, "r") as f:
@@ -274,20 +280,20 @@ class TestUtils:
             else:
                 attributes = TestUtils._extract_attributes(value)
                 for s in should_include:
-                    assert s.lower() in attributes, (
-                        f"Expected attribute {s!r} in response, got attributes: {sorted(attributes)}"
-                    )
+                    assert (
+                        s.lower() in attributes
+                    ), f"Expected attribute {s!r} in response, got attributes: {sorted(attributes)}"
                 for s in should_exclude:
-                    assert s.lower() not in attributes, (
-                        f"Expected attribute {s!r} not in response, got attributes: {sorted(attributes)}"
-                    )
+                    assert (
+                        s.lower() not in attributes
+                    ), f"Expected attribute {s!r} not in response, got attributes: {sorted(attributes)}"
             return
         attributes = TestUtils._extract_attributes(value)
         for s in should_include:
-            assert s.lower() in attributes, (
-                f"Expected attribute {s!r} in response, got attributes: {sorted(attributes)}"
-            )
+            assert (
+                s.lower() in attributes
+            ), f"Expected attribute {s!r} in response, got attributes: {sorted(attributes)}"
         for s in should_exclude:
-            assert s.lower() not in attributes, (
-                f"Expected attribute {s!r} not in response, got attributes: {sorted(attributes)}"
-            )
+            assert (
+                s.lower() not in attributes
+            ), f"Expected attribute {s!r} not in response, got attributes: {sorted(attributes)}"

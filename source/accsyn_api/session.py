@@ -63,14 +63,29 @@ CLIENT_STATE_OFFLINE = "offline"
 CLIENT_STATE_DISABLED = "disabled"
 CLIENT_STATE_DISABLED_OFFLINE = "disabled-offline"
 
-JOB_TYPE_TRANSFER = 1   # p2p transfer job, either standalone or beneath a delivery/request
+JOB_TYPE_TRANSFER = 1  # p2p transfer job, either standalone or beneath a delivery/request
 JOB_TYPE_QUEUE = 2  # A job contai
-JOB_TYPE_COMPUTE = 3    # A compute/render job
-JOB_TYPE_DELIVERY = 7 # An outgoing delivery job, hold one or more upload jobs for managers and one download job per recipient
-JOB_TYPE_REQUEST = 8 # An inbound upload request, holds one upload job per recipient and then one or more download job for managers
-JOB_TYPE_STREAM = 10 # An accsyn streaming delivery, same as delivery but containing one or more streamable media
+JOB_TYPE_COMPUTE = 3  # A compute/render job
+JOB_TYPE_DELIVERY = (
+    7  # An outgoing delivery job, hold one or more upload jobs for managers and one download job per recipient
+)
+JOB_TYPE_REQUEST = (
+    8  # An inbound upload request, holds one upload job per recipient and then one or more download job for managers
+)
+JOB_TYPE_STREAM = 10  # An accsyn streaming delivery, same as delivery but containing one or more streamable media
 
-UNIQUE_ENTITY_TYPES = ["user","workspace","share","volume","folder","home","collection","site","engine","queue"]
+UNIQUE_ENTITY_TYPES = [
+    "user",
+    "workspace",
+    "share",
+    "volume",
+    "folder",
+    "home",
+    "collection",
+    "site",
+    "engine",
+    "queue",
+]
 # Entity types were code is unique and can be used to find the entity by code
 
 
@@ -140,13 +155,13 @@ class JSONDecoder(json.JSONDecoder):
 def _load_env_file(path: str, override: bool = False) -> None:
     """
     Load environment variables from a .env file.
-    
+
     :param path: Path to the .env file
     :param override: If True, override existing environment variables. If False, only set if not already set.
     """
     if not os.path.exists(path):
         return
-    
+
     try:
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
@@ -154,24 +169,24 @@ def _load_env_file(path: str, override: bool = False) -> None:
                 line = line.strip()
                 if not line:
                     continue
-                
+
                 # Skip comments (lines starting with #)
                 if line.startswith("#"):
                     continue
-                
+
                 # Parse KEY=VALUE
                 if "=" in line:
                     key, value = line.split("=", 1)
                     key = key.strip()
                     value = value.strip()
-                    
+
                     # Remove quotes if present
                     if len(value) >= 2:
                         if (value.startswith('"') and value.endswith('"')) or (
                             value.startswith("'") and value.endswith("'")
                         ):
                             value = value[1:-1]
-                    
+
                     # Only set if not already set (unless override=True)
                     if override or key not in os.environ:
                         os.environ[key] = value
@@ -408,12 +423,20 @@ class Session(object):
             if isinstance(data, list):
                 data = dict(tasks=data)
             assert data is not None and 0 < len(data), "Empty create data submitted!"
-        uri="create"
+        uri = "create"
         if entitytype == "task" and "tasks" not in data:
             data = dict(tasks=data)
         if entitytype == "file":
-            uri="add"
-        if allow_duplicates is not None and entitytype in ["transfer", "compute", "delivery", "request", "stream", "job", "task"]:
+            uri = "add"
+        if allow_duplicates is not None and entitytype in [
+            "transfer",
+            "compute",
+            "delivery",
+            "request",
+            "stream",
+            "job",
+            "task",
+        ]:
             data["allow_duplicates"] = allow_duplicates
         d = self._event(
             "POST",
@@ -439,7 +462,7 @@ class Session(object):
         attributes: Optional[List[str]] = None,
         finished: Optional[bool] = None,
         inactive: Optional[bool] = None,
-        offline: Optional[bool] = None, # Deprecated, use inactive instead
+        offline: Optional[bool] = None,  # Deprecated, use inactive instead
         archived: Optional[bool] = None,
         limit: Optional[int] = None,
         skip: Optional[int] = None,
@@ -569,7 +592,7 @@ class Session(object):
         )
         if result and 0 < len(result):
             retval = result[0]
-            if 1<len(result):
+            if 1 < len(result):
                 Session._warning(f"Multiple entities retreived({len(result)}), returning first one.")
             return retval
         return None
@@ -596,7 +619,7 @@ class Session(object):
             if not result:
                 return None
             retval = result[0]
-            if 1<len(result):
+            if 1 < len(result):
                 Session._warning(f"Multiple entities retreived({len(result)}), returning first one.")
             return retval
         return None
@@ -637,12 +660,7 @@ class Session(object):
 
     # Update an entity
 
-    def update(
-        self, 
-        entitytype: str, 
-        entityid: str, 
-        data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    def update(self, entitytype: str, entityid: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Update/modify an entity.
 
@@ -660,7 +678,9 @@ class Session(object):
         assert 0 < len(entityid or "") and Session._is_str(
             entityid
         ), "Invalid entity ID supplied, must be of string type!"
-        assert 0 < len(data or dict()) and isinstance(data, dict), "Invalid data supplied, must be dict and have content!"
+        assert 0 < len(data or dict()) and isinstance(
+            data, dict
+        ), "Invalid data supplied, must be dict and have content!"
         response = self._event(
             "PUT",
             f"{entitytype}/edit",
@@ -670,12 +690,7 @@ class Session(object):
         if response:
             return response["result"][0]
 
-    def update_one(
-        self, 
-        entitytype: str, 
-        entityid: str, 
-        data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    def update_one(self, entitytype: str, entityid: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         '''
         Update/modify an entity.
 
@@ -692,10 +707,10 @@ class Session(object):
         return self.update(entitytype, entityid, data)
 
     def update_many(
-        self, 
-        entitytype: str, 
+        self,
+        entitytype: str,
         entityid: str,
-        data: List[Dict[str, Any]], 
+        data: List[Dict[str, Any]],
     ) -> Optional[List[Dict[str, Any]]]:
         """
         Update/modify multiple entities - tasks beneath a job.
@@ -764,9 +779,13 @@ class Session(object):
         if entitytype_parent in ["volume", "share"] and entitytype in ["server", "client"]:
             # Assign a server to a share, expect share and client supplied
             share_id = data.get("volume", data.get("share"))
-            assert re.match("^[a-z0-9]{24}$", (share_id or "")), "Please supply parent entity ID as 'volume' with assignment data!"
+            assert re.match(
+                "^[a-z0-9]{24}$", (share_id or "")
+            ), "Please supply parent entity ID as 'volume' with assignment data!"
             client_id = data.get("server", data.get("client"))
-            assert re.match("^[a-z0-9]{24}$", (client_id or "")), "Please supply entity ID as 'server' with assignment data!"
+            assert re.match(
+                "^[a-z0-9]{24}$", (client_id or "")
+            ), "Please supply entity ID as 'server' with assignment data!"
             response = self._event(
                 "PUT",
                 f"share/server",
@@ -778,34 +797,38 @@ class Session(object):
         elif entitytype_parent in ["delivery"] and entitytype in ["user"]:
             # Assign a user to a delivery, expect delivery and user supplied
             delivery_id = data.get("delivery")
-            assert re.match("^[a-z0-9]{24}$", (delivery_id or "")), "Please supply parent entity ID as 'delivery' with assignment data!"
+            assert re.match(
+                "^[a-z0-9]{24}$", (delivery_id or "")
+            ), "Please supply parent entity ID as 'delivery' with assignment data!"
             user_id = data.get("user")
-            assert re.match("^[a-z0-9]{24}$", (user_id or "")), "Please supply entity ID as 'user' with assignment data!"
+            assert re.match(
+                "^[a-z0-9]{24}$", (user_id or "")
+            ), "Please supply entity ID as 'user' with assignment data!"
             response = self._event(
                 "PUT",
                 f"job/recipient/add",
                 dict(recipient=user_id),
                 entityid=delivery_id,
             )
-        elif entitytype_parent in ["volume","folder","home","collection"] and entitytype in ["user"]:
+        elif entitytype_parent in ["volume", "folder", "home", "collection"] and entitytype in ["user"]:
             # Assign an employee user to a volume
             volume_id = data.get("volume")
-            assert re.match("^[a-z0-9]{24}$", (volume_id or "")), "Please supply parent entity ID as 'volume' with assignment data!"
+            assert re.match(
+                "^[a-z0-9]{24}$", (volume_id or "")
+            ), "Please supply parent entity ID as 'volume' with assignment data!"
             user_id = data.get("user")
-            assert re.match("^[a-z0-9]{24}$", (user_id or "")), "Please supply entity ID as 'user' with assignment data!"
+            assert re.match(
+                "^[a-z0-9]{24}$", (user_id or "")
+            ), "Please supply entity ID as 'user' with assignment data!"
             payload = dict(
                 entity=f"user:{user_id}",
                 target=f"share:{volume_id}",
                 read=data.get("read", True),
                 write=data.get("write", True),
                 notify=data.get("notify", True),
-                message=data.get("message", "")
+                message=data.get("message", ""),
             )
-            response = self._event(
-                "POST",
-                f"acl/create",
-                payload
-            )
+            response = self._event("POST", f"acl/create", payload)
         if response is not None:
             return response["result"]
         else:
@@ -825,7 +848,7 @@ class Session(object):
         assert 0 < len(entitytype or "") and Session._is_str(
             entitytype
         ), "Invalid parent entity type supplied, must be of string type!"
-        if entitytype.lower() in ["volume", "share"]: # share is deprecated since 3.2
+        if entitytype.lower() in ["volume", "share"]:  # share is deprecated since 3.2
             # List servers assigned to a volume
             response = self._event(
                 "GET",
@@ -868,9 +891,13 @@ class Session(object):
         if entitytype_parent in ["volume", "share"] and entitytype == "server":
             # Assign a server to a share, expect share and client supplied
             share_id = data.get("volume", data.get("share"))
-            assert re.match("^[a-z0-9]{24}$", (share_id or "")), "Please supply parent entity ID as 'volume' with de-assignment data!"
+            assert re.match(
+                "^[a-z0-9]{24}$", (share_id or "")
+            ), "Please supply parent entity ID as 'volume' with de-assignment data!"
             client_id = data.get("server", data.get("client"))
-            assert re.match("^[a-z0-9]{24}$", (client_id or "")), "Please supply entity ID as 'server' with de-assignment data!"
+            assert re.match(
+                "^[a-z0-9]{24}$", (client_id or "")
+            ), "Please supply entity ID as 'server' with de-assignment data!"
             response = self._event(
                 "DELETE",
                 f"{entitytype_parent}/server",
@@ -882,7 +909,7 @@ class Session(object):
         else:
             raise AccsynException("Unsupported assignment operation!")
 
-     # Entity access grant / revocation
+    # Entity access grant / revocation
 
     def grant(
         self,
@@ -921,13 +948,15 @@ class Session(object):
                     f"{entitytype}/find",
                     query=f"code='{entityid}'",
                 )
-                if 0<len(response.get("result", [])):
+                if 0 < len(response.get("result", [])):
                     # Use the correct ID
                     entityid = response["result"][0]["id"]
                 else:
                     # Allow this - user will be invited
                     if (data or dict()).get("invite", True) is False:
-                        raise AccsynException(f"No {entitytype} found with code '{entityid}', and invite is not allowed!")
+                        raise AccsynException(
+                            f"No {entitytype} found with code '{entityid}', and invite is not allowed!"
+                        )
                     else:
                         Session._warning(f"No {entitytype} found with code '{entityid}', will be invited!")
             else:
@@ -955,7 +984,7 @@ class Session(object):
                 raise AccsynException(f"Please supply a valid {targettype} ID!")
         result = None
         if entitytype == "user":
-            if targettype in ["delivery","request","stream"]:
+            if targettype in ["delivery", "request", "stream"]:
                 # Assign a user to a delivery, expect delivery and user supplied
                 user_id = entityid
                 delivery_id = targetid
@@ -970,7 +999,7 @@ class Session(object):
                     entityid=delivery_id,
                 )
                 result = response["result"]
-            elif targettype in ["volume","folder","home","collection"]:
+            elif targettype in ["volume", "folder", "home", "collection"]:
                 # Assign an employee user to a volume
                 assert (
                     data is not None and isinstance(data, dict) and (0 < len(data or dict()))
@@ -988,11 +1017,7 @@ class Session(object):
                 )
                 if (data or dict()).get("invite", True) is False:
                     payload["invite"] = False
-                response = self._event(
-                    "POST",
-                    f"acl/create",
-                    payload
-                )
+                response = self._event("POST", f"acl/create", payload)
                 result = response["result"][0]
         if result is not None:
             return result
@@ -1031,7 +1056,7 @@ class Session(object):
                 entityid=targetid,
             )
             return response["result"]
-        elif targettype.lower() in ["volume", "folder", "home","collection"]:
+        elif targettype.lower() in ["volume", "folder", "home", "collection"]:
             # List users with access to a share
             response = self._event(
                 "GET",
@@ -1041,27 +1066,23 @@ class Session(object):
             )
             result = []
             for acl in response["result"]:
-                result.append(dict(
-                    user=acl["entity"].split(":")[1],
-                    user_hr=acl.get("entity_hr", ""),
-                    share=acl["target"].split(":")[1],
-                    share_hr=acl.get("target_hr", ""),
-                    read=acl["read"],
-                    write=acl["write"],
-                    acknowledged=acl.get("acknowledged", False),
-                    path=acl.get("path", "/"),
-                ))
+                result.append(
+                    dict(
+                        user=acl["entity"].split(":")[1],
+                        user_hr=acl.get("entity_hr", ""),
+                        share=acl["target"].split(":")[1],
+                        share_hr=acl.get("target_hr", ""),
+                        read=acl["read"],
+                        write=acl["write"],
+                        acknowledged=acl.get("acknowledged", False),
+                        path=acl.get("path", "/"),
+                    )
+                )
             return result
         else:
             raise AccsynException("Unsupported access operation!")
 
-    def revoke(
-        self,
-        entitytype: str,
-        entityid: str,
-        targettype: str,
-        targetid: str
-    ) -> bool:
+    def revoke(self, entitytype: str, entityid: str, targettype: str, targetid: str) -> bool:
         """
         Revoke access to an entity.
 
@@ -1090,7 +1111,7 @@ class Session(object):
                     f"{entitytype}/find",
                     query=f"code='{entityid}'",
                 )
-                if 0<len(response.get("result", [])):
+                if 0 < len(response.get("result", [])):
                     # Use the correct ID
                     entityid = response["result"][0]["id"]
                 else:
@@ -1118,12 +1139,14 @@ class Session(object):
                 dict(recipient=user_id),
                 entityid=delivery_id,
             )
-        elif targettype in ["volume","folder","home","collection"] and entitytype == "user":
+        elif targettype in ["volume", "folder", "home", "collection"] and entitytype == "user":
             # Revoke user access from a share
             share_id = targetid
             user_id = entityid
             # First, located the ACL
-            response = self._event("GET", f"acl/find", dict(), query=f"acl WHERE entity=user:{user_id} AND target=share:{share_id}")
+            response = self._event(
+                "GET", f"acl/find", dict(), query=f"acl WHERE entity=user:{user_id} AND target=share:{share_id}"
+            )
             acls = response["result"]
             if len(acls) == 0:
                 raise AccsynException(f"No ACL found for user {user_id} and share {share_id}")
@@ -1137,7 +1160,6 @@ class Session(object):
             return response["result"]
         else:
             raise AccsynException("Unsupported revoke access operation!")
-
 
     # Deactivate/Delete an entity
 
@@ -1224,7 +1246,9 @@ class Session(object):
         ), "Invalid entity ID supplied, must be of string type!"
         if not re.match("^[a-z0-9]{24}$", (entityid or "")):
             raise AccsynException("Invalid parent entity ID supplied!")
-        assert 0 < len(data or dict()) and isinstance(data, dict), "Invalid data supplied, must be dict and have content!"
+        assert 0 < len(data or dict()) and isinstance(
+            data, dict
+        ), "Invalid data supplied, must be dict and have content!"
         if entitytype == "collection":
             uri = "file/remove"
         else:
@@ -1258,7 +1282,7 @@ class Session(object):
             f"{entitytype}/activate",
             dict(),
             entityid=entityident if re.match("^[a-z0-9]{24}$", (entityident or "")) else None,
-            query=entityident if not re.match("^[a-z0-9]{24}$", (entityident or "")) else None
+            query=entityident if not re.match("^[a-z0-9]{24}$", (entityident or "")) else None,
         )
         if response:
             return response["result"]
@@ -1298,13 +1322,7 @@ class Session(object):
         assert 0 < len(path or "") and (
             Session._is_str(path) or isinstance(path, dict) or isinstance(path, list)
         ), "No path supplied, or not a string/list/dict!"
-        data = dict(
-            op="ls",
-            path=path,
-            download=True,
-            recursive=recursive,
-            getsize=getsize
-        )
+        data = dict(op="ls", path=path, download=True, recursive=recursive, getsize=getsize)
         if maxdepth:
             data["maxdepth"] = maxdepth
         if directories_only:
@@ -1353,9 +1371,7 @@ class Session(object):
         if response:
             return response["result"]
 
-    def exists(
-        self, path: Union[str, Dict[str, Any], List[str]]
-    ) -> Optional[bool]:
+    def exists(self, path: Union[str, Dict[str, Any], List[str]]) -> Optional[bool]:
         """
         Check if a file or directory exists.
 
@@ -1373,9 +1389,7 @@ class Session(object):
         if response:
             return response["result"]
 
-    def mkdir(
-        self, path: Union[str, Dict[str, Any], List[str]]
-    ) -> Optional[Any]:
+    def mkdir(self, path: Union[str, Dict[str, Any], List[str]]) -> Optional[Any]:
         """
         Create a directory on a share.
 
@@ -1454,7 +1468,8 @@ class Session(object):
             return response["result"]
 
     def delete(
-        self, path: Union[str, Dict[str, Any], List[str]],
+        self,
+        path: Union[str, Dict[str, Any], List[str]],
         force: bool = False,
     ) -> Optional[Any]:
         """
@@ -1602,9 +1617,7 @@ class Session(object):
                     break
         return retval
 
-    def integration(
-        self, name: str, operation: str, data: Dict[str, Any]
-    ) -> Any:
+    def integration(self, name: str, operation: str, data: Dict[str, Any]) -> Any:
         '''Make an integration utility call for integration pointed out by *name* and providing the *operation* as string and *data* as a dictionary'''
         assert len(name) > 0, 'No name provided'
         assert len(operation) > 0, 'No operation provided'
@@ -1620,15 +1633,17 @@ class Session(object):
     # Help
     def help(self) -> None:
         documentation_url = "https://accsyn-python-api.readthedocs.io/en/latest/"
-        print(f"Please have a look at the Python API reference: {documentation_url}, attempting to open in default browser...")
-       # Open the documentation url in the browser
+        print(
+            f"Please have a look at the Python API reference: {documentation_url}, attempting to open in default browser..."
+        )
+        # Open the documentation url in the browser
         webbrowser.open(documentation_url)
-    
+
     @staticmethod
     def str(d: Optional[Dict[str, Any]], indent: int = 4) -> str:
         """
         Return a string representation of an dictionary.
-        
+
         .. deprecated:: 3.2.0
             Use the :func:`dump` function instead
         """
@@ -1639,7 +1654,7 @@ class Session(object):
     def dump(d: Optional[Dict[str, Any]], indent: int = 4) -> str:
         """
         Return a string representation of an dictionary.
-        
+
         .. versionchanged:: 3.2.0
             Was 'str' function.
 
@@ -1738,7 +1753,9 @@ class Session(object):
                 try:
                     import socks
                 except ImportError as ie:
-                    logging.error("Socks module is not installed, please install it with 'pip install socks' or add it to your PYTHONPATH")
+                    logging.error(
+                        "Socks module is not installed, please install it with 'pip install socks' or add it to your PYTHONPATH"
+                    )
                     raise ie
 
                 socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, proxy_hostname, proxy_port)

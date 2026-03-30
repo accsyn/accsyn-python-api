@@ -39,7 +39,7 @@ EXPECTED_FOLDER_ATTRIBUTES = [
     "queue",
     "status_hr",
     "status",
-] 
+]
 
 EXPECTED_ACL_ATTRIBUTES = [
     "acknowledged",
@@ -102,6 +102,7 @@ def test_cleanup_filesharing(session_admin, entities):
             session_admin.delete_one("Folder", share["id"])
             entities.remove_from_cleanup(kind="folder", entity_id=share["id"])
 
+
 @pytest.mark.order(1)
 def test_create_folders(session_admin):
     session_admin.mkdir(SHARED_FOLDER)
@@ -112,16 +113,20 @@ def test_create_folders(session_admin):
     session_admin.mkdir(SHARED_FOLDER2)
     session_admin.mkdir(TEST_FOLDER3)
 
+
 @pytest.mark.order(3)
 def test_create_shared_folders_and_grant(session_admin, entities):
     default_volume = session_admin.find_one("Volume WHERE default=True")
     assert default_volume is not None
 
-    share1 = session_admin.create("Folder", {
-        "parent": default_volume["id"],
-        "path": SHARED_FOLDER,
-        "name": SHARE_NAME_1,
-    })
+    share1 = session_admin.create(
+        "Folder",
+        {
+            "parent": default_volume["id"],
+            "path": SHARED_FOLDER,
+            "name": SHARE_NAME_1,
+        },
+    )
     _state["share1"] = share1
     entities.remember(kind="folder", temp_name="folder1", entity_id=share1["id"])
     TestUtils.validate_response(share1, EXPECTED_FOLDER_ATTRIBUTES)
@@ -145,11 +150,14 @@ def test_create_shared_folders_and_grant(session_admin, entities):
     assert std is not None, "Standard user should have been invited by grant call"
     entities.remember(kind="user", temp_name="u-s1", entity_id=std["id"])
 
-    share2 = session_admin.create("Folder", {
-        "parent": default_volume["id"],
-        "path": SHARED_FOLDER2,
-        "name": SHARE_NAME_2,
-    })
+    share2 = session_admin.create(
+        "Folder",
+        {
+            "parent": default_volume["id"],
+            "path": SHARED_FOLDER2,
+            "name": SHARE_NAME_2,
+        },
+    )
     _state["share2"] = share2
     TestUtils.validate_response(share2, EXPECTED_FOLDER_ATTRIBUTES)
 
@@ -159,19 +167,25 @@ def test_upload_files(session_admin, entities):
     share1 = _state["share1"]
     assert share1 is not None
 
-    transfer1 = session_admin.create("Transfer", {
-        "source": TestUtils.get_data_path(TEST_FILE),
-        "destination": f"folder={share1['code']}/{TEST_FILE}",
-        "status": "waiting",
-    })
+    transfer1 = session_admin.create(
+        "Transfer",
+        {
+            "source": TestUtils.get_data_path(TEST_FILE),
+            "destination": f"folder={share1['code']}/{TEST_FILE}",
+            "status": "waiting",
+        },
+    )
     entities.remember(kind="transfer", temp_name="fs-upload-root", entity_id=transfer1["id"])
     TestUtils.wait_transfer_done(session_admin, transfer1)
 
-    transfer2 = session_admin.create("Transfer", {
-        "source": TestUtils.get_data_path(TEST_FILE2),
-        "destination": f"folder={share1['code']}/{DOWNLOAD_SUBDIR}/{TEST_FILE2}",
-        "status": "waiting",
-    })
+    transfer2 = session_admin.create(
+        "Transfer",
+        {
+            "source": TestUtils.get_data_path(TEST_FILE2),
+            "destination": f"folder={share1['code']}/{DOWNLOAD_SUBDIR}/{TEST_FILE2}",
+            "status": "waiting",
+        },
+    )
     entities.remember(kind="transfer", temp_name="fs-upload-download", entity_id=transfer2["id"])
     TestUtils.wait_transfer_done(session_admin, transfer2)
 
@@ -215,11 +229,14 @@ def test_download_shared_content(session_standard, entities):
     target_path = TestUtils.get_tmp_path(TEST_FILE2)
     os.makedirs(os.path.dirname(target_path), exist_ok=True)
 
-    transfer = session_standard.create("Transfer", {
-        "source": f"folder={share1['code']}/{DOWNLOAD_SUBDIR}/{TEST_FILE2}",
-        "destination": target_path,
-        "status": "waiting",
-    })
+    transfer = session_standard.create(
+        "Transfer",
+        {
+            "source": f"folder={share1['code']}/{DOWNLOAD_SUBDIR}/{TEST_FILE2}",
+            "destination": target_path,
+            "status": "waiting",
+        },
+    )
     entities.remember(kind="transfer", temp_name="fs-download", entity_id=transfer["id"])
     TestUtils.wait_transfer_done(session_standard, transfer)
     assert os.path.exists(target_path)
@@ -230,11 +247,14 @@ def test_upload_content_should_fail(session_standard):
     share1 = _state["share1"]
     assert share1 is not None
     with pytest.raises(AccsynException):
-        session_standard.create("Transfer", {
-            "source": TestUtils.get_data_path(TEST_FILE),
-            "destination": f"folder={share1['code']}/{DOWNLOAD_SUBDIR}/{TEST_FILE}",
-            "status": "waiting",
-        })
+        session_standard.create(
+            "Transfer",
+            {
+                "source": TestUtils.get_data_path(TEST_FILE),
+                "destination": f"folder={share1['code']}/{DOWNLOAD_SUBDIR}/{TEST_FILE}",
+                "status": "waiting",
+            },
+        )
 
 
 @pytest.mark.order(9)
@@ -259,11 +279,14 @@ def test_grant_write_access(session_admin):
 def test_upload_content(session_standard, entities):
     share1 = _state["share1"]
     assert share1 is not None
-    transfer = session_standard.create("Transfer", {
-        "source": TestUtils.get_data_path(TEST_FILE2),
-        "destination": f"folder={share1['code']}/{UPLOAD_SUBDIR}/{TEST_FILE2}",
-        "status": "waiting",
-    })
+    transfer = session_standard.create(
+        "Transfer",
+        {
+            "source": TestUtils.get_data_path(TEST_FILE2),
+            "destination": f"folder={share1['code']}/{UPLOAD_SUBDIR}/{TEST_FILE2}",
+            "status": "waiting",
+        },
+    )
     entities.remember(kind="transfer", temp_name="fs-upload-write-only", entity_id=transfer["id"])
     TestUtils.wait_transfer_done(session_standard, transfer)
 
@@ -332,11 +355,14 @@ def test_standard_share_test_folder3_should_fail(session_admin, session_standard
     assert default_volume is not None
 
     with pytest.raises(AccsynException):
-        session_standard.create("Folder", {
-            "parent": default_volume["id"],
-            "path": TEST_FOLDER3,
-            "name": "Standard should fail share",
-        })
+        session_standard.create(
+            "Folder",
+            {
+                "parent": default_volume["id"],
+                "path": TEST_FOLDER3,
+                "name": "Standard should fail share",
+            },
+        )
 
 
 @pytest.mark.order(16)

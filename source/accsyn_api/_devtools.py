@@ -28,4 +28,3 @@ def run_pytest(argv: Optional[Sequence[str]] = None) -> int:
 def test() -> None:
     """Poetry script entrypoint: `poetry run test [pytest-args...]`."""
     raise SystemExit(run_pytest())
-

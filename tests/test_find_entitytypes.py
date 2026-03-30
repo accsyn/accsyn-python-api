@@ -13,6 +13,7 @@ def test_find_entitytypes_as_admin(session_admin):
     assert len(entitytypes) > 2
     assert "user" in {str(x).lower() for x in entitytypes}
 
+
 @pytest.mark.order(2)
 def test_find_and_validate_delivery_attributes_as_admin(session_admin):
     """
@@ -20,33 +21,32 @@ def test_find_and_validate_delivery_attributes_as_admin(session_admin):
     """
     attributes = session_admin.find("attributes WHERE entitytype=delivery")
     assert isinstance(attributes, list)
-    TestUtils.validate_response(attributes, should_include=["code", "name", "public"], should_exclude=["data","config"])
+    TestUtils.validate_response(
+        attributes, should_include=["code", "name", "public"], should_exclude=["data", "config"]
+    )
+
 
 @pytest.mark.order(3)
 def test_create_users(session_admin, entities):
     # Invate employee and standard user if they don't exist
     employee = session_admin.find_one(f"User where code='{TestUtils.get_employee_ident()}'")
     if not employee:
-        employee = session_admin.create("User",{
-            "code":TestUtils.get_employee_ident(),
-            "role":"employee"
-        })
+        employee = session_admin.create("User", {"code": TestUtils.get_employee_ident(), "role": "employee"})
         assert employee is not None
         entities.remember(kind="user", temp_name="e1", entity_id=employee["id"])
     standard = session_admin.find_one(f"User where code='{TestUtils.get_standard_ident()}'")
     if not standard:
-        standard = session_admin.create("User",{
-            "code":TestUtils.get_standard_ident(),
-            "role":"standard"
-        })
+        standard = session_admin.create("User", {"code": TestUtils.get_standard_ident(), "role": "standard"})
         assert standard is not None
         entities.remember(kind="user", temp_name="s1", entity_id=standard["id"])
+
 
 @pytest.mark.order(4)
 def test_find_attributes_delivery_contains_code_as_standard(session_standard):
     attributes = session_standard.find("attributes WHERE entitytype=delivery")
     assert isinstance(attributes, list)
     TestUtils.validate_response(attributes, should_include=["code"])
+
 
 @pytest.mark.order(5)
 def test_find_entitytypes_as_employee(session_employee):
@@ -58,6 +58,7 @@ def test_find_entitytypes_as_employee(session_employee):
     assert len(entitytypes) > 2
     assert "user" in {str(x).lower() for x in entitytypes}
 
+
 @pytest.mark.order(6)
 def test_find_entitytypes_as_standard(session_standard):
     """
@@ -68,6 +69,7 @@ def test_find_entitytypes_as_standard(session_standard):
     assert len(entitytypes) > 2
     assert "user" in {str(x).lower() for x in entitytypes}
 
+
 @pytest.mark.order(7)
 def test_find_attributes_delivery_contains_code_as_employee(session_employee):
     """
@@ -76,6 +78,7 @@ def test_find_attributes_delivery_contains_code_as_employee(session_employee):
     attributes = session_employee.find("attributes WHERE entitytype=delivery")
     assert isinstance(attributes, list)
     TestUtils.validate_response(attributes, should_include=["code"])
+
 
 @pytest.mark.order(8)
 def test_find_attributes_delivery_contains_code_as_standard(session_standard):
