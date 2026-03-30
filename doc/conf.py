@@ -64,7 +64,7 @@ modindex_common_prefix = ["accsyn_api."]
 
 # -- HTML output --------------------------------------------------------------
 
-#if os.environ.get("READTHEDOCS", None) != "True":
+# if os.environ.get("READTHEDOCS", None) != "True":
 #    # Try to use RTD theme locally when it is installed.
 #    try:
 import sphinx_rtd_theme
