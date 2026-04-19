@@ -7,6 +7,7 @@ from accsyn_api.session import AccsynException
 from conftest import TestUtils, TEST_FILE
 
 TEMP_DELIVERY_NAME = "Project references temp"
+TEMP_DELIVERY_NAME_2 = "Project references temp 2"
 TEMP_DELIVERY_NAME_EMPLOYEE = "Project references temp (EMP)"
 TEMP_DELIVERY_NAME_STANDARD = "Project references temp (STA)"
 DELIVERY_NAME = "Project references"
@@ -38,6 +39,7 @@ def test_prepare_deliveries(session_admin, entities):
     employee = session_admin.create("User", {"code": TestUtils.get_employee_ident(), "role": "employee"})
     entities.remember(kind="user", temp_name="e1", entity_id=employee["id"])
 
+# Employee user now exists
 
 # Create temp delivery
 @pytest.mark.order(2)
@@ -55,7 +57,9 @@ def test_create_temp_delivery_as_admin(session_admin, entities):
     # Submit now should fail - have no files or recipients yet
     with pytest.raises(AccsynException):
         session_admin.update("Delivery", delivery["id"], {"status": "pending"})
-
+    # Create a second temp delivery
+    delivery2 = session_admin.create("Delivery", {"name": TEMP_DELIVERY_NAME_2})
+    entities.remember(kind="delivery", temp_name="d2", entity_id=delivery2["id"])
 
 @pytest.mark.order(3)
 def test_create_temp_delivery_as_employee(session_employee, entities):
@@ -63,15 +67,7 @@ def test_create_temp_delivery_as_employee(session_employee, entities):
     with pytest.raises(AccsynException):
         session_employee.create("Delivery", {"name": TEMP_DELIVERY_NAME_EMPLOYEE})
 
-
 @pytest.mark.order(4)
-def test_create_temp_delivery_as_standard(session_standard, entities):
-    # Should fail as standard user have no access to create deliveries
-    with pytest.raises(AccsynException):
-        session_standard.create("Delivery", {"name": TEMP_DELIVERY_NAME_STANDARD})
-
-
-@pytest.mark.order(5)
 def test_read_temp_delivery_as_admin(session_admin, entities):
     delivery_id = entities.get_id("delivery", "d1")
     delivery = session_admin.get_entity("Delivery", delivery_id)
@@ -80,8 +76,7 @@ def test_read_temp_delivery_as_admin(session_admin, entities):
         delivery, ["name", "status", "public", "user"], should_exclude=["data", "config", "tasks"]
     )
 
-
-@pytest.mark.order(6)
+@pytest.mark.order(5)
 def test_read_temp_delivery_as_employee(session_employee, entities):
     # Should fail as employee have no access to any volumes
     delivery_id = entities.get_id("delivery", "d1")
@@ -89,15 +84,7 @@ def test_read_temp_delivery_as_employee(session_employee, entities):
     assert delivery is None
 
 
-@pytest.mark.order(7)
-def test_read_temp_delivery_as_standard(session_standard, entities):
-    # Should fail as standard user have no access to delivery
-    delivery_id = entities.get_id("delivery", "d1")
-    delivery = session_standard.get_entity("Delivery", delivery_id)
-    assert delivery is None
-
-
-@pytest.mark.order(8)
+@pytest.mark.order(6)
 def test_add_recipient_to_temp_delivery_as_admin(session_admin, entities):
     delivery_id = entities.get_id("delivery", "d1")
     result = session_admin.grant("User", TestUtils.get_standard_ident(), "Delivery", delivery_id)
@@ -110,21 +97,12 @@ def test_add_recipient_to_temp_delivery_as_admin(session_admin, entities):
     with pytest.raises(AccsynException):
         session_admin.update("Delivery", delivery_id, {"status": "pending"})
 
-
-@pytest.mark.order(9)
+@pytest.mark.order(7)
 def test_add_recipient_to_temp_delivery_as_employee_should_fail(session_employee, entities):
     # Should fail as employee has no access to volume related to delivery
     delivery_id = entities.get_id("delivery", "d1")
     with pytest.raises(AccsynException):
         session_employee.grant("User", TestUtils.get_standard_ident(), "Delivery", delivery_id)
-
-
-@pytest.mark.order(10)
-def test_add_recipient_to_temp_delivery_as_standard(session_standard, entities):
-    # Should fail as standard user has no access to deliveries
-    delivery_id = entities.get_id("delivery", "d1")
-    with pytest.raises(AccsynException):
-        session_standard.grant("User", TestUtils.get_standard_ident(), "Delivery", delivery_id)
 
 
 # Upload and submit
@@ -151,7 +129,6 @@ def test_upload_file_to_temp_delivery(session_admin, entities):
     logging.info(f"Upload {transfer['name']} completed")
     entities.remember(kind="transfer", temp_name="t1", entity_id=transfer["id"])
 
-
 @pytest.mark.order(21)
 def test_upload_file_to_temp_delivery_as_employee(session_employee, entities):
     # Should fail as employee have no access to any volumes
@@ -159,18 +136,7 @@ def test_upload_file_to_temp_delivery_as_employee(session_employee, entities):
     with pytest.raises(AccsynException):
         session_employee.create("Transfer", {"parent": delivery_id, "source": TestUtils.get_data_path(TEST_FILE)})
 
-
 @pytest.mark.order(22)
-def test_upload_file_to_temp_delivery_as_standard(session_standard, entities):
-    # Should fail as standard user have no access to deliveries
-    delivery_id = entities.get_id("delivery", "d1")
-    with pytest.raises(AccsynException):
-        session_standard.create(
-            "Transfer", {"parent": delivery_id, "source": TestUtils.get_data_path("bad_buck_bunny.png")}
-        )
-
-
-@pytest.mark.order(23)
 def test_submit_temp_delivery(session_admin, entities):
     delivery_id = entities.get_id("delivery", "d1")
     delivery = session_admin.update("Delivery", delivery_id, {"status": "pending"})
@@ -183,29 +149,58 @@ def test_submit_temp_delivery(session_admin, entities):
         logging.info(f"Delivery {delivery['name']} is {delivery['status']}")
     assert delivery["status"] == "waiting"
 
+# Standard user now exists
+
+@pytest.mark.order(23)
+def test_upload_file_to_temp_delivery_as_standard(session_standard, entities):
+    # Should fail as standard user have no access to deliveries
+    delivery_id = entities.get_id("delivery", "d1")
+    with pytest.raises(AccsynException):
+        session_standard.create(
+            "Transfer", {"parent": delivery_id, "source": TestUtils.get_data_path("bad_buck_bunny.png")}
+        )
 
 @pytest.mark.order(24)
+def test_add_recipient_to_temp_delivery_as_standard(session_standard, entities):
+    # Should fail as standard user has no access to deliveries
+    delivery_id = entities.get_id("delivery", "d1")
+    with pytest.raises(AccsynException):
+        session_standard.grant("User", TestUtils.get_standard_ident(), "Delivery", delivery_id)
+
+@pytest.mark.order(25)
+def test_read_temp_delivery2_as_standard(session_standard, entities):
+    # Should fail as standard user have no access to delivery
+    delivery2_id = entities.get_id("delivery", "d2")
+    delivery2 = session_standard.get_entity("Delivery", delivery2_id)
+    assert delivery2 is None
+
+@pytest.mark.order(26)
+def test_create_temp_delivery_as_standard(session_standard, entities):
+    # Should fail as standard user have no access to create deliveries
+    with pytest.raises(AccsynException):
+        session_standard.create("Delivery", {"name": TEMP_DELIVERY_NAME_STANDARD})
+
+@pytest.mark.order(27)
 def test_abort_temp_delivery_as_employee(session_employee, entities):
     delivery_id = entities.get_id("delivery", "d1")
     with pytest.raises(AccsynException):
         session_employee.update("Delivery", delivery_id, {"status": "aborted"})
 
 
-@pytest.mark.order(25)
+@pytest.mark.order(28)
 def test_pause_temp_delivery_as_standard(session_standard, entities):
     # Should fail as standard user have no access to deliveries
     delivery_id = entities.get_id("delivery", "d1")
     with pytest.raises(AccsynException):
         session_standard.update("Delivery", delivery_id, {"status": "aborted"})
 
-
-@pytest.mark.order(26)
+@pytest.mark.order(29)
 def test_abort_temp_delivery_as_admin(session_admin, entities):
     delivery_id = entities.get_id("delivery", "d1")
     delivery = session_admin.update("Delivery", delivery_id, {"status": "aborted"})
     assert delivery["status"] == "aborted"
 
-
+# Delete delivery
 @pytest.mark.order(97)
 def test_delete_temp_delivery_as_employee(session_employee, entities):
     # Should fail as employee have no access to any volumes

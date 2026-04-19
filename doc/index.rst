@@ -25,6 +25,7 @@ Welcome to the accsyn :term:`Python` :term:`API` documentation.
     file
     publish
     compute
+    settings
     misc
     api_reference/index
     release_notes

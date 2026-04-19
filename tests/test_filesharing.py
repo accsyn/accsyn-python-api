@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 
 import pytest
 
@@ -223,6 +224,14 @@ def test_list_shared_folders_and_content(session_standard):
 
 @pytest.mark.order(7)
 def test_download_shared_content(session_standard, entities):
+    
+    while True:
+        clients = session_standard.find("App")
+        if len(clients) > 0:
+            break
+        input(f"Please login to the accsyn Desktop app as {TestUtils.get_standard_ident()} and press Enter to continue...")
+        time.sleep(1)
+
     share1 = _state["share1"]
     assert share1 is not None
 

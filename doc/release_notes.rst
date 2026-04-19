@@ -13,6 +13,18 @@ Release Notes
 
     `https://support.accsyn.com/changelog <https://support.accsyn.com/changelog>`_.
 
+.. release:: 3.3.0
+    :date: 2026-04-19
+
+    .. change:: new
+
+        * Added support for reading and modifying workspace and entity settings, with tests.
+    
+    .. change:: fix
+
+        * Added entityid to find_one query function.
+
+
 .. release:: 3.2.3
     :date: 2026-03-30
 

@@ -128,11 +128,13 @@ class EntityRegistry:
             ce = self._by_key.pop(key_to_remove)
             self._created_stack.remove(ce)
 
-    def cleanup(self) -> None:
+    def cleanup(self, *, pause_on_failure: bool = False) -> None:
         # Best effort: delete everything we created, even if some deletes fail.
-        logger.info("Cleaning up %s entities", len(self._created_stack))
+        logger.info(f"Cleaning up {len(self._created_stack)} entities")
         for h in logger.handlers:
             h.flush()
+        if pause_on_failure and self._created_stack:
+            input(f"Press ENTER to clean up {len(self._created_stack)} entities....")
         errors: list[Exception] = []
         while self._created_stack:
             ce = self._created_stack.pop()
@@ -178,7 +180,7 @@ def _make_entities_registry(session: Any, run_id: str) -> EntityRegistry:
 
 
 @pytest.fixture(scope="session")
-def entities(run_id, session_admin):
+def entities(run_id, session_admin, request):
     """
     Shared entity registry for all roles (admin, employee, standard).
     Cleanup is performed with the admin session so all created entities can be deleted.
@@ -192,7 +194,8 @@ def entities(run_id, session_admin):
     try:
         yield reg
     finally:
-        reg.cleanup()
+        # Only pause for manual inspection when something failed; otherwise teardown runs unattended.
+        reg.cleanup(pause_on_failure=getattr(request.session, "testsfailed", 0) > 0)
 
 
 class TestUtils:
@@ -257,6 +260,8 @@ class TestUtils:
             for item in value:
                 if isinstance(item, dict):
                     attributes.update(TestUtils._extract_attributes(item))
+                elif isinstance(item, str):
+                    attributes.add(item.lower())
         return attributes
 
     @staticmethod
@@ -282,11 +287,11 @@ class TestUtils:
                 for s in should_include:
                     assert (
                         s.lower() in attributes
-                    ), f"Expected attribute {s!r} in response, got attributes: {sorted(attributes)}"
+                    ), f"Expected attribute {s!r} NOT in response, got attributes: {sorted(attributes)}"
                 for s in should_exclude:
                     assert (
                         s.lower() not in attributes
-                    ), f"Expected attribute {s!r} not in response, got attributes: {sorted(attributes)}"
+                    ), f"Attribute {s!r} NOT expected in response, got attributes: {sorted(attributes)}"
             return
         attributes = TestUtils._extract_attributes(value)
         for s in should_include:

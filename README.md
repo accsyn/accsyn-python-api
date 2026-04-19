@@ -1,7 +1,7 @@
 # accsyn-python-api
 Official accsyn fast and secure file delivery Python API
 
-Python API support can be found [here](https://support.accsyn.com/workflows/python-api).
+Python API support can be found [here](https://support.accsyn.com/developer/python-api).
 
 
 Changelog:

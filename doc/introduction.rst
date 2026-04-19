@@ -20,7 +20,7 @@ With the API you can for example:
 Limitations:
 ============
 
-- The result of a request is static dictionaries, meaning that API will not attempt to dynamically updated any returned objects after they have been retrieved or harbor and local caching of any kind This means that for example continous monitor of job progress requires polling.
+- The result of a request is static dictionaries, meaning that API will not attempt to dynamically update any returned objects after they have been retrieved or harbor and local caching of any kind This means that for example continous monitor of job progress requires polling.
 
 - The API also do not support multi-operation transactions, meaning that any create, update or delete operation will commit instantly.
 

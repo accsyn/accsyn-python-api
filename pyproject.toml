@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "accsyn-python-api"
-version = "3.2.3"
+version = "3.3.0"
 description = "A Python API for accsyn programmable fast and secure data delivery software"
 authors = ["Henrik Norin <support@accsyn.com>"]
 license = "Apache-2.0"

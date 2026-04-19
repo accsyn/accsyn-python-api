@@ -86,7 +86,7 @@ UNIQUE_ENTITY_TYPES = [
     "engine",
     "queue",
 ]
-# Entity types were code is unique and can be used to find the entity by code
+# Entity types were code is unique and can be used to find the entity by its API identifier (code)
 
 
 class JSONEncoder(json.JSONEncoder):
@@ -124,26 +124,27 @@ class JSONDecoder(json.JSONDecoder):
                             newlist.append(recursive_decode(i))
                         d[key] = newlist
                     elif Session._is_str(d[key]):
-                        if re.match(
-                            "^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:" "[0-9]{2}$",
+                        dt = None
+                        if d[key].startswith("ObjectId:"):
+                            d[key] = d[key].replace("ObjectId:", "") # Just treat as string
+                        elif re.match(
+                            "^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$",
                             str(Session._safely_printable(d[key])),
                         ):
                             if len(d[key].split("-")[0]) == 4:
                                 dt = datetime.datetime.strptime(d[key], "%Y-%m-%dT%H:%M:%S")
                             else:
                                 dt = datetime.datetime.strptime(d[key], "%y-%m-%dT%H:%M:%S")
-                            # Backend sends UTC, convert to local timezone
-                            dt = dt.replace(tzinfo=datetime.timezone.utc)
-                            d[key] = dt.astimezone()
                         # With millis
                         elif re.match(
-                            "^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:" "[0-9]{2}:[0-9]{2}.[0-9]{3}$",
+                            "^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}$",
                             str(Session._safely_printable(d[key])),
                         ):
                             if len(d[key].split("-")[0]) == 4:
                                 dt = datetime.datetime.strptime(d[key], "%Y-%m-%dT%H:%M:%S.%f")
                             else:
                                 dt = datetime.datetime.strptime(d[key], "%y-%m-%dT%H:%M:%S.%f")
+                        if dt is not None:
                             # Backend sends UTC, convert to local timezone
                             dt = dt.replace(tzinfo=datetime.timezone.utc)
                             d[key] = dt.astimezone()
@@ -574,6 +575,7 @@ class Session(object):
     def find_one(
         self,
         query: str,
+        entityid: Optional[str] = None,
         attributes: Optional[List[str]] = None,
         finished: Optional[bool] = None,
         inactive: Optional[bool] = None,
@@ -584,6 +586,7 @@ class Session(object):
         Return a single entity.
 
         :param query: The query, a string on accsyn query format.
+        :param entityid: The parent entity ID, required for sub entities "task" and "file".
         :param attributes: The attributes to return, default is to return all attributes with access.
         :param finished: (job) Search among finished/aborted jobs.
         :param inactive: (user,share) Search among inactive entities.
@@ -596,6 +599,7 @@ class Session(object):
         ), "Invalid query type supplied, must be of string type!"
         return self.find(
             query,
+            entityid=entityid,
             attributes=attributes,
             finished=finished,
             inactive=inactive or offline,
@@ -1530,41 +1534,116 @@ class Session(object):
     def get_setting(
         self,
         name: Optional[str] = None,
-        scope: str = 'workspace',
-        entity_id: Optional[str] = None,
+        entitytype: str = 'workspace',
+        entityid: Optional[str] = None,
         integration: Optional[str] = None,
         data: Optional[Dict[str, Any]] = None,
     ) -> Optional[Any]:
-        '''Retrive *name* setting for the given *scope* (workspace, job, share..), for optional *entity_id* or *integration* (ftrack,..)'''
-        evt_data = dict(scope=scope, name=name)
-        if entity_id:
-            evt_data['ident'] = entity_id
+        """
+        Retrive *name* setting value for the given *entitytype* (workspace, job, volume, user, queue, ...) and 
+        *entityid* or *integration* (ftrack,..).
+
+        :param name: Setting name.
+        :param entitytype: Entity type (workspace, job, volume, user, queue, ...).
+        :param entityid: Entity ID (None for workspace entity type).
+        :param integration: Integration name (ftrack, ..).
+        :param data: Additional data to include in the request.
+        :return: Setting value.
+        """
+        evt_data = dict(entitytype=entitytype, name=name)
         if integration:
             evt_data['integration'] = integration
         if evt_data:
             evt_data['data'] = data
-        response = self._event("GET", "setting", evt_data)
+        response = self._event("GET", "setting", evt_data, entityid=entityid)
         return response.get("result")
+
+    def get_settings(
+        self,
+        entitytype: Optional[str] = None,
+        entityid: Optional[str] = None,
+        recursive: bool = False,
+        upstream: bool = False,
+        omit_defaults: bool = True,
+        share: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Return settings JSON for an entity.
+
+        :param entitytype: Optional entity type (workspace, job, volume, user, queue, ...), defaults to 'workspace'.
+        :param entityid: Optional entity ID, defaults to None.
+        :param recursive: Include recursive settings lookup (for share trees, etc).
+        :param upstream: Include inherited/upstream/default settings.
+        :param omit_defaults: Omit unchanged defaults from response.
+        :param share: Optional share ID/code used by some settings lookups.
+        :return: Settings as a JSON-compatible dictionary.
+        """
+        if entitytype:
+            entitytype = entitytype.lower().strip()
+        payload: Dict[str, Any] = dict(
+            entitytype=entitytype,
+            recursive=recursive,
+            upstream=upstream,
+            omit_defaults=omit_defaults,
+        )
+        if share:
+            payload["share"] = share
+        response = self._event("GET", "setting", payload, entityid=entityid)
+        return cast(Dict[str, Any], response.get("result") or {})
 
     def set_setting(
         self,
+        entitytype: str,
         name: str,
-        value: Any,
-        scope: str = 'workspace',
-        entity_id: Optional[str] = None,
-        integration: Optional[str] = None,
-        data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Any]:
-        '''Set the setting identified by *name* to *value* for *entity_id* within *scope*.'''
-        evt_data = dict(scope=scope, name=name, value=value)
-        if entity_id:
-            evt_data['ident'] = entity_id
-        if integration:
-            evt_data['integration'] = integration
-        if evt_data:
-            evt_data['data'] = data
-        response = self._event("PUT", "setting", evt_data)
-        return response.get("result")
+        value: any,
+        entityid: Optional[str] = None,
+    ) -> bool:
+        """
+        Set a setting for an entity.
+
+        .. versionchanged:: 3.2
+            Simplified to a single signature: ``set_setting(entitytype, entityid, name, value)``.
+            Legacy compatibility argument patterns were removed.
+
+        :param entitytype: Entity type (workspace, job, volume, user, queue, ...)
+        :param name: Setting name.
+        :param value: Setting value, must be of string type. Dictionaries are supported, but must be converted to JSON string first. Serialise dates to ISO 8601 strings.
+        :param entityid: Optional entity ID (None for workspace entity type, otherwise required).
+        :return: True if setting was updated.
+        """
+        assert 0 < len(entitytype or "") and Session._is_str(
+            entitytype
+        ), "Invalid entity type supplied, must be of string type!"
+        assert 0 < len(name or "") and Session._is_str(name), "Invalid name supplied, must be of string type!"
+        assert value is not None and isinstance(value, str), "Invalid value supplied, must be of string type!"
+        entitytype = entitytype.lower().strip()
+        payload: Dict[str, Any] = dict(entitytype=entitytype, name=name, value=value)
+        response = self._event("PUT", "setting", payload, entityid=entityid)
+        return bool(response.get("result"))
+
+    def delete_setting(
+        self,
+        entitytype: str,
+        name: str,
+        entityid: Optional[str] = None,
+    ) -> bool:
+        """
+        Delete a setting for an entity.
+
+        :param entitytype: Entity type (workspace, job, volume, user, queue, ...)
+        :param name: Setting name.
+        :param entityid: Optional entity ID (None for workspace entity type, otherwise required).
+        :return: True if setting was deleted.
+        """
+        assert 0 < len(entitytype or "") and Session._is_str(
+            entitytype
+        ), "Invalid entity type supplied, must be of string type!"
+        assert 0 < len(name or "") and Session._is_str(name), "Invalid name supplied, must be of string type!"
+        entitytype = entitytype.lower().strip()
+        payload: Dict[str, Any] = dict(entitytype=entitytype, name=name)
+        response = self._event("DELETE", "setting", payload, entityid=entityid)
+        return bool(response.get("result"))
+
 
     # Misc
     def get_api_key(self) -> str:

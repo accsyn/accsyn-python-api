@@ -218,7 +218,7 @@ To delete a Transfer::
 Tasks
 =====
 
-A task is a file/directory to execute within a job. Task access through API is restricted, for example
+A task is a file/directory to execute transfer a job. Task access through API is restricted, for example
 deleting task is not possible neither changing their path. Instead of deleting a task, they can be excluded.
 
 Query tasks
