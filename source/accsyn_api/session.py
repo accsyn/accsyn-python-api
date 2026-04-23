@@ -395,6 +395,7 @@ class Session(object):
         data: Union[str, Dict[str, Any], List[Dict[str, Any]]],
         entityid: Optional[str] = None,
         allow_duplicates: Optional[bool] = None,
+        replace_duplicates: Optional[bool] = None,
     ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
         """
         Create a new accsyn entity.
@@ -402,7 +403,8 @@ class Session(object):
         :param entitytype: The type of entity to create (job, share, acl)
         :param data: The entity data as a dictionary.
         :param entityid: For creating sub entities (tasks), this is the parent (job) id.
-        :param allow_duplicates: (jobs and tasks) Allow duplicates to be created.
+        :param allow_duplicates: (jobs and tasks) Allow duplicate tasks (same uri), will ignore the provided task and retry the existing task instead.
+        :param replace_duplicates: (jobs and tasks) Do not retry the existing task, replace duplicate tasks (same uri) with the new one instead.
         :return: The created entity data, as dictionary.
         """
         entitytype = (entitytype or "").lower().strip()
@@ -429,7 +431,7 @@ class Session(object):
             data = dict(tasks=data)
         if entitytype == "file":
             uri = "add"
-        if allow_duplicates is not None and entitytype in [
+        if entitytype in [
             "transfer",
             "compute",
             "delivery",
@@ -438,7 +440,10 @@ class Session(object):
             "job",
             "task",
         ]:
-            data["allow_duplicates"] = allow_duplicates
+            if allow_duplicates is not None:
+                data["allow_duplicates"] = allow_duplicates
+            if replace_duplicates is not None:
+                data["replace_duplicates"] = replace_duplicates
         d = self._event(
             "POST",
             f"{entitytype}/{uri}",

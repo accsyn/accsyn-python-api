@@ -1,4 +1,4 @@
 # :coding: utf-8
 # :copyright: Copyright (c) 2015-2023 accsyn/HDR AB
 
-__version__ = "3.3.0-0"
+__version__ = "3.3.1-0"

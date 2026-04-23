@@ -13,6 +13,13 @@ Release Notes
 
     `https://support.accsyn.com/changelog <https://support.accsyn.com/changelog>`_.
 
+.. release:: 3.3.1
+    :date: 2026-04-23
+
+    .. change:: new
+
+        * Create(task); Added support for replacing duplicate tasks (same uri) with the new one instead of retrying the existing task.
+
 .. release:: 3.3.0
     :date: 2026-04-19
 
