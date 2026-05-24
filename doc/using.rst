@@ -45,7 +45,7 @@ The following environment variables are picked up if set within python parent pr
 
 .. note::
 
-    accsyn communicates over tcp port 443 (https wrapped CRUD REST calls), make sure to allow outgoing traffic towards accsyn backend (your-workspace.accsyn.com).
+    accsyn communicates over tcp port 443 (https wrapped CRUD REST calls), make sure to allow outgoing traffic towards accsyn backend (https://your-workspace.accsyn.com) where the subdomain "your-workspace" is your uniqueworkspace API code identifier.
 
     Your API key can be obtained at `https://accsyn.io/developer <https://accsyn.io/developer>`_ or from desktop app @ Settings>API.
 
@@ -153,7 +153,7 @@ The accsyn API supports the following operators:
 
 Example of substring match::
 
-    session.find('Transfer WHERE name CONTAINS "backup"')
+    session.find('transfer WHERE name CONTAINS "backup"')
 
 Example of regular expression match::
 
@@ -173,7 +173,7 @@ Limit
 
 To return only a limited set of attributes::
 
-    session.find_one('Transfer where id=614d660de50d45bb027c9bdd', attributes=['source','destination'])
+    session.find_one('Transfer WHERE id=614d660de50d45bb027c9bdd', attributes=['source','destination'])
 
 
 To run a paginated query, that skips 100 jobs and only returns a maximum of 50::

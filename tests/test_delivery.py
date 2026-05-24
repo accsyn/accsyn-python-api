@@ -4,7 +4,7 @@ import time
 
 from accsyn_api.session import AccsynException
 
-from conftest import TestUtils, TEST_FILE
+from conftest import TestUtils, TEST_FILE, EXPECTED_ACL_ATTRIBUTES
 
 TEMP_DELIVERY_NAME = "Project references temp"
 TEMP_DELIVERY_NAME_2 = "Project references temp 2"
@@ -32,8 +32,8 @@ def test_prepare_deliveries(session_admin, entities):
     assert server is not None, "No storage server found"
     assert server["status"] == "online", "Storage server is not online"
     # Make sure admin has a client running, app or user server type
-    client = session_admin.find_one(f"Client WHERE user={admin_user['id']} AND type in 0,2")
-    assert client is not None, "No client found for admin, please login app or setup a user server"
+    client = session_admin.find_one(f"App WHERE user={admin_user['id']} AND status=online")
+    assert client is not None, "No desktop app client found for admin, please login app or setup a user server"
     assert client["status"] == "online", "Client is not online"
     # Invite employee to workspace
     employee = session_admin.create("User", {"code": TestUtils.get_employee_ident(), "role": "employee"})
@@ -88,7 +88,7 @@ def test_read_temp_delivery_as_employee(session_employee, entities):
 def test_add_recipient_to_temp_delivery_as_admin(session_admin, entities):
     delivery_id = entities.get_id("delivery", "d1")
     result = session_admin.grant("User", TestUtils.get_standard_ident(), "Delivery", delivery_id)
-    assert result is True
+    assert result is True # Delivery is pending, no actual ACL is created yet
     # Verify recipient is added
     recipients = session_admin.access("Delivery", delivery_id)
     assert len(recipients) == 1

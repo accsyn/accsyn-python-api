@@ -18,12 +18,18 @@ A file delivery can either be created as a temporary delivery that will
 have files uploaded to it and then be submitted, or be created
 from existing files on an accsyn storage volume/share and submitted immediately.
 
+Deliveries cannot be dispatched until at least one file and one recipient has been added, before this a delivery is in the 
+"init" state and needs to be submitted when files and recipients have been added. 
+
+.. note::
+    A delivery is kept in the init state for at most 8 hours (default) until it expires and is deleted automatically.
+
 
 Query deliveries
 ================
 
-Fetch all active deliveries
----------------------------
+Fetch all  outbound deliveries
+------------------------------
 To fetch all deliveries, use the find API function::
 
     deliveries = session.find("Delivery")
@@ -59,23 +65,27 @@ This will return the delivery, as would have been returned by a delivery find qu
 Create a temporary delivery
 ===========================
 
-A pending delivery will have its files uploaded to a temp folder on default accsyn storage volume,
+A temporary delivery will have its files uploaded to a temp folder on default accsyn storage volume,
  that will be deleted after the delivery is done (expired) or aborted.
 
-To create a temporary delivery, supply the name and the init status::
+To create a temporary delivery without recipients, supply the name::
 
     delivery = session.create("Delivery",{"name":"Project references"})
 
-This will return the created delivery, as would have been returned by a delivery find query.
+To create a pending temporary delivery with recipients, supply the name and recipients::
 
-The delivery will be kept in the init state for 8 hours (default) until it expires and is deleted.
+    delivery = session.create("Delivery",{"name":"Project references", "recipients":["lisa@example.com"]})
+
+This will return the new delivery, as would have been returned by a delivery find query.
+
+The delivery will be kept in the init state for at most 8 hours (default) until it expires and is deleted.
 
 
-Upload files to a temporary delivery
-------------------------------------
+Upload files to a temporary delivery in init state
+---------------------------------------------------
 
-The accsyn API is not able to upload files to a delivery, 
-you need to use the accsyn desktop app and then use the API to create a transfer job for the files.
+The accsyn API is not able to upload files to a delivery, but you can use the API to create a transfer job for the files 
+targeting a source client running with the accsyn desktop app or a user server instance/host.
 
 To upload the file(s) to the delivery::
 
@@ -86,22 +96,26 @@ To upload the file(s) to the delivery::
     })
 
 .. note::
-    A client must be registered, by the same user as the API session.
+    A client must be registered (desktop app or user server instance/host), by the same user as the API session.
 
     Make sure your client is online and enabled to have upload start.
 
     If multiple clients are online, a random client will be resolved. 
-    Prepend the destination with "client=<client_id>:" to target a specific client.
+    Prepend the destination with a party identifier on the format "client=<client_id>:" to target a specific client.
 
 
 Add a recipient to a delivery
 -----------------------------
 
-To add a recipient to a delivery, use the assign API function with either user id or email::
+To add a recipient to a delivery, use the grant API function with either user id or email::
 
     retval = session.grant("User", "lisa@example.com", "Delivery", delivery["id"])
 
-Return value will a dictionary with same form as the access list query would return. 
+The return value depends on the state of the delivery:
+
+    - If the delivery is not submitted yet (pending/init state), the return value will be True.
+    - If the delivery is submitted, the return value will be a dictionary with same form as the access list query would return.
+
 The user will receive an email with a link to the delivery and instructions on how to action it.
 
 .. note::
@@ -146,7 +160,7 @@ This will return True if operation was successful.
 Submit delivery
 ---------------
 
-To submit a delivery, update its status to pending:
+To submit a delivery that is in the init state, update its status to pending:
 
     session.update("Delivery", delivery["id"], {"status": "pending"})
 
@@ -157,8 +171,8 @@ Deliveries will have theirs size calculated, and then emails will be sent to the
     A delivery can not be submitted until at least one file and one recipient has been added.
 
 
-Create from existing files
-==========================
+Create from existing files at accsyn storage
+============================================
 
 To create and submit a file delivery with two files, supply the source files as a list of paths and a list of recipients::
 
@@ -168,11 +182,11 @@ To create and submit a file delivery with two files, supply the source files as 
         "recipients":["lisa@example.com"]
     })
 
-The files is assumed to be on the default accsyn storage volume, to specify a different volume or share::
+The files is assumed to be on the default accsyn storage volume, to specify a different folder or volume::
 
     delivery = session.create("Delivery",{
         "name":"Project reference",
-        "tasks":["share=myproject/reference.png", "volume=assets/logo.jpeg"],
+        "tasks":["folder=myproject/reference.png", "volume=assets/logo.jpeg"],
         "recipients":["lisa@example.com"]
     })
 
@@ -203,8 +217,8 @@ This will return a list of all active transfer jobs beneath the delivery, to fet
 Download from delivery
 ======================
 
-The accsyn API is not able to download files files from a delivery, 
-you need to use the accsyn desktop app and then use the API to create a transfer job for the files.
+The accsyn API is not able to download files files from a delivery, but you can use the API to create a transfer job for the files 
+targeting a destination client running with the accsyn desktop app or a user server instance/host.
 
 First, query the delivery to get the delivery ID::
 
@@ -261,7 +275,7 @@ This will return True if operation was successful.
 
 .. note::
 
-    Tf it is a temporary delivery - the files will be deleted after the default grace of 4 hours.
+    If it is a temporary delivery - the files will be deleted after the default grace of 4 hours.
 
 
 Working with upload requests

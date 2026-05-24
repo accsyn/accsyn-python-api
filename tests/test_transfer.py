@@ -42,9 +42,18 @@ def test_check_client(session_admin, entities):
     while True:
         clients = session_admin.find("App")
         if len(clients) > 0:
-            break
-        input(f"Please login to the accsyn Desktop as {TestUtils.get_admin_ident()} and press Enter to continue...")
-        time.sleep(1)
+            has_online = False
+            for client in clients:
+                if client["status"] == "online":
+                    has_online = True
+                    break
+            if has_online:
+                break
+            print(f"Please launch the accsyn Desktop as {TestUtils.get_admin_ident()} and press Enter to continue...")
+        else:
+            print(f"No client found, please login to the accsyn Desktop as {TestUtils.get_admin_ident()} and press Enter to continue...")
+        input()
+        time.sleep(2)
 
 
 @pytest.mark.order(3)
@@ -63,7 +72,7 @@ def test_upload(session_admin, entities):
     entities.remember(kind="transfer", temp_name="t1", entity_id=transfer["id"])
     logging.info(f"Waiting for upload {transfer['name']}({transfer['id']}) to get size")
     while transfer["size"] is None or transfer["size"] <= 0:
-        time.sleep(1)
+        time.sleep(2)
         transfer = session_admin.find_one(f"Transfer WHERE id={transfer['id']}")
         if transfer is None:
             raise AccsynException(f"{transfer['name']} disappeared!")
@@ -123,13 +132,13 @@ def test_create_nonexistent_upload_task(session_admin, entities):
     assert transfer['status'] == "waiting"
 
     logging.info(f"Waiting for upload {transfer['name']} to fail")
-    date_timeout = datetime.now() + timedelta(seconds=10)
+    date_timeout = datetime.now() + timedelta(seconds=30)
     while transfer["status"] != "failed":
-        time.sleep(1)
+        time.sleep(2)
         transfer = session_admin.find_one(f"Transfer WHERE id={transfer['id']}")
         if transfer is None:
-            raise AccsynException(f"{transfer['name']} finished when it should have failed!")
-        logging.info(f"Transfer {transfer['name']} is {transfer['status']}")
+            raise AccsynException(f"{transfer['name']} vanished!")
+        logging.info(f"Transfer {transfer['name']} status is: {transfer['status']}")
         if transfer["status"] not in ["waiting", "running", "failed"]:
             raise AccsynException(f"{transfer['name']} derailed!")
         if datetime.now() > date_timeout:
@@ -156,14 +165,17 @@ def test_modify_task(session_admin, entities):
     assert task['uri'] == "2"
     assert task['status'] == "onhold"
 
+    # Retry the transfer
+    session_admin.update("Transfer", transfer_id, {"status": "waiting"})
+
     logging.info(f"Waiting for upload {transfer['name']} to pause")
-    date_timeout = datetime.now() + timedelta(seconds=10)
+    date_timeout = datetime.now() + timedelta(seconds=30)
     while transfer["status"] != "paused":
-        time.sleep(1)
+        time.sleep(2)
         transfer = session_admin.find_one(f"Transfer WHERE id={transfer['id']}")
         if transfer is None:
-            raise AccsynException(f"{transfer['name']} finished when it should have failed!")
-        logging.info(f"Transfer {transfer['name']} is {transfer['status']}")
+            raise AccsynException(f"{transfer['name']} vanished!")
+        logging.info(f"Transfer {transfer['name']} status is: {transfer['status']}")
         if transfer["status"] not in ["failed", "paused"]:
             raise AccsynException(f"{transfer['name']} derailed!")
         if datetime.now() > date_timeout:

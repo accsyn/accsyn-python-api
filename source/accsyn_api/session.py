@@ -1650,6 +1650,61 @@ class Session(object):
         return bool(response.get("result"))
 
 
+    # Logs/audit
+
+    def logs(
+        self,
+        entitytype: Optional[str] = None,
+        entityid: Optional[str] = None,
+        search: Optional[str] = None,
+        sort: str = "date",
+        sort_reverse: bool = False,
+        pagination_page: Optional[int] = None,
+        pagination_limit: Optional[int] = None,
+        pagination_skip: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Return backend disk logs for an entity scope.
+
+        :param entitytype: Optional entity type/scope (workspace, job, user, ...), defaults to 'workspace'.
+        :param entityid: Optional entity ID reference used for entity-specific logs.
+        :param search: Optional free text search string to filter log rows.
+        :param sort: Optional sort key, defaults to 'date'.
+        :param sort_reverse: Reverse sort order when True.
+        :param pagination_page: Optional pagination page number.
+        :param pagination_limit: Optional pagination page size.
+        :param pagination_skip: Optional pagination skip/offset.
+        :return: Raw backend response dictionary, always containing ``result`` and optionally additional metadata.
+        """
+        if entitytype:
+            entitytype = entitytype.lower().strip()
+        payload: Dict[str, Any] = dict(
+            entitytype=entitytype or "workspace",
+            sort=(sort or "date"),
+            sort_reverse=sort_reverse,
+        )
+        if search:
+            payload["search"] = search
+
+        pagination: Dict[str, int] = {}
+        if pagination_page is not None:
+            if not isinstance(pagination_page, int):
+                raise AccsynException("pagination_page must be an integer!")
+            pagination["page"] = pagination_page
+        if pagination_limit is not None:
+            if not isinstance(pagination_limit, int):
+                raise AccsynException("pagination_limit must be an integer!")
+            pagination["limit"] = pagination_limit
+        if pagination_skip is not None:
+            if not isinstance(pagination_skip, int):
+                raise AccsynException("pagination_skip must be an integer!")
+            pagination["skip"] = pagination_skip
+        if pagination:
+            payload["pagination"] = pagination
+
+        response = self._event("GET", "log/find", payload, entityid=entityid)
+        return cast(Dict[str, Any], response or dict(result=[]))
+
     # Misc
     def get_api_key(self) -> str:
         """Fetch API key, by default disabled in backend."""

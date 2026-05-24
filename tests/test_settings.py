@@ -11,17 +11,17 @@ def test_queue_compute_avoid_setting_crud(session_admin, entities):
 
     # Set
     set_ok = session_admin.set_setting(
-        entity_type="job",
-        entity_id=queue_id,
-        key="compute_avoid",
+        entitytype="job",
+        entityid=queue_id,
+        name="compute_avoid",
         value="disable",
     )
     assert set_ok is True
 
     # Verify present
     settings_after_set = session_admin.get_settings(
-        entity_type="job",
-        entity_id=queue_id,
+        entitytype="job",
+        entityid=queue_id,
         upstream=False,
         omit_defaults=False,
     )
@@ -30,16 +30,16 @@ def test_queue_compute_avoid_setting_crud(session_admin, entities):
 
     # Delete
     delete_ok = session_admin.delete_setting(
-        entity_type="job",
-        entity_id=queue_id,
-        key="compute_avoid",
+        entitytype="job",
+        entityid=queue_id,
+        name="compute_avoid",
     )
     assert delete_ok is True
 
     # Verify absent
     settings_after_delete = session_admin.get_settings(
-        entity_type="job",
-        entity_id=queue_id,
+        entitytype="job",
+        entityid=queue_id,
         upstream=False,
         omit_defaults=False,
     )

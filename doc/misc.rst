@@ -7,18 +7,30 @@
 Miscellaneous API operations
 ****************************
 
+Reading logs
+============
 
-Retrieve session key::
+Use ``logs`` to fetch backend disk logs for a scope/entity. The return value is the raw backend response dict and currently includes at least ``{"result": [...]}``.
 
-    session.get_session_key()
+.. code-block:: python
 
-Will return a string with your session key.
+    # Workspace logs
+    logs_response = session.logs("workspace")
+    entries = logs_response.get("result", [])
 
-.. note::
+    # Filtered and sorted logs with optional pagination controls
+    logs_response = session.logs(
+        "workspace",
+        search="error",
+        sort="date",
+        sort_reverse=True,
+        pagination_page=1,
+        pagination_limit=50,
+    )
 
-    The session key can only be used by other API instances within the same device and should be treated as a secret password and not to be shared with other users as they would gain access to files on your shares. They will expire, typically within an hour and will need to be refreshed.
 
-
+App and daemon status
+=====================
 
 Check if the accsyn app or daemon (user server) is running on the same machine and same user ID::
 

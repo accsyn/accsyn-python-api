@@ -15,6 +15,40 @@ SHARED_FOLDER = "shared-folder"
 SHARED_FOLDER2 = "not-shared"
 TEST_FOLDER3 = "standard-cannot-share"
 
+EXPECTED_FOLDER_ATTRIBUTES = [
+    "code",
+    "created",
+    "creator",
+    "description",
+    "email",
+    "id",
+    "metadata",
+    "modified",
+    "modifier",
+    "name",
+    "parent",
+    "path",
+    "queue",
+    "status_hr",
+    "status",
+]
+
+EXPECTED_ACL_ATTRIBUTES = [
+    "acknowledged",
+    "created",
+    "creator",
+    "description",
+    "entity",
+    "id",
+    "path",
+    "read",
+    "role",
+    "status",
+    "target",
+    "token",
+    "write",
+]
+
 # Logger for this module; handler is added in pytest_configure when -v is used.
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

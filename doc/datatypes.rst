@@ -17,13 +17,13 @@ This section will explain the different type data that can be obtained by the AP
 Roles
 =====
 
-Three built-in "roles" (permission/clearance) levels exists for accsyn users, the clearance dictates what entities and attributes can be read and write through the API:
+Three built-in base "roles" (permission/clearance levels) exists for accsyn users, the role dictates what entities and attributes can be read and write through the API:
 
-* Administrators (**admin**); Are allowed to read and write all data – configure accsyn.
+* Administrators (**admin**); Are allowed to read and write all data, and configure accsyn.
 
-* Employees (**employee**); Managers that are allowed full access to jobs and data on volumes given access to.
+* Employees (**employee**); Operators that are allowed full access to jobs and data, but only on volumes given explicitaccess to.
 
-* Standard users (**standard**); (i.e. remote/external users) Besides receiving deliveries, they are only allowed to access share's explicitly given access through ACLs (Access Control Lists).
+* Standard users (**standard**); (i.e. remote/external users) Besides receiving deliveries, they are only allowed to access resources(shared folders, homes, collections, compute resources) explicitly given access through ACLs (Access Control Lists).
 
 
 

@@ -13,6 +13,8 @@ from conftest import (
     SHARED_FOLDER,
     SHARED_FOLDER2,
     TEST_FOLDER3,
+    EXPECTED_FOLDER_ATTRIBUTES,
+    EXPECTED_ACL_ATTRIBUTES,
 )
 
 UPLOAD_SUBDIR = "UPLOAD"
@@ -23,40 +25,6 @@ RENAMED_FILE = "renamed_bad_buck_bunny.png"
 
 SHARE_NAME_1 = "Shared Folder"
 SHARE_NAME_2 = "Shared Folder 2"
-
-EXPECTED_FOLDER_ATTRIBUTES = [
-    "code",
-    "created",
-    "creator",
-    "description",
-    "email",
-    "id",
-    "metadata",
-    "modified",
-    "modifier",
-    "name",
-    "parent",
-    "path",
-    "queue",
-    "status_hr",
-    "status",
-]
-
-EXPECTED_ACL_ATTRIBUTES = [
-    "acknowledged",
-    "created",
-    "creator",
-    "description",
-    "entity",
-    "id",
-    "path",
-    "read",
-    "role",
-    "status",
-    "target",
-    "token",
-    "write",
-]
 
 _state = {
     "default_volume_code": None,
@@ -230,7 +198,7 @@ def test_download_shared_content(session_standard, entities):
         if len(clients) > 0:
             break
         input(f"Please login to the accsyn Desktop app as {TestUtils.get_standard_ident()} and press Enter to continue...")
-        time.sleep(1)
+        time.sleep(2)
 
     share1 = _state["share1"]
     assert share1 is not None
@@ -270,7 +238,7 @@ def test_upload_content_should_fail(session_standard):
 def test_grant_write_access(session_admin):
     share1 = _state["share1"]
     assert share1 is not None
-    granted = session_admin.grant(
+    acl = session_admin.grant(
         "User",
         TestUtils.get_standard_ident(),
         "Folder",
@@ -281,7 +249,7 @@ def test_grant_write_access(session_admin):
             "write": True,
         },
     )
-    assert granted is True
+    TestUtils.validate_response(acl, EXPECTED_ACL_ATTRIBUTES)
 
 
 @pytest.mark.order(10)
@@ -395,14 +363,14 @@ def test_admin_modify_deactivate_activate_delete_share2(session_admin):
     assert deactivated is True
 
     # Should not be returned by active query anymore
-    assert session_admin.find_one(f"Folder WHERE id={share['id']}") is None
+    assert session_admin.find_one(f"Folder WHERE id={share['id']} AND inactive=False") is None
 
     # Reactivate
     activated = session_admin.activate_one("Folder", share["id"])
     assert activated is True
-    assert session_admin.find_one(f"Folder WHERE id={share['id']}") is not None
+    assert session_admin.find_one(f"Folder WHERE id={share['id']} AND inactive=False") is not None
 
     # Verify ACLs were also re-activated
     acls = session_admin.access("Folder", share["id"])
     assert isinstance(acls, list)
-    assert len(acls) == 1
+    assert len(acls) == 2

@@ -13,6 +13,18 @@ Release Notes
 
     `https://support.accsyn.com/changelog <https://support.accsyn.com/changelog>`_.
 
+.. release:: 3.3.2
+    :date: 2026-05-24
+
+    .. change:: new
+
+        * (Tests) Added support for fetching entity logs.
+
+    .. change:: fix
+
+        * Test suite bug fixes and improvements.
+        
+
 .. release:: 3.3.1
     :date: 2026-04-23
 
