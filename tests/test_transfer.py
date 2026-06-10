@@ -51,7 +51,9 @@ def test_check_client(session_admin, entities):
                 break
             print(f"Please launch the accsyn Desktop as {TestUtils.get_admin_ident()} and press Enter to continue...")
         else:
-            print(f"No client found, please login to the accsyn Desktop as {TestUtils.get_admin_ident()} and press Enter to continue...")
+            print(
+                f"No client found, please login to the accsyn Desktop as {TestUtils.get_admin_ident()} and press Enter to continue..."
+            )
         input()
         time.sleep(2)
 

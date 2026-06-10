@@ -126,7 +126,7 @@ class JSONDecoder(json.JSONDecoder):
                     elif Session._is_str(d[key]):
                         dt = None
                         if d[key].startswith("ObjectId:"):
-                            d[key] = d[key].replace("ObjectId:", "") # Just treat as string
+                            d[key] = d[key].replace("ObjectId:", "")  # Just treat as string
                         elif re.match(
                             "^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$",
                             str(Session._safely_printable(d[key])),
@@ -1545,7 +1545,7 @@ class Session(object):
         data: Optional[Dict[str, Any]] = None,
     ) -> Optional[Any]:
         """
-        Retrive *name* setting value for the given *entitytype* (workspace, job, volume, user, queue, ...) and 
+        Retrive *name* setting value for the given *entitytype* (workspace, job, volume, user, queue, ...) and
         *entityid* or *integration* (ftrack,..).
 
         :param name: Setting name.
@@ -1648,7 +1648,6 @@ class Session(object):
         payload: Dict[str, Any] = dict(entitytype=entitytype, name=name)
         response = self._event("DELETE", "setting", payload, entityid=entityid)
         return bool(response.get("result"))
-
 
     # Logs/audit
 

@@ -1,5 +1,6 @@
 import pytest
 
+
 @pytest.mark.order(0)
 def test_queue_compute_avoid_setting_crud(session_admin, entities):
     queues = session_admin.find("Queue WHERE name='medium'")
