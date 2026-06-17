@@ -234,6 +234,8 @@ If an error occurs, an exception will be raised and the exception message can fe
 
     print(session.get_last_message())
 
+If the workspace backend or reverse proxy is throttling your client IP, you may receive HTTP **429 Too Many Requests**. See below for limit details and recommended backoff behaviour.
+
 
 Network proxy support
 =====================
@@ -251,5 +253,121 @@ Using an accsyn network proxy
 Supply proxy="accsyn:<hostname or IP>:<port>" when creating session or set the ACCSYN_PROXY environment variable.
 
 
+
+Rate limits
+===========
+
+accsyn protects workspace backends against abuse using rate limits at the reverse proxy and in the backend layer. 
+Python API clients should treat throttling as a normal operational condition and back off when requests are delayed or rejected.
+
+
+Overview
+********
+
+Protection is applied in two layers:
+
+1. **Edge (nginx)** — limits request rate and concurrent connections per client IP before traffic reaches the backend.
+2. **Backend Service** — applies additional per-IP throttling on sensitive REST endpoints (for example authentication and unauthenticated probes), using logarithmic delays and a hard HTTP 429 cutoff for sustained abuse.
+
+These limits apply per public client IP. Traffic from many users behind the same NAT or corporate egress may share one IP and therefore share one limit bucket.
+
+
+Edge limits (nginx)
+*******************
+
+Hosted workspace nodes terminate HTTPS in nginx and proxy to the local REST(API/clients/CLI) and GraphQL(Web/App) services. Typical limits per client IP:
+
+.. list-table:: nginx rate limits
+   :widths: 30 20 20 30
+   :header-rows: 1
+
+   * - Path prefix
+     - Sustained rate
+     - Burst
+     - Notes
+   * - ``/api``
+     - 30 requests/s
+     - 60
+     - REST API (used by the Python API)
+   * - ``/graphql``
+     - 20 requests/s
+     - 40
+     - GraphQL API
+   * - ``/proxy``, ``/u``, ``/d``
+     - 20 requests/s
+     - 40
+     - Download/proxy routes
+   * - All HTTPS locations
+     - —
+     - 50 concurrent connections
+     - Per-IP connection cap
+
+When nginx rejects a request, the response status is **429 Too Many Requests**.
+
+
+Application limits (REST)
+*************************
+
+The REST backend tracks repeated requests per IP in a short sliding window (approximately five minutes). Behaviour:
+
+- The **first** request in a window is not delayed.
+- Further requests from the same IP incur a **logarithmic delay** (up to about 10 seconds) before the backend processes the call.
+- After **50 recorded hits** in the window, the backend responds with **429** and a ``Retry-After`` header instead of sleeping further.
+
+Application throttling is especially relevant for:
+
+- ``/api/v3/api/auth`` (API key authentication)
+- Unauthenticated or lightly authenticated endpoints
+- Repeated failed authentication attempts
+
+Successful, well-spaced API calls from a single integration are unlikely to hit these limits under normal use.
+
+
+HTTP 429 responses
+******************
+
+A throttled response may look like:
+
+.. code-block:: json
+
+    {
+        "message": "Too many requests, please try again later.",
+        "retry_after": 120
+    }
+
+The ``Retry-After`` response header (seconds) indicates how long to wait before retrying.
+
+
+Recommendations for Python API clients
+**************************************
+
+- **Use exponential backoff** when you receive HTTP 429 or notice increasing latency on auth or REST calls.
+- **Respect ``Retry-After``** when present; do not retry immediately in a tight loop.
+- **Cache sessions** — create one ``Session`` and reuse it; avoid re-authenticating on every ``find`` or ``update`` call.
+- **Poll responsibly** — when monitoring job progress, use intervals of several seconds (or longer) rather than sub-second polling.
+- **Serialize bulk operations** — batch creates/updates with short pauses if you are driving large automated workflows.
+- **Handle shared egress** — if many services exit through one IP, coordinate request volume or stagger jobs.
+
+Example backoff after a failed request:
+
+.. code-block:: python
+
+    import time
+
+    def call_with_backoff(session, entitytype, query, max_attempts=5):
+        delay = 1.0
+        for attempt in range(max_attempts):
+            try:
+                return session.find_one(f"{entitytype} WHERE {query}")
+            except Exception:
+                if attempt == max_attempts - 1:
+                    raise
+                time.sleep(delay)
+                delay = min(delay * 2, 60)
+
+
+.. note::
+
+    The Python API does not currently retry throttled requests automatically. Integrations that run unattended should catch errors, inspect ``session.get_last_message()``, and apply backoff as shown above.
 
 

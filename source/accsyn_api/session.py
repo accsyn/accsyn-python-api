@@ -248,6 +248,12 @@ class Session(object):
         :param domain: (Backward compatibility) The accsyn domain (or read from ACCSYN_DOMAIN environment variable)
         :param path_envfile: Path to .env file to load credentials from (or read from ACCSYN_CREDENTIALS_PATH environment variable)
 
+        .. note::
+            Workspace backends apply per-IP rate limits on REST traffic. Reuse one
+            ``Session`` for repeated calls rather than creating a new session per
+            request, and apply exponential backoff when HTTP 429 (Too Many Requests)
+            is returned. See :ref:`using` for limit details and retry guidance.
+
         .. deprecated:: 3.1.0
             Use the :param workspace: parameter instead
         """

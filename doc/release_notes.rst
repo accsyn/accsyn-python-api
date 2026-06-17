@@ -13,6 +13,13 @@ Release Notes
 
     `https://support.accsyn.com/changelog <https://support.accsyn.com/changelog>`_.
 
+.. release:: 3.3.3
+    :date: 2026-06-17
+
+    .. change:: new
+
+        * Added backend rate limit documentation.
+
 .. release:: 3.3.2
     :date: 2026-05-24
 
