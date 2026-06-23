@@ -5,7 +5,7 @@
 accsyn Python API
 #################
 
-Welcome to the accsyn :term:`Python` :term:`API` documentation.
+Welcome to the accsyn :term:`Python` :term:`API` documentation — a reference for integrating accsyn into your automation and production tooling.
 
 
 .. toctree::

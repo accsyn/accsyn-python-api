@@ -7,37 +7,40 @@
 Introduction
 ************
 
-The accsyn Python API allows for easy integration into Python (v3.7+) enabled third party applications or tooling, enabling
-direct encrypted communication with accsyn via the low level REST :term:`API` over https.
+The accsyn Python API integrates into Python 3.7+ applications and tooling, providing direct encrypted communication with accsyn over the REST :term:`API` via HTTPS.
 
-With the API you can for example:
+Example use cases:
+==================
 
-- Create automated file transfer or render farm workflows where jobs can be created programmatically.
-- Fetch and display accsyn a :term:`transfer` in your own user interface, also enabling control in terms of pause, resume and abort.
-- Manage shares programmatically, allowing expose of project dedicated file areas with one or more external users, upon an event in your production systems.
+- Automate file transfer and render-farm workflows by creating jobs programmatically.
+- Fetch and display an accsyn :term:`transfer` in your own UI, with control over pause, resume, and abort.
+- Create delivery packages or upload requests to receive material from customers or deliver final deliverables.
+- Manage shared folders and collections programmatically — expose project-specific file areas to external users in response to events in your production systems.
 
 
 Limitations:
 ============
 
-- The result of a request is static dictionaries, meaning that API will not attempt to dynamically update any returned objects after they have been retrieved or harbor and local caching of any kind This means that for example continous monitor of job progress requires polling.
+- Request results are static dictionaries. The API does not update returned objects after retrieval or provide local caching. Monitoring job progress, for example, requires polling.
 
-- The API also do not support multi-operation transactions, meaning that any create, update or delete operation will commit instantly.
+- The API does not support multi-operation transactions. Each create, update, or delete commits immediately.
 
-- The Python API are not able to send files and act as a :term:`client`, it can only tell accsyn backend to spawn a transfer between a server (typically identified by a domain, share and path) and a client (typically identified by a user name/E-mail and/or client ID/hostname). This means that the API will work independent of a locally installed file transfer client.
+- The Python API cannot send files or act as a :term:`client` entity. It instructs the accsyn backend to spawn a transfer between a server (typically identified by domain, share, and path) and a client (typically identified by username/email and/or client ID/hostname). The API works without a locally installed file transfer client.
 
-- The API only support file transfer/compute and file sharing related operations, Media Vault operations are not supported.
+- accsyn Media Vault operations are not supported — for example, creating or managing titles or media entities.
 
 
 Other resources:
 ================
 
-This documentation the most common use cases, syntax of API calls are also shown within the accsyn webapp/admin pages @ https://accsyn.io, at the bottom of each page.
+For broader accsyn development documentation, visit the Developer Hub:
 
-Our tutorials covers how to setup accsyn to achieve a certain functionality and many of them come with complete source code, find the tutorials here: 
+`https://support.accsyn.com/developer <https://support.accsyn.com/developer>`_
 
-`https://support.accsyn.com <https://support.accsyn.com>`_.
+Our tutorials cover how to configure accsyn for specific workflows. Many include complete source code:
 
-Find source code samples using the API at our public GitHub:
+`https://support.accsyn.com <https://support.accsyn.com>`_
+
+Source code samples using the API are available on GitHub:
 
 `https://github.com/accsyn/accsyn-python-api <https://github.com/accsyn/accsyn-python-api>`_

@@ -7,30 +7,30 @@
 File operations
 ***************
 
-Besides working with entities, the API supports file operation on volumes (admins, employees) or on a specific shared folder / home / collection (admins, employees and restricted users depending on ACLs).
+Besides working with entities, the API supports file operations on volumes (admins, employees) or on a specific shared folder, home, or collection (admins, employees, and restricted users depending on ACLs).
 
 
 List files on storage
 =====================
 
 
-To list files on the share “thefilm-DIT”, subfolder TO_ACMEFILM::
+To list files on the share "thefilm-DIT", subfolder TO_ACMEFILM::
 
    session.ls("share=thefilm-DIT/TO_ACMEFILM")
 
 Optional arguments:
 
-* ``recursive``: Do a recursive listing, True or False. Default False, see below.
-* ``maxdepth``:  (Recursive listing)   Limit number of levels to descend, positive integer greater than or equal 1.
-* ``directories_only``: Return only directories in listing, True or False. Default is False.
-* ``files_only``: Return only files in listing, True or False. Default is False. Note: Providing recursive=True won't have any affect.
-* ``getsize``: Calculate and return size of directories.
-* ``include``: Filter expression (string or list) dictating what to include in result: "word" - exact match, "*word" - ends with word, "word*" - starts with word, "*word*" - contains word, "start*end" - starts & ends with word and "re('...')" - regular expression. Has precedence over *exclude*.
-* ``exclude``:Filter expression (string or list) dictating what to exclude from result: "word" - exact match, "*word" - ends with word, "word*" - starts with word, "*word*" - contains word, "start*end" - starts & ends with word and "re('...')" - regular expression.
+* ``recursive``: Recursive listing, ``True`` or ``False``. Default ``False`` (see below).
+* ``maxdepth``: (Recursive listing) Limit depth, positive integer >= 1.
+* ``directories_only``: Return only directories. Default ``False``.
+* ``files_only``: Return only files. Default ``False``. Note: ``recursive=True`` has no effect with this flag.
+* ``getsize``: Calculate and return directory sizes.
+* ``include``: Filter expression (string or list) for inclusion: ``"word"`` (exact), ``"*word"`` (ends with), ``"word*"`` (starts with), ``"*word*"`` (contains), ``"start*end"`` (starts and ends with), ``"re('...')"`` (regular expression). Takes precedence over ``exclude``.
+* ``exclude``: Filter expression (string or list) for exclusion, same syntax as ``include``.
 
 
 
-If succeeds, this will return a list of dictionaries, one for each file found::
+On success, this returns a list of dictionaries, one per file::
 
     {
         "result": [
@@ -45,17 +45,17 @@ If succeeds, this will return a list of dictionaries, one for each file found::
 
 
 
-* ``Type``: The type of file; 0 is directory/folder, 1 is a file.
-* ``Filename``: The name of the file or directory.
-* ``Size``: The size of the file or directory.
-* ``Modified``: A Python datetime object holding the date file was last modified.
+* ``Type``: File type; 0 = directory, 1 = file.
+* ``Filename``: File or directory name.
+* ``Size``: File or directory size.
+* ``Modified``: Python ``datetime`` of last modification.
 
 
-By default, it does not dig down into sub directories.  Add "recursive=True" to the call in order to have all (visible) files returned::
+By default, subdirectories are not traversed. Pass ``recursive=True`` to return all visible files::
 
     session.ls("share=thefilm-DIT", recursive=True)
 
-If succeeds, this will return a list of dictionaries, one for each file found, with further descendant files in a list::
+On success, nested files appear in a ``files`` list within each directory entry::
 
     {
         "result": [
@@ -72,28 +72,28 @@ If succeeds, this will return a list of dictionaries, one for each file found, w
 
 
 
-To search a directory, and its sub-directories, for files with a specific name, use the ``include`` argument::
+To search a directory and subdirectories for a specific filename, use ``include``::
 
     session.ls("share=Documentation", include="FindMe.doc", recursive=True)
 
 
-To exclude files matching a regular expression, use the ``exclude`` argument::
+To exclude files matching a regular expression, use ``exclude``::
 
     session.ls("share=Documentation", exclude="re('_Draft.*')")
 
 .. note::
 
-    Include and exclude can be combined, include has precedence over exclude.
+    ``include`` and ``exclude`` can be combined; ``include`` takes precedence.
 
-To make it case insensitive::
+For case-insensitive matching::
 
     session.ls("share=thefilm-DIT/TO_ACMEFILM", exclude="re('_draft.*', 'I')")
 
-List files in a collection using its unique code identifier:
+List files in a collection by code::
 
     files = session.ls("collection=filecollection")
 
-List files in a delivery:
+List files in a delivery::
 
     files = session.ls("delivery=69732302fd379c8fff1089d0")
 
@@ -101,20 +101,20 @@ List files in a delivery:
 Failure scenarios
 *****************
 
-* Permission denied; An exception will be thrown.
-* Share/Path does not exists; An exception will be thrown, obtain the message by calling session.get_last_message().
+* Permission denied; an exception is raised.
+* Share/path does not exist; an exception is raised. Call ``session.get_last_message()`` for details.
 
 
 
-Check if a file/directory exist
-===============================
+Check if a file/directory exists
+================================
 
 To check if a file exists::
 
     session.exists("workarea=thefilm-DIT/TO_ACMEFILM/final.mov")
 
 
-If succeeds, this will return true or false::
+On success, returns ``true`` or ``false``::
 
     {
         "result": True
@@ -124,24 +124,24 @@ If succeeds, this will return true or false::
 Failure scenarios
 *****************
 
- * Permission denied; you do not have read access to folder.
- * Server is down; server at organization is not online to perform the requested operation.
- * Share/Path does not exists;
+ * Permission denied; no read access to the folder.
+ * Server is down; no online server to perform the operation.
+ * Share/path does not exist.
 
 
 Get size on disk
 ================
 
-Get total size of file or all files beneath a directory (requires read access to the share)::
+Get total size of a file or all files beneath a directory (requires read access)::
 
     session.getsize("share=thefilm-DIT/TO_ACMEFILM")
 
 Optional arguments:
 
- * ``maxdepth``:  Limit number of levels to descend, positive integer greater than or equal 1.
+ * ``maxdepth``: Limit depth, positive integer >= 1.
 
 
-If succeeds, this will return the size of the file/directory::
+On success, returns the size in bytes::
 
     {
         "result": 10462211
@@ -151,61 +151,61 @@ If succeeds, this will return the size of the file/directory::
 Failure scenarios
 *****************
 
-An exception will be thrown if listing fails. Possible reasons include:
+An exception is raised if the operation fails:
 
-* Permission denied; you do not have read access to folder.
-* Server is down; server at organization is not online to perform the requested operation.
-* Share/Path does not exists;
+* Permission denied; no read access to the folder.
+* Server is down; no online server to perform the operation.
+* Share/path does not exist.
 
 
 Create directory
 ================
 
-To create directory “__UPLOAD” at the share “projects” (requires write access to the share)::
+To create directory ``__UPLOAD`` at share ``projects`` (requires write access)::
 
     session.mkdir("share=projects/__UPLOAD")
 
-Will return ; {"result":true} if successful, otherwise an exception to be thrown, obtain the message by calling session.get_last_message()):
+Returns ``{"result":true}`` on success. On failure, an exception is raised — call ``session.get_last_message()`` for details.
 
 Failure scenarios
 *****************
 
-* Permission denied; You do not have write access to the parent folder.
-* Parent directory does not exist;
-* Directory already exists;
+* Permission denied; no write access to the parent folder.
+* Parent directory does not exist.
+* Directory already exists.
 
 
 Rename a file or directory
-===============================
+==========================
 
-Rename file “share=thefilm-DIT/TO_ACMEFILM/pitch.mov” to “share=thefilm-DIT/TO_ACMEFILM/pitch_new.mov” (requires write access to the share)::
+Rename ``share=thefilm-DIT/TO_ACMEFILM/pitch.mov`` to ``share=thefilm-DIT/TO_ACMEFILM/pitch_new.mov`` (requires write access)::
 
     session.rename("share=thefilm-DIT/TO_ACMEFILM/pitch.mov","share=thefilm-DIT/TO_ACMEFILM/pitch_new.mov")
 
-If rename went well  {“result”:true} will be returned, otherwise an exception to be thrown
+Returns ``{"result":true}`` on success; otherwise an exception is raised.
 
 Failure scenarios
 *****************
 
-* Permission denied; You do not have read access to the source file/folder or do not have write access to the destination file/folder.
+* Permission denied; no read access to source or no write access to destination.
 * Source file/directory does not exist.
 * Destination parent directory does not exist.
 
 
 Move a file or directory
-===============================
+========================
 
-Move file “share=thefilm-DIT/TO_ACMEFILM/pitch.mov” to “share=thefilm-DIT/TO_ACMEFILM/QT/pitch.mov” (requires write access to the share)::
+Move ``share=thefilm-DIT/TO_ACMEFILM/pitch.mov`` to ``share=thefilm-DIT/TO_ACMEFILM/QT/pitch.mov`` (requires write access)::
 
     session.mv("share=thefilm-DIT/TO_ACMEFILM/pitch.mov","share=thefilm-DIT/TO_ACMEFILM/QT/pitch.mov")
 
-If move went well  {“result”:true} will be returned, otherwise an exception to be thrown.
+Returns ``{"result":true}`` on success; otherwise an exception is raised.
 
 
 Failure scenarios
 *****************
 
-* Permission denied; You do not have read access to the source file/folder or do not have write access to the destination file/folder.
+* Permission denied; no read access to source or no write access to destination.
 * Source file/directory does not exist.
 * Destination directory cannot be created or written.
 
@@ -215,30 +215,30 @@ Delete a file or directory
 
 .. warning::
 
-    Automising file removal through API calls can cause unwanted directories to be deleted, always safequard andtest/dry run your API calls before you put them into production!
+    Automating file removal through API calls can delete unintended directories. Safeguard and test/dry-run your calls before production use.
 
-Remove the directory “share=thefilm-DIT/TO_ACMEFILM/QT” (requires write access to the share)::
+Remove directory ``share=thefilm-DIT/TO_ACMEFILM/QT`` (requires write access)::
 
     session.delete("share=thefilm-DIT/TO_ACMEFILM/QT")
 
-Will return {“result”:true}  if  successful, otherwise an exception to be thrown, obtain the message by calling session.get_last_message()):
+Returns ``{"result":true}`` on success; otherwise an exception is raised — call ``session.get_last_message()`` for details.
 
 Failure scenarios
 *****************
 
-* Permission denied; You do not have write access to the file/folder that is to be deleted.
-* If target is a directory and contains files, exception will say: {“message”:”Cannot delete non-empty directory 'share=thefilm-DIT/TO_ACMEFILM/QT'!”}. To have it deleted anyway, supply the force flag: session.delete("share=thefilm-DIT/TO_ACMEFILM/QT",force=True).
-* The removal failed to to locked files or other permission problems on server. Contact domain adminstrator.
+* Permission denied; no write access to the target.
+* If the target is a non-empty directory: ``{"message":"Cannot delete non-empty directory 'share=thefilm-DIT/TO_ACMEFILM/QT'!"}``. Pass ``force=True`` to delete anyway: ``session.delete("share=thefilm-DIT/TO_ACMEFILM/QT", force=True)``.
+* Removal failed due to locked files or server-side permission issues. Contact your domain administrator.
 
 
 Multiple file operations
 ========================
 
-Multiple file operations can be made with one call, to do that supply a list of operations::
+Multiple file operations can be batched in one call by supplying a list::
 
     session.ls(["share=thefilm-DIT/folder","share=other/folder2"], recursive=True)
 
-If succeeds, this will return a list of dictionaries with result for each operation::
+On success, returns a list of result dictionaries per operation::
 
     {
         [
@@ -268,7 +268,6 @@ If succeeds, this will return a list of dictionaries with result for each operat
 
 .. note::
 
-    Obtain the most recent failure message by issuing::
+    Retrieve the most recent failure message with::
 
             session.get_last_message()
-

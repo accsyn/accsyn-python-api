@@ -11,20 +11,24 @@
 Data types
 **********
 
-This section will explain the different type data that can be obtained by the API.
+This section describes the data types returned by the API.
 
 
 Roles
 =====
 
-Three built-in base "roles" (permission/clearance levels) exists for accsyn users, the role dictates what entities and attributes can be read and write through the API:
+Three built-in roles (permission/clearance levels) exist for accsyn users. The role determines which entities and attributes can be read and written through the API:
 
-* Administrators (**admin**); Are allowed to read and write all data, and configure accsyn.
+* Administrators (**admin**); Full read/write access to all data and workspace configuration.
 
-* Employees (**employee**); Operators that are allowed full access to jobs and data, but only on volumes given explicitaccess to.
+* Employees (**employee**); Full access to jobs and data on volumes with explicit access granted.
 
-* Standard users (**standard**); (i.e. remote/external users) Besides receiving deliveries, they are only allowed to access resources(shared folders, homes, collections, compute resources) explicitly given access through ACLs (Access Control Lists).
+* Standard users (**standard**); External/remote users who receive deliveries and access resources (shared folders, homes, collections, compute resources) only through explicit ACLs (Access Control Lists).
 
+
+.. note::
+
+  Bound to each role is a set of rights (permissions), an API key can be created with explicit rights.
 
 
 Entities
@@ -142,7 +146,7 @@ Data read from accsyn using the API arrives as JSON dictionaries, categorised by
      - YES :sup:`6`
      - YES :sup:`6`
    * - Volume
-     -  Defines a directory, typically on a |br| network volume, available |br| to accsyn and |br| granted access through ACLs to one ore more employees.
+     -  Defines a directory, typically on a |br| network volume, available |br| to accsyn and |br| granted access through ACLs to one or more employees.
      - YES
      - YES
      - no
@@ -192,35 +196,37 @@ Data read from accsyn using the API arrives as JSON dictionaries, categorised by
 
 * :sup:`1` Their own and standard users.
 * :sup:`2` Only their own.
-* :sup:`3` If involved in job either as sending or receing part.
+* :sup:`3` If involved in the job as sender or receiver.
 * :sup:`4` If an explicit recipient.
 * :sup:`5` Except admin or other employee home shares.
 * :sup:`6` Home share and share given explicit access through ACL.
 
 
+A schematic view of the entity types and relationsship can be located here: 
 
+`https://support.accsyn.com/developer <https://support.accsyn.com/developer>`_
 
 To retrieve a list of all known entity types::
 
     session.find("entitytypes")
 
-This will return a list of entity types as string, i.e. ["user","organization","job",..].
+This returns a list of entity type strings — for example ``["user","organization","job",..]``.
 
 
 Attributes
 ==========
 
-Each entity has its own attributes, such as “id” or “code”(an accsyn abbreviation for an unique “name”).
+Each entity has its own attributes, such as ``id`` or ``code`` (accsyn's abbreviation for a unique name).
 
-To retrieve a list of known attributes for an entity::
+To retrieve known attributes for an entity::
 
     session.find('attributes WHERE entitytype=delivery')
 
-This will return a list of attributes an delivery entity can have, i.e. ["id","code","status",...]. 
+This returns a list of attributes a delivery entity can have — for example ``["id","code","status",...]``.
 
 .. note::
     
-    The attributes available depends on the role/clearance level of the API user.
+    Available attributes depend on the API user's role/clearance level.
 
 
 

@@ -7,16 +7,14 @@
 Render jobs
 ***********
 
-The accsyn render(compute) feature allows submitting CPU intensive tasks to accsyn,
-for queued processing on a farm(cluster) of computers on one or more sites.
-accsyn supports site-to-site transfer of render dependencies, as long as they are
-specified properly and reside on a (root) share.
+The accsyn render (compute) feature submits CPU/GPU intensive tasks to accsyn for queued processing on a farm (cluster) across one or more sites.
+accsyn supports site-to-site transfer of render dependencies when they are specified correctly and reside on a volume.
 
 
 Submitting a render job
 =======================
 
-The Python accsyn API support submission of accsyn render jobs, here follows an example for rendering a Nuke 2D compositing job::
+The Python API supports render job submission. Example: a Nuke 2D compositing job::
 
     jobs = session.create("Compute",{
         "name": "test_v002.nk render",
@@ -81,47 +79,44 @@ The Python accsyn API support submission of accsyn render jobs, here follows an 
 
 
 
-* ``dependencies``: List of files that the input file depend on and must be able to access during the computation process.
-* ``engine``: The named render app to use, make sure it exists. Compute apps can be administered at Admin/apps page within accsyn web admin pages. Find open source render app boilerplate scripts  here: https://github.com/accsyn/compute-scripts.
-* ``envs``: Environment variables to set on the render process, can either be given flat or as a dictionary with sub keys "common", "linux", "mac" and "windows" as in the example above.
-* ``filters``: Comma separated list of filters to apply, see below.
-* ``input``: The path to the input file to process, currently accsyn only support on single file.
-* ``name``: (Optional) The name of the render job, if not provided it will be generated from the input file name.
-* ``output``: Path to the folder where the render app should write back the resulting files.
-* ``parameters/arguments``: Additional parameters to pass on to the render process (command line options).
-* ``parameters/input_conversion``: Tell wether input file should be parsed and have path's converted, only supported for ASCII format files. Possible values are: "always" - always attempt to parse  regardless of platform, "platform" - only if there is change in operating system platform (i.e. between windows and mac), "never" - do not touch the input file. It is recommended to leave this on "always" unless exactly the same paths are used within input file as on-prem / at render farm.
-* ``parameters/mapped_share_paths``: (Optional, if ASCII parsable input file and input conversions enabled) List of local paths mapped to on-prem shares. Required if the input file contains local paths that need conversion. If render servers are running different operating systems, "os" can be used to define different paths. Recognised values are "windows", "mac" and "linux", This is picked by the "common" render app only, it can be modified to support additional operating systems.
-* ``parameters/remote_os``: (Optional)The operating system submit is made from.
-* ``parameters/site``: (Optional, since v2.0) Site specific setting overrides, see below.
-* ``range``: (If app supports split into items/frames) The integer range to render. Can be on or more(space or comma separated list of) entries on the form "1-10"(range), "4"(single) or "5-250x5"(consider only every 5 item/frames).
-* ``settings``: Standard accsyn settings to that will apply across all file involved file transfers, see `https://support.accsyn.com <https://support.accsyn.com/admin-manual>`_.
+* ``dependencies``: Files the input depends on and must be accessible during computation.
+* ``engine``: Render app, by code or ID. Ensure it exists. Compute apps are managed at Admin/apps in the web admin. Open-source boilerplate scripts: https://github.com/accsyn/compute-scripts.
+* ``envs``: Environment variables for the render process. Flat or nested under ``common``, ``linux``, ``mac``, and ``windows`` as in the example.
+* ``filters``: Comma-separated filters (see below).
+* ``input``: Path to the input file. Currently one file per job.
+* ``name``: (Optional) Job name. Defaults to the input filename.
+* ``output``: Folder where the render app writes results.
+* ``parameters/arguments``: Additional command-line parameters.
+* ``parameters/input_conversion``: Whether to parse and convert paths in the input file. Supported for ASCII formats. Values: ``always`` (always parse), ``platform`` (only on OS change, e.g. Windows to Mac), ``never`` (leave unchanged). Recommended: ``always`` unless paths in the input file match on-prem/render-farm paths exactly.
+* ``parameters/mapped_share_paths``: (Optional, with ASCII input and conversion enabled) Local-to-share path mappings. Required when the input file contains local paths needing conversion. Use ``os`` for per-OS paths (``windows``, ``mac``, ``linux``). Picked by the common render app; extend the app to support additional OSes.
+* ``parameters/remote_os``: (Optional) OS the submit originates from.
+* ``parameters/site``: (Optional, since v2.0) Per-site setting overrides (see below).
+* ``range``: (If the app supports frame splitting) Integer range. One or more entries: ``1-10`` (range), ``4`` (single), ``5-250x5`` (every 5th frame).
+* ``settings``: Standard accsyn settings for all involved file transfers. See `https://support.accsyn.com <https://support.accsyn.com/admin-manual>`_.
 
 
 Filters
 *******
 
-* ``ram``: Put a restriction on the RAM usage. On the form "ram:<32g" - less than 32GB or "ram:>64g" - more than 64GB.
-* ``hostname``: Include or exclude machines by hostname or IDs. "hostname:+myhostname" - include this machine only, "hostname:-myhostname" - exclude this machine. Should be combine into one statement like: "hostname:-myhostname1-myhostname2".
-* ``site``: Only execute on a particular site: "site:-mysite" - exclude the site "mysite". See below for Site specific settings.
+* ``ram``: RAM restriction. ``ram:<32g`` (less than 32 GB) or ``ram:>64g`` (more than 64 GB).
+* ``hostname``: Include or exclude machines by hostname or ID. ``hostname:+myhostname`` (include only), ``hostname:-myhostname`` (exclude). Combine: ``hostname:-myhostname1-myhostname2``.
+* ``site``: Restrict to a site. ``site:-mysite`` excludes site ``mysite``. See site-specific settings below.
 
 
 Site settings
 *************
 
-Settings that is applied for each involved render site, available beneath ``parameters`` sub dictionary and can be edited after job has been submitted.
+Per-site settings under ``parameters``, editable after submit.
 
-Proved settings as a dictionary by site name or ID, with sub key "settings":
+Provide settings by site name or ID with sub-key ``settings``:
 
-* ``download``; Settings that will apply to all downloads from main site to this site, typically render scripts and dependencies. In the example above,
-* ``upload``; Settings that will apply to all uploads from this site back to main site.
-* ``common``; Settings that will apply to both downloads and uploads.
+* ``download``; Settings for downloads from main site to this site (typically render scripts and dependencies).
+* ``upload``; Settings for uploads from this site back to main site.
+* ``common``; Settings applied to both downloads and uploads.
 
 
-The ``local`` site is reserved and means the remote submitting computer and will only be considered when submitting from the remote "roaming" site. With the local site
-download and upload are swapped settings wise, meaning that upload settings apply to the upload of render scripts and dependencies to main site and
-download settings apply to the download of generated files.
+The ``local`` site is reserved for the remote submitting machine and applies only when submitting from the ``roaming`` site. For ``local``, download and upload settings are swapped — upload settings govern dependency uploads to main site, download settings govern result downloads.
 
 .. note::
 
-    To provide settings that should apply to all render job sync transfers, put them in ``settings`` dictionary in payload root.
-
+    For settings that apply to all render job sync transfers, put them in the root ``settings`` dictionary.

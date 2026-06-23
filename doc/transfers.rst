@@ -7,7 +7,7 @@
 File Transfers
 **************
 
-An accsyn file transfer job :sup:`1` defines a set of file(s) and/or folder(s) to be transferred from one point(client) to another, either ny the ASC protocol or HTTPS (web transfer).
+An accsyn file transfer job :sup:`1` defines a set of file(s) and/or folder(s) to transfer from one endpoint (client) to another, using either the ASC protocol or HTTPS (web transfer).
 
 .. role:: small
 
@@ -17,11 +17,11 @@ An accsyn file transfer job :sup:`1` defines a set of file(s) and/or folder(s) t
 Query
 =====
 
-To list all activate transfers::
+To list all active transfers::
 
     transfers = session.find('Transfer')
 
-This will return a list all active file transfer jobs, as dict objects, session has permission to read. 
+This returns a list of active file transfer jobs as dict objects that the session has permission to read.
 
 
 A dict will be returned containing transfer job attributes::
@@ -46,28 +46,28 @@ A dict will be returned containing transfer job attributes::
     }
 
 
-Explaination of the returned attributes:
+Explanation of the returned attributes:
 
 * ``code``: Same as name, transfers and jobs in general do not have unique API identifiers.
 * ``created``: Date of creation.
-* ``destination``: The recipient part, on the form <entitytype>:<id>.
-* ``destination_hr``: The recipient part, on human readable form.
+* ``destination``: The recipient, in the form ``<entitytype>:<id>``.
+* ``destination_hr``: The recipient, in human-readable form.
 * ``etr``: (Running transfers) Estimated time remaining.
-* ``finished``: The date job finished - completed or were aborted.
+* ``finished``: The date the job finished — completed or aborted.
 * ``id``: The internal accsyn job id, use this when modifying the job later on.
 * ``name``; The name of the job, if no name supplied a name will be generated from the first source filename. 
 * ``progress``: The job total progress, an integer in the range 0 to 100.
 * ``size``: The total size of job, in bytes.
-* ``source``: The sending part, on the form <entitytype>:<id>.
-* ``source_hr``: The sending part, on human readable form.
+* ``source``: The sender, in the form ``<entitytype>:<id>``.
+* ``source_hr``: The sender, in human-readable form.
 * ``speed``: The current transfer speed, in MB/s.
 * ``status``: The status of job.
-* ``uri``: The of job within queues, build up with parent queue code attributes.
+* ``uri``: The job URI within queues, built from parent queue code attributes.
 * ``metadata``: Job metadata dict, used to pass user data through workflows.
 * ``parent``: The id of the parent job queue.
-* ``parent_hr``: The parent job queue on human readable format.
+* ``parent_hr``: The parent job queue, in human-readable form.
 * ``user``: The id of the user that created the job.
-* ``user_hr``: The user that created the job, on human readable form.
+* ``user_hr``: The user who created the job, in human-readable form.
 * ``modified``: Date of last modification.
 * ``modifier``: The user that most recently modified the job.
 
@@ -75,7 +75,7 @@ Explaination of the returned attributes:
 Job statuses
 ************
 
-Here follow a listing of transfer job statuses:
+Transfer job statuses:
 
 .. list-table:: accsyn transfer job statuses
    :widths: 20 70 10
@@ -116,20 +116,20 @@ Here follow a listing of transfer job statuses:
 Job queries
 ***********
 
-Retreive a job by it's name (code), using quation marks to support whitespaces in query::
+Retrieve a job by name (code), using quotation marks for whitespace in the query::
 
     transfer = session.find_one('Transfer WHERE name="x and y.png"')
 
 
 .. note::
 
-    If no match for query is found, None will be returned.
+    If no match is found, ``None`` is returned.
 
-    Multiple jobs can have the same name, either make sure job names are unique of query by unique ID.
+    Multiple jobs can share the same name — ensure names are unique or query by ID.
 
 
 
-To pretty print a job and its attribute, use the built in meth:`Session.str` function::
+To pretty-print a job and its attributes, use :meth:`Session.dump`::
 
     print(session.dump(transfer))
 
@@ -173,9 +173,9 @@ To return a single job, regardless if it is finished or archived, use the get_en
 Create
 ======
 
-When creating a file transfer, the source and destination must be specified with full paths.
+When creating a file transfer, source and destination must be specified with full paths.
 
-Example of submitting a transfer job, on its simplest form, were a user downloads a file from a shared folder to their local computer::
+Example: submit a transfer where a user downloads a file from a shared folder to their local machine::
 
     transfer = session.create("Transfer",{
         "source":"share=myproject/delivery/TRAILER_screening_v003.mov",
@@ -183,14 +183,13 @@ Example of submitting a transfer job, on its simplest form, were a user download
         "status":"paused"
     })
 
-If successful, a list with transfer job data is returned on the same form as returned by a query.
+If successful, transfer job data is returned in the same form as a query.
 
 .. note::
 
-    The term "share" is a generic identifier for the following entities: "volume", "folder" (shared folder), "collection" or "home". 
-    
-    This example assumes the user only have one online accsyn client (desktop app or user server), if the user has multiple clients they
-    would need to specify which one, e.g.: "destination":"client=664f53b16aa9149860da9d9c:/Volumes/EDIT/from_client".
+    The term ``share`` is a generic identifier for ``volume``, ``folder`` (shared folder), ``collection``, or ``home``.
+
+    This example assumes the user has one online accsyn client (desktop app or user server). If the user has multiple clients, specify which one — for example: ``"destination":"client=664f53b16aa9149860da9d9c:/Volumes/EDIT/from_client"``.
 
 For a complete set of job submit examples, see: `https://support.accsyn.com/job-specification <https://support.accsyn.com/job-specification>`_.
 
@@ -198,7 +197,7 @@ For a complete set of job submit examples, see: `https://support.accsyn.com/job-
 Modify
 ======
 
-To resume a transfer and how to abort it::
+To resume or abort a transfer::
 
     session.update("Transfer", '614d660de50d45bb027c9bdd', {'status':"waiting"})
     session.update("Transfer", '614d660de50d45bb027c9bdd', {'status':"aborted"})
@@ -218,13 +217,12 @@ To delete a Transfer::
 Tasks
 =====
 
-A task is a file/directory to execute transfer a job. Task access through API is restricted, for example
-deleting task is not possible neither changing their path. Instead of deleting a task, they can be excluded.
+A task is a file or directory to transfer within a job. Task access through the API is restricted — for example, deleting tasks or changing their paths is not supported. To skip a task, set its status to ``excluded``.
 
 Query tasks
 ***********
 
-Job tasks are a sub entity of job, and not a true accsyn entity. To query tasks, supply the parent job ID separately from query::
+Job tasks are a sub-entity of a job, not a standalone accsyn entity. To query tasks, supply the parent job ID separately from the query::
 
     tasks = session.find("Task", entityid="5a7325f8b7ef72f5f9d74bf4")
 
@@ -232,7 +230,7 @@ Find all tasks that have a certain status::
 
     tasks = session.find("Task WHERE status=onhold", entityid="5a7325f8b7ef72f5f9d74bf4")
 
-A list if tasks is returned as dictionaries::
+A list of tasks is returned as dictionaries::
 
     {
         "created": "2020-08-04T09:52:27",
@@ -265,19 +263,19 @@ A list if tasks is returned as dictionaries::
 * ``finished``: The date task finished execution.
 * ``id``: The internal accsyn ID of task.
 * ``job``: The ID of the parent job.
-* ``job_hr``: The parent job on human readable form.
+* ``job_hr``: The parent job, in human-readable form.
 * ``priority``: The task priority, see job priority.
 * ``size``: The size of source file/directory.
 * ``source``: Dictionary containing information about the source file/directory (or compute client) party.
-* ``status``: The status of task, see below. can be "pending"(waiting for user to choose download location),"queued", "booting","executing","failed","done,"onhold","excluded".
-* ``time``: The time it took the execute this task.
-* ``uri``: The uri - unique name/code of task, usually sequential number "0", "1" and so on (string format).
+* ``status``: Task status (see below). Values include ``pending`` (waiting for user to choose download location), ``queued``, ``booting``, ``executing``, ``failed``, ``done``, ``onhold``, and ``excluded``.
+* ``time``: Time taken to execute this task.
+* ``uri``: The task URI — a unique name/code, usually a sequential number (``"0"``, ``"1"``, etc.) in string format.
 
-The contents of ``source`` and ``destination`` parties varies depending on sender and receiver - site(Server) or user(Desktop app/User server):
+The contents of ``source`` and ``destination`` vary depending on whether the party is a site (server) or user (desktop app/user server):
 
 * ``client``: The ID of the client.
 * ``path``: The file path, either absolute if no share is involved or relative share (folder, collection, volume etc.)
-* ``path_abs_final``: The final evaluated path, when a share is involved. This is set on transfer execution, as client might have dynamic path resolvers that apply in runtime.
+* ``path_abs_final``: The final evaluated path when a share is involved. Set at transfer execution, as clients may apply dynamic path resolvers at runtime.
 * ``v``: ID of the volume.
 * ``s``: ID of the share, if a share is involved.
 * ``user``: ID of the user, if party is a user.
@@ -287,7 +285,7 @@ The contents of ``source`` and ``destination`` parties varies depending on sende
 
     * If no user or site is involved, the party is the workspace main site and server (hq).
     * ``source`` and ``destination`` cannot be modified.
-    * ``time`` is the time it took to execute the entire bucket (group) of task as dispatched, not the individual time for the single task.
+    * ``time`` is the time to execute the entire bucket (group) of tasks as dispatched, not the individual task.
 
 
 .. list-table:: accsyn task statuses
@@ -305,7 +303,7 @@ The contents of ``source`` and ``destination`` parties varies depending on sende
      - Task is waiting to be dispatched.
      - YES
    * - booting
-     - Task transfer/execution is being initialized on involved parties.
+     - Task transfer/execution is being initialised on involved parties.
      -
    * - executing
      - File/directory is being transferred or task is being executed(compute)
@@ -315,14 +313,13 @@ The contents of ``source`` and ``destination`` parties varies depending on sende
        clues.
      - YES
    * - onhold
-     - Task if put on hold.
+     - Task is on hold.
      - YES
    * - excluded
      - Task is excluded from execution.
      - YES
    * - done
-     - File/directory has successfully been transfered / compute task has
-       successfully executed.
+     - File/directory has been transferred / compute task has executed successfully.
      - YES
 
 .. role:: small
@@ -338,12 +335,11 @@ Add a file(task) to an existing job, mirroring paths to same destination as rest
    session.create("Task", {"tasks":["/Volumes/projects/creatures_showreel_2018.mov"]}, job["id"]))
 
 Returns {"success":True} if everything goes well, exception thrown otherwise. If another task exists with the same source and destination,
-no task will be added and instead the existing task will be retried. To have Accsyn reject duplicate tasks,
-supply attribute allow_duplicates=False to create call.
+no task is added and the existing task is retried instead. To reject duplicate tasks, pass ``allow_duplicates=False`` to the create call.
 
 .. note::
 
-    Tasks without no destination provided can only be created with jobs sending files with mirrored paths.
+    Tasks without a destination can only be created on jobs that send files with mirrored paths.
 
 Add a single task to a download job::
 
@@ -384,5 +380,5 @@ Will return the updated tasks, as would have been returned by a task find query.
 Delete task
 ***********
 
-Tasks cannot be deleted, of audit/security reasons. Set task status to excluded instead to have it ignored during transfer/execution.
+Tasks cannot be deleted for audit and security reasons. Set task status to ``excluded`` to skip it during transfer/execution.
 

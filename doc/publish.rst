@@ -7,21 +7,17 @@
 Publish
 *******
 
-The accsyn publish workflow is an extended upload mechanism allowing you to check the files before upload, decide where the should be written and allow user to input metadata. It is described in detail in this tutorial:
-
+The accsyn publish workflow is an extended upload mechanism that lets you validate files before upload, control where they are written, and collect user metadata. See the tutorial for full details:
 
 `https://support.accsyn.com/tutorial-publish-workflow <https://support.accsyn.com/tutorial-publish-workflow>`_.
 
-
-The Python API supports the publish workflow and can be used for building your own client-side tools.
+The Python API supports the publish workflow for building client-side tools.
 
 
 Pre publish
 ===========
 
-Supply the list of file-/directory names that should be checked at server end, supplying an unique ID and
-sub files-/directories as necessary.  The ID should be a uuid4 and is required for accsyn to relate each
-publish entry with each task on job submit later on::
+Supply the list of file/directory names to validate at the server, with a unique ID and sub-files/directories as needed. The ID must be a uuid4 — accsyn uses it to relate each publish entry to its task on job submit::
 
     pre_publish_response = session.publish([
        {
@@ -43,7 +39,7 @@ publish entry with each task on job submit later on::
     ])
 
 
-Which will return back the same list with additional entries appended by your pre-publish hook::
+This returns the same list with additional entries appended by your pre-publish hook::
 
      {
         "files":[
@@ -77,10 +73,9 @@ Which will return back the same list with additional entries appended by your pr
 
 
 
- or throw an exception if something went wrong.
+Or raises an exception on failure.
 
-Then submit job as you would normally, with this publish data supplied as a hook
-and corresponding ID:s supplied to tasks as well::
+Then submit the job as usual, passing publish data as a hook and matching IDs on tasks::
 
     jobs = session.create("job", {
         "code":"abcd1234_publish",
@@ -102,6 +97,5 @@ and corresponding ID:s supplied to tasks as well::
         ]
     })
 
-This will cause hook to be run after files has been transferred to the correct location at server, as supplied by pre publish hooks.
-
+This runs the hook after files are transferred to the location determined by the pre-publish hooks.
 

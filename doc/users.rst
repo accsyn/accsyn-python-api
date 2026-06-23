@@ -7,15 +7,15 @@
 Users
 *****
 
-An user identifies a physical person that interacts with accsyn, and access is role based with three base roles/clearance levels:
+A user identifies a person who interacts with accsyn. Access is role-based, with three clearance levels:
 
-* **Administrator**; Have full access to everything, this include transfer files and administrate accsyn.
+* **Administrator**; Full access to everything, including file transfers and workspace administration.
 
-* **Employee**; Have full access to transfer files, and view configuration.
+* **Employee**; Full access to transfer files and view configuration.
 
-* **User**; (Standard) Have access to download file packages sent to them, and to shares given explicit access through ACLs (Access Control Lists).
+* **Standard**; Access to download file packages sent to them and to shares granted through explicit ACLs (Access Control Lists).
 
-Users are managed centralised, with all users having their unique ID across all workspaces and one authentication method (accsyn / Google etc)
+Users are managed centrally — each has a unique ID across workspaces and one authentication method (accsyn, Google, etc.).
 
 
 Query
@@ -35,14 +35,14 @@ List only employees::
 Create
 ======
 
-To invite a new default role (standard) user::
+To invite a new standard-role user::
 
     user = session.create("User",{
         "code":"lisa@example.com",
     })
 
 
-A dict will be returned containing user attributes::
+A dict is returned containing user attributes::
 
     {
         "code": "demo.user3@accsyn.com",
@@ -63,28 +63,28 @@ A dict will be returned containing user attributes::
 
 Explanation of the returned attributes:
 
-* ``code``: The unique email user Email address.
+* ``code``: The user's unique email address.
 * ``created``: Date of creation.
-* ``creator``: The user that created the user.
-* ``description``: Description of user.
-* ``id``: The internal accsyn user id, use this when modifying the user later on.
-* ``logged_in``: The last time user login.
+* ``creator``: The user who created this user.
+* ``description``: User description.
+* ``id``: Internal accsyn user ID. Use this when modifying the user.
+* ``logged_in``: Last login time.
 * ``metadata``: User metadata dict.
 * ``modified``: Date of last modification.
-* ``modifier``: The user that most recently modified the user.
-* ``name``: The name that user entered during registration phase.
-* ``queue``: The queue (ID or code) to put jobs in, when involving this user. Will have no effect if queue already defined with job.
-* ``role``: The role user has.
-* ``status``: The status of user, can be "enabled" or "disabled" - cannot login and all jobs put on hold.
+* ``modifier``: The user who last modified this user.
+* ``name``: Name entered during registration.
+* ``queue``: Queue (ID or code) for jobs involving this user. Has no effect if the job already defines a queue.
+* ``role``: The user's role.
+* ``status``: ``enabled`` or ``disabled``. Disabled users cannot log in and all jobs are put on hold.
 
-Additinal payload attributes that can be supplied:
+Additional payload attributes:
 
-* ``create_home_share``: If True, the user will be given a home share in the workspace. Supply fals to prevent creation of home share, even if configured to do so.
-* ``give_all_volumes_access``: If True, the user will be given full read and write access to all volumes in the workspace.
-* ``give_default_volume_access``: If True, the user will be given full read and write access to the default volume in the workspace.
-* ``volumes``: A list of volume IDs to give full read and write access to.
-* ``message``: An invitation message to the user, will be supplied in the email sent.
-* ``mail``: If False, no email will be sent to the user.
+* ``create_home_share``: If ``True``, create a home share in the workspace. Pass ``False`` to skip home share creation even when workspace policy would create one.
+* ``give_all_volumes_access``: (Employees) If ``True``, grant full read/write access to all volumes.
+* ``give_default_volume_access``: (Employees) If ``True``, grant full read/write access to the default volume.
+* ``volumes``: List of volume IDs to grant full read/write access to.
+* ``message``: Invitation message included in the email.
+* ``mail``: If ``False``, do not send an email to the user.
 
 
 Modify
@@ -95,34 +95,33 @@ To disable a user::
     session.update("User", "69887165f643db8cd731b31a", {"status" :"disabled"})
 
 
-To change user clearance/role::
+To change user base role::
 
     session.update("User", "69887165f643db8cd731b31a", {"role" :"employee"})
 
 .. note::
     * Only administrators can change user roles.
-    * Be careful when changing user roles, as it will affect what the user can do in the workspace. Changing role will cause all access to be revoked and need to be granted again.
+    * Changing roles affects what the user can do. All access is revoked and must be re-granted.
 
 
 Offline
 =======
 
-An user can be deactivated, which means it will be removed from accsyn but still eglible
-for audit & restore if you again create/invite a user with the same identification (code)::
+A user can be deactivated — removed from the workspace but eligible for audit and restore if you invite a user with the same identification (code) again::
 
     session.deactivate_one("User", "69887165f643db8cd731b31a")
 
 .. note::
 
-    * Offlining a user also causes user home share to be put offline together with ACLs.
-    * No jobs that involves the user can be active.
-    * Offline users have the attribute inactive set to True.
+    * Deactivating a user also offlines their home share and ACLs.
+    * No active jobs may involve the user.
+    * Offline users have ``inactive`` set to ``True``.
 
 
 Re-activate a user
 ==================
 
-To re-activate a user, supply the user email address(code) or ID::
+To re-activate a user, supply the email address (code) or ID::
 
     session.activate_one("User", "69887165f643db8cd731b31a")
 
@@ -135,7 +134,7 @@ To delete a user::
 
 .. note::
 
-    * If you delete a user, all associated jobs are aborted.
-    * Related user home share will also be deleted.
-    * The user will be removed from your workspace, but kept centrally in accsyn platform as user might have access to other workspaces.
-    * accsyn user account information are ontouched.
+    * Deleting a user aborts all associated jobs.
+    * The related home share is also deleted.
+    * The user is removed from your workspace but retained centrally if they have access to other workspaces.
+    * Central accsyn account information is untouched.

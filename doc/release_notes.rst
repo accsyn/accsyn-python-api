@@ -13,6 +13,13 @@ Release Notes
 
     `https://support.accsyn.com/changelog <https://support.accsyn.com/changelog>`_.
 
+.. release:: 3.3.4
+    :date: 2026-06-23
+
+    .. change:: changed
+
+        * Consolidated documentation, fixed phrasing and grammar errors.
+
 .. release:: 3.3.3
     :date: 2026-06-17
 
@@ -186,7 +193,7 @@ Release Notes
         * (Share) Support for server assignment.
         * Support for offlining shares and users.
         * (Query) Support for listing offline entities.
-        * Mew ``mkdir``,``rename``,``mv`` and ``rm`` file operations.
+        * New ``mkdir``, ``rename``, ``mv``, and ``rm`` file operations.
 
     .. change:: changed
 
@@ -234,8 +241,8 @@ Release Notes
 
     .. change:: changed
 
-        * New function ``get_session_key`` that returns the current session key retreived at authentication, and can be used for subsequent authentications throughout the lifetime of key.
-        * New argument 'session_key' to Session(..) construct, will make API to attempt authenticate using the session key instead of API key. The session key are bound to the IP and device detected upon creation.
+        * New function ``get_session_key`` that returns the current session key retrieved at authentication, usable for subsequent authentications within the key lifetime.
+        * New argument ``session_key`` to Session(..) causes the API to authenticate with the session key instead of the API key. The session key is bound to the IP and device detected at creation.
 
     .. change:: fixed
 
@@ -255,7 +262,7 @@ Release Notes
 
         * (Session init) Support for logging to file.
         * (Session init) Tell Accsyn to log JSON indented in verbose mode.
-        * (find attributes) Choose which type of attributes to query: find(default), create (allowed when creating an antity) and update (allowed when updating).
+        * (find attributes) Choose which type of attributes to query: find (default), create (allowed when creating an entity), and update (allowed when updating).
 
 .. release:: 1.2.5
     :date: 2020-04-01

@@ -32,13 +32,13 @@ Use ``logs`` to fetch backend disk logs for a scope/entity. The return value is 
 App and daemon status
 =====================
 
-Check if the accsyn app or daemon (user server) is running on the same machine and same user ID::
+Check whether the accsyn app or daemon (user server) is running on the same machine under the same user::
 
     session.app_is_running()
 
     session.daemon_is_running()
 
-Will return True if GUI/Server is running, False if offline, None if not installed/detected.
+Returns ``True`` if the GUI/server is running, ``False`` if offline, ``None`` if not installed or detected.
 
 
 

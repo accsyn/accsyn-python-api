@@ -12,15 +12,15 @@ Files and folders residing on accsyn storage volumes can be shared with other us
 Documentation: `https://support.accsyn.com/file-sharing <https://support.accsyn.com/file-sharing>`_
 
 
-An accsyn 'share' is the base entity used to describe the following storage entities avaiable through the API:
+An accsyn ``share`` is the base entity for the following storage entities available through the API:
 
-* **Volume**; The base directory, were accsyn has access and files can be shared/delivered from or to. Users having the default 'employee' role has full access to volumes beeing granted access to, restricted users have not.
+* **Volume**; The base directory where accsyn has access and files can be shared or delivered. Users with the ``employee`` role have full access to volumes granted to them; restricted users do not.
 
-* **Folder**; A shared folder beneath a volume, at a relative path, from which restricted users can be given access through ACLs (access control lists). 
+* **Folder**; A shared folder beneath a volume at a relative path. Restricted users receive access through ACLs (access control lists).
 
-* **Home**; A shared folder designated to a user, providing an initial default area for file access. Home folders are not mandatory for operation, but accsyn can be configured to automatically create a home folder for each user upon user activation.
+* **Home**; A shared folder designated to a user, providing a default file access area. Home folders are optional, but accsyn can be configured to create one automatically on user activation.
 
-* **Collection**; A virtual shared folder containing one or more files and/or folders to be granted access through ACLs to one or more standard users.
+* **Collection**; A virtual shared folder containing one or more files and/or folders, with access granted through ACLs to standard users.
 
 
 Working with volumes
@@ -66,17 +66,17 @@ Explanation of the returned attributes:
 * ``code``: The unique API name of the share.
 * ``created``: Date of creation.
 * ``creator``: The user that created the share.
-* ``default``: true if this is the default (main) volume, that will harbor temp deliveries and home shares. Only one main volume can be defined, if not given it will default to true if not other volume exist.
+* ``default``: ``true`` if this is the default (main) volume for temp deliveries and home shares. Only one main volume can be defined; if none is set, the first volume defaults to main.
 * ``description``: Volume description.
 * ``email``: Additional email addresses to deliver notifications to.
 * ``id``: The internal accsyn job id, use this when modifying the share later on.
 * ``licensed``: (Internal) true if the volume is licensed, false if not.
 * ``metadata``: Volume metadata dict, used to transport data with workflows.
 * ``modified``: Date of last modification.
-* ``modifier``: The user that most recently modified the share.'
+* ``modifier``: The user who most recently modified the share.
 * ``name``: The name of the volume.
 * ``path``: When served by a server, this will be the resolved absolute path on storage for this volume.
-* ``paths``: Dict containing path definitions, for each operating system accsyn supports (windows, linux and mac). Also may contain VPN paths, allowing accsyn desktop app to proper identify remote source/destination and download/upload mode.
+* ``paths``: Dict of path definitions per supported operating system (Windows, Linux, macOS). May also include VPN paths so the desktop app can correctly identify remote source/destination and download/upload mode.
 * ``type``: The share type, always "volume".
 * ``status``; The status of share, see below.
 
@@ -84,7 +84,7 @@ Explanation of the returned attributes:
 Volume statuses
 ***************
 
-Here follow a listing of volume statuses:
+Volume statuses:
 
 .. list-table:: accsyn volume statuses
    :widths: 20 70 10
@@ -100,7 +100,7 @@ Here follow a listing of volume statuses:
      - Volume is disabled - all related jobs are put on hold.
      - YES
    * - offline
-     - Volume is enabled but unavailable - not served or folder on server are missing. Related jobs are put on hold.
+     - Volume is enabled but unavailable — not served or the folder on the server is missing. Related jobs are put on hold.
      -
    * - disabled-offline
      - Volume is offline and disabled. Related jobs are put on hold.
@@ -146,7 +146,7 @@ To rename a volume::
 
     session.update("Volume", "61779c54b80099ea066b0604", {"name":"Assets 2"})
 
-A dictionary will be returned on the same format as a volume query would return.
+A dictionary is returned in the same format as a volume query.
 
 To change the API code identifier::
 
@@ -185,8 +185,8 @@ Return value will be True if operation was successful. Ongoing jobs will not be 
 
 .. note::
 
-    * The server has to be authenticated with and admin user account to be able to serve volumes.
-    * All file transfer endpoints are called 'clients' within accsyn, server is a role which a client can have and means it will be the party listening for the incoming TCP connection from remote p2p client.
+    * The server must be authenticated with an admin user account to serve volumes.
+    * All file transfer endpoints are called ``clients`` in accsyn. A server is a client role that listens for incoming TCP connections from remote P2P clients.
 
 
 To assign a site server, e.g. a server that will serve a volume locally at a remote office/cloud location::
@@ -224,12 +224,12 @@ not be able to be submitted until a new server is assigned for the volume.
 Granting access to a volume
 ---------------------------
 
-User having the role "employee" has no default access to a volume, access must be granted through ACLs (Access Control Lists). 
+Users with the ``employee`` role have no default volume access. Access must be granted through ACLs (Access Control Lists).
 
 
 .. note::
 
-    The backend acl entity is not directly exposed through the API, these are among other things is also used to bind users to deliveries internally within accsyn.
+    The backend ACL entity is not directly exposed through the API. ACLs are also used internally — for example, to bind users to deliveries.
 
 
 To grant access to an employee, use the session assign function::
@@ -278,6 +278,9 @@ Return value will be True if operation was successful.
 Working with shared folders and homes
 =====================================
 
+An accsyn shared folder/home is a folder beneath a volume, designated to be shared with one or more users through ACLs (Access Control Lists).
+
+
 List folders
 ------------
 
@@ -285,8 +288,7 @@ To query shared folders::
 
     shared_folders = session.find('Folder')
 
-A home is very similar to a share folder, with the difference that it is bound to a user and 
-can be set to be created automatically upon user activation. To query homes::
+A home is similar to a shared folder, but bound to a user and optionally created automatically on user activation. To query homes::
 
     homes = session.find('Home')
 
@@ -321,7 +323,7 @@ Explanation of the returned attributes:
 * ``id``: The internal accsyn share id, use this when modifying the share later on.
 * ``metadata``: Share metadata dict.
 * ``modified``: Date of last modification.
-* ``modifier``: The user that most recently modified the share.'
+* ``modifier``: The user who most recently modified the share.
 * ``name``: The name of the share.
 * ``parent``: The ID of the parent volume.
 * ``parent_hr``: Human readable parent volume entry.
@@ -333,7 +335,7 @@ Explanation of the returned attributes:
 Shared folder/home states
 *************************
 
-Here follow a listing of share statuses:
+Shared folder/home statuses:
 
 .. list-table:: accsyn share statuses
    :widths: 20 70 10
@@ -352,7 +354,7 @@ Here follow a listing of share statuses:
      - Share is enabled but the volume is offline - no server, missing or have other issues.
      -
    * - disabled-offline
-     - Share is online but disabled - all related file transfers are put on hold.
+     - Share is offline and disabled — all related file transfers are put on hold.
      -
 
 
@@ -408,8 +410,8 @@ To grant access to a user, use the session assign function::
 Return value will be a dictionary containing ACL attributes.
 
 .. note::
-    * The path is the relative path to the shared folder/home. It is optional, of not given the entire folder is granted access (equivalent to path: "/").
-    * Either read and or write access must be granted. Both can not be false.
+    * The path is relative to the shared folder/home. If omitted, the entire folder is granted (equivalent to ``path: "/"``).
+    * Either read or write access must be granted; both cannot be ``false``.
     * The notify flag is optional, and defaults to True. If set to False, no email will be sent to the user when the ACL is granted.
     * The message is optional, and will be sent as a notification to the user when access is granted.
 
@@ -517,16 +519,15 @@ Return value will be True if operation was successful, false if the file did not
 Deactivate
 ==========
 
-A share (volume, folder, collection) can be deactivated, which means it will be removed from accsyn
-but still eglible for audit & restore if you again create a share with the same name::
+A share (volume, folder, collection) can be deactivated — removed from accsyn but eligible for audit and restore if you recreate a share with the same name::
 
     session.deactivate_one("Volume", "61779c54b80099ea066b0604")
 
 .. note::
 
     * Deactivating a volume also causes all descendant shares to be archived.
-    * No jobs that uses the share can be active, they will need to be aborted.
-    * ACLs are offlined with share.
+    * No active jobs may use the share; abort them first.
+    * ACLs are offlined with the share.
     * Inactive shares have the attribute inactive set to True.
     * Home shares cannot be deactivated, deactivate the user instead.
 
@@ -550,5 +551,5 @@ To delete a share::
 
 .. note::
 
-    * Deleting a share is preceded by an deactivation.
+    * Deleting a share is preceded by deactivation.
     * For audit/security reasons, deleted shares with associated data (acls) are kept in the archive for deep audit.

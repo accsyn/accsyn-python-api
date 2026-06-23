@@ -9,24 +9,23 @@ Installing
 
 .. highlight:: bash
 
-Install using `pip <http://www.pip-installer.org/>`_::
+Install with `pip <http://www.pip-installer.org/>`_::
 
     pip install accsyn-python-api
 
 Clone from Git
 ==============
 
-Clone from our public Git reposity::
+Clone from our public Git repository::
 
     git clone https://github.com/accsyn/accsyn-python-api
 
-Then you can build and copy the package into your current Python
-site-packages folder, read the README.md for more details.
+Then build and copy the package into your Python site-packages folder. See README.md for details.
 
 
 Dependencies
 ============
 
 * `accsyn <https://accsyn.com/>`_ >= 3.5.0
-* `Python <http://python.org>`_ >=3.7.0
+* `Python <http://python.org>`_ >= 3.7.0
 * `Requests <http://docs.python-requests.org>`_ >= 2.25.0

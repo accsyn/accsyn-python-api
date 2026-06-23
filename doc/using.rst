@@ -20,14 +20,13 @@ In a Python session, import the accsyn Python API to start using it::
 Create a session
 ================
 
-The session is the Python object used when communicating with the accsyn workspace backend, it requires valid API credentials 
-supplied upon creation::
+The session is the object used to communicate with the accsyn workspace backend. Valid API credentials are required at creation::
 
     session = accsyn_api.Session(workspace='acmefilm',username='john@user.com', api_key='BlrPCfxLIRZEdhL6LXotwXRmDWbPRsPgLYcpa7ubyu97gxpqSC4130Adfh968Low')
 
 
 
-The following environment variables are picked up if set within python parent process, and not provided as arguments to the Session constructor:
+The following environment variables are read from the parent Python process and override arguments passed to the Session constructor:
 
 .. list-table:: env mappings
    :widths: 100 100
@@ -45,21 +44,21 @@ The following environment variables are picked up if set within python parent pr
 
 .. note::
 
-    accsyn communicates over tcp port 443 (https wrapped CRUD REST calls), make sure to allow outgoing traffic towards accsyn backend (https://your-workspace.accsyn.com) where the subdomain "your-workspace" is your uniqueworkspace API code identifier.
+    accsyn communicates over TCP port 443 (HTTPS-wrapped CRUD REST calls). Allow outgoing traffic to your workspace backend (``https://your-workspace.accsyn.com``), where ``your-workspace`` is your unique workspace API code.
 
-    Your API key can be obtained at `https://accsyn.io/developer <https://accsyn.io/developer>`_ or from desktop app @ Settings>API.
+    Obtain your API key at `https://accsyn.io/developer <https://accsyn.io/developer>`_ or from the desktop app under Settings > API.
 
-    Remember to treat the API key as a secret password as it will grant access to listing and modifying files on your accsyn shared storage.
+    Treat the API key as a secret — it grants access to list and modify files on your accsyn shared storage.
 
-    Add verbose=True to session creation if you want to see verbose debugging output.
+    Pass ``verbose=True`` at session creation to enable verbose debug output.
 
-    Add path_logfile=/path/to/my.log.file if you want all stdout should go to disk.
+    Pass ``path_logfile=/path/to/my.log.file`` to redirect stdout to a log file.
 
 
 Testing the session
 ===================
 
-To make sure the API is working, you can test the obtained session::
+To verify the API is working, test the session::
 
     print(session.find_one("User"))
 
@@ -67,7 +66,7 @@ Should output your user profile::
 
     {
        "id":"5b0faf03304bfd4810dbd5fc",
-       "code”:"john@user.com",
+       "code":"john@user.com",
        "modified":datetime("2018-06-04 07:06:41.028619")
     }
 
@@ -76,19 +75,19 @@ Should output your user profile::
 Query
 =====
 
-The find and find_one functions provide query functionality within the API.
+The ``find`` and ``find_one`` functions provide query functionality.
 
 To get a list of all entities of a certain entity type::
 
    entities = session.find('<entitytype>')
 
-Where <entitytype> is the entity type, i.e. "transfer", "delivery", "user", "share", etc.
+Where ``<entitytype>`` is the entity type — for example ``transfer``, ``delivery``, ``user``, or ``share``.
 
 Return a single entity of a certain entity type::
 
    job = session.find_one('<entitytype> WHERE id=<id>')
 
-Where <entitytype> is the entity type, i.e. "transfer", "delivery", "user", "share", etc and <id> is the internal accsyn id of the entity.
+Where ``<id>`` is the internal accsyn entity ID.
 
 
 Expressions
@@ -102,15 +101,15 @@ Returns a list of all download jobs (workspace code/domain is "myworkspace").
 
 .. note::
 
-    The  syntax is not as evolved as for example SQL. The accsyn API currently support nested AND/OR operations using the = or !=/<>.
+    The syntax is simpler than SQL. The accsyn API supports nested AND/OR operations with ``=``, ``!=``, and ``<>``.
 
-    Queries are case insensitive, for example there is no difference between "transfer" and "Transfer" or supplying "WHERE" or "where". Throughout this documentation, we will have WHERE and operators in upper case for readability.
+    Queries are case-insensitive — for example, ``transfer`` and ``Transfer`` are equivalent, as are ``WHERE`` and ``where``. Throughout this documentation, we use uppercase for WHERE and operators for readability.
 
 Example of a nested complex query::
 
     session.find('transfer WHERE ((user=lisa@example.com AND destination=hq) OR status<>failed) AND code="* backup"')
 
-This query returns all transfers where the user is lisa@example.com and the destination is site hq, or the status is not failed, and the code(name) ends with " backup" (* is a wildcard).
+This query returns transfers where the user is lisa@example.com and the destination is site hq, or the status is not failed, and the code (name) ends with `` backup`` (``*`` is a wildcard).
 
 
 Operators
@@ -153,7 +152,7 @@ The accsyn API supports the following operators:
 
 Example of substring match::
 
-    session.find('transfer WHERE name CONTAINS "backup"')
+    session.find('Transfer WHERE name CONTAINS "backup"')
 
 Example of regular expression match::
 
@@ -184,7 +183,7 @@ To run a paginated query, that skips 100 jobs and only returns a maximum of 50::
 Create
 ======
 
-To create any entity (string), supply the scope (string) and the data as a dictionary payload on this generic form::
+To create an entity, supply the entity type (string) and data as a dictionary payload::
 
     session.create(<entitytype>, <data>)
 
@@ -192,7 +191,7 @@ To create any entity (string), supply the scope (string) and the data as a dicti
 Modify
 ======
 
-To modify an entity, supply the scope (string), entity id (string) and data as a dictionary payload::
+To modify an entity, supply the entity type (string), entity ID (string), and data as a dictionary payload::
 
     session.update(<entitytype>, <id>, <data>)
 
@@ -200,7 +199,7 @@ To modify an entity, supply the scope (string), entity id (string) and data as a
 Delete
 ======
 
-To delete an entity, supply the scope (string) and entity id (string)::
+To delete an entity, supply the entity type (string) and entity ID (string)::
 
     session.delete_one(<entitytype>, <id>)
 
@@ -208,7 +207,7 @@ To delete an entity, supply the scope (string) and entity id (string)::
 Example of obtaining and modifying an accsyn file transfer
 ==========================================================
 
-Get job named “my_transfer”::
+Get a job named "my_transfer"::
 
     transfer = session.find_one('Transfer WHERE name="my_transfer"')
 
@@ -218,46 +217,48 @@ Change its status::
     session.update('Transfer', transfer['id'], {"status":"aborted"}) 
 
 
-Delete(archive) the transfer::
+Delete (archive) the transfer::
 
-    session.delete_one('Transfer', transfer['id']}) 
+    session.delete_one('Transfer', transfer['id'])
 
 
 
-From here, learn more about :ref:`datatypes` and/or dig into the different sections for detailed information on how to work with users, jobs, queues and so on.
+From here, see :ref:`datatypes` or the sections below for details on users, jobs, queues, and other entities.
 
 
 Error handling
 ==============
 
-If an error occurs, an exception will be raised and the exception message can fetched afterwards by issuing::
+If an error occurs, an exception is raised. Retrieve the message with::
 
     print(session.get_last_message())
 
-If the workspace backend or reverse proxy is throttling your client IP, you may receive HTTP **429 Too Many Requests**. See below for limit details and recommended backoff behaviour.
+If the workspace backend or reverse proxy is throttling your client IP, you may receive HTTP **429 Too Many Requests**. See :ref:`rate_limits` for limit details and recommended backoff behaviour.
 
 
 Network proxy support
 =====================
 
-If you live on a network that does not have direct Internet access, the Python API can utilise a SOCKS (v4/v5) proxy of yours or an accsyn daemon acting as a proxy (refer to the Accsyn admin manual on how to setup such a proxy).
+If your network does not have direct Internet access, the Python API can use a SOCKS (v4/v5) proxy or an accsyn daemon acting as a proxy (see the accsyn admin manual for proxy setup).
 
-Using aSOCKS proxy
-******************
+Using a SOCKS proxy
+*******************
 
-Supply proxy="socks:<hostname or IP>:<port>" when creating session or set the ACCSYN_PROXY environment variable.
+Supply ``proxy="socks:<hostname or IP>:<port>"`` when creating the session, or set the ``ACCSYN_PROXY`` environment variable.
 
 Using an accsyn network proxy
 *****************************
 
-Supply proxy="accsyn:<hostname or IP>:<port>" when creating session or set the ACCSYN_PROXY environment variable.
+Supply ``proxy="accsyn:<hostname or IP>:<port>"`` when creating the session, or set the ``ACCSYN_PROXY`` environment variable.
 
 
+
+.. _rate_limits:
 
 Rate limits
 ===========
 
-accsyn protects workspace backends against abuse using rate limits at the reverse proxy and in the backend layer. 
+accsyn protects workspace backends against abuse with rate limits at the reverse proxy and in the backend layer.
 Python API clients should treat throttling as a normal operational condition and back off when requests are delayed or rejected.
 
 
@@ -275,7 +276,7 @@ These limits apply per public client IP. Traffic from many users behind the same
 Edge limits (nginx)
 *******************
 
-Hosted workspace nodes terminate HTTPS in nginx and proxy to the local REST(API/clients/CLI) and GraphQL(Web/App) services. Typical limits per client IP:
+Hosted workspace nodes terminate HTTPS in nginx and proxy to the local REST (API/clients/CLI) and GraphQL (Web/App) services. Typical limits per client IP:
 
 .. list-table:: nginx rate limits
    :widths: 30 20 20 30
@@ -299,7 +300,7 @@ Hosted workspace nodes terminate HTTPS in nginx and proxy to the local REST(API/
      - Download/proxy routes
    * - All HTTPS locations
      - —
-     - 50 concurrent connections
+     - 100 concurrent connections
      - Per-IP connection cap
 
 When nginx rejects a request, the response status is **429 Too Many Requests**.
@@ -345,7 +346,7 @@ Recommendations for Python API clients
 - **Respect ``Retry-After``** when present; do not retry immediately in a tight loop.
 - **Cache sessions** — create one ``Session`` and reuse it; avoid re-authenticating on every ``find`` or ``update`` call.
 - **Poll responsibly** — when monitoring job progress, use intervals of several seconds (or longer) rather than sub-second polling.
-- **Serialize bulk operations** — batch creates/updates with short pauses if you are driving large automated workflows.
+- **Serialise bulk operations** — batch creates/updates with short pauses if you are driving large automated workflows.
 - **Handle shared egress** — if many services exit through one IP, coordinate request volume or stagger jobs.
 
 Example backoff after a failed request:
@@ -368,6 +369,6 @@ Example backoff after a failed request:
 
 .. note::
 
-    The Python API does not currently retry throttled requests automatically. Integrations that run unattended should catch errors, inspect ``session.get_last_message()``, and apply backoff as shown above.
+    The Python API does not currently retry throttled requests automatically. Unattended integrations should catch errors, inspect ``session.get_last_message()``, and apply backoff as shown above.
 
 
