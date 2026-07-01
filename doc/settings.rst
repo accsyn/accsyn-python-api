@@ -68,4 +68,9 @@ Deleting a value
         "compute_avoid",
         entityid="<queue_id>",
     )
-    assert ok is True
+    
+
+accsyn Settings documentation
+=============================
+
+For a complete list of settings, see the accsyn Settings documentation: `https://support.accsyn.com/settings <https://support.accsyn.com/settings>`_.

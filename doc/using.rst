@@ -290,10 +290,6 @@ Hosted workspace nodes terminate HTTPS in nginx and proxy to the local REST (API
      - 30 requests/s
      - 60
      - REST API (used by the Python API)
-   * - ``/graphql``
-     - 20 requests/s
-     - 40
-     - GraphQL API
    * - ``/proxy``, ``/u``, ``/d``
      - 20 requests/s
      - 40
@@ -306,8 +302,8 @@ Hosted workspace nodes terminate HTTPS in nginx and proxy to the local REST (API
 When nginx rejects a request, the response status is **429 Too Many Requests**.
 
 
-Application limits (REST)
-*************************
+Backend service limits (REST)
+*****************************
 
 The REST backend tracks repeated requests per IP in a short sliding window (approximately five minutes). Behaviour:
 
