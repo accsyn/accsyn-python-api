@@ -47,10 +47,8 @@ def _list_result_names(ls_result):
 def test_cleanup_filesharing(session_admin, entities):
     # Remove test folders recursively on default volume root
     for folder in [SHARED_FOLDER, SHARED_FOLDER2, TEST_FOLDER3]:
-        try:
+        if session_admin.exists(folder):
             session_admin.delete(folder, force=True)
-        except Exception:
-            pass
 
     # Remove employee user if it exists (invite tests rely on clean start)
     employee_user = session_admin.find_one(f"User WHERE code='{TestUtils.get_employee_ident()}'")
@@ -59,10 +57,10 @@ def test_cleanup_filesharing(session_admin, entities):
         entities.remove_from_cleanup(kind="user", entity_id=employee_user["id"])
 
     # Remove standard user if it exists (invite tests rely on clean start)
-    standard_user = session_admin.find_one(f"User WHERE code='{TestUtils.get_standard_ident()}'")
-    if standard_user:
-        session_admin.delete_one("User", standard_user["id"])
-        entities.remove_from_cleanup(kind="user", entity_id=standard_user["id"])
+    transient_user = session_admin.find_one(f"User WHERE code='{TestUtils.get_standard_ident(2)}'")
+    if transient_user:
+        session_admin.delete_one("User", transient_user["id"])
+        entities.remove_from_cleanup(kind="user", entity_id=transient_user["id"])
 
     # Remove shares if they exist
     for share_code in [SHARE_NAME_1, SHARE_NAME_2]:
@@ -102,7 +100,7 @@ def test_create_shared_folders_and_grant(session_admin, entities):
 
     acl = session_admin.grant(
         "User",
-        TestUtils.get_standard_ident(),
+        TestUtils.get_standard_ident(2),
         "Folder",
         share1["id"],
         {
@@ -115,7 +113,7 @@ def test_create_shared_folders_and_grant(session_admin, entities):
 
     standard_users = session_admin.find("User WHERE role=standard")
     assert isinstance(standard_users, list)
-    std = next((u for u in standard_users if u.get("code") == TestUtils.get_standard_ident()), None)
+    std = next((u for u in standard_users if u.get("code") == TestUtils.get_standard_ident(2)), None)
     assert std is not None, "Standard user should have been invited by grant call"
     entities.remember(kind="user", temp_name="u-s1", entity_id=std["id"])
 
@@ -197,7 +195,7 @@ def test_download_shared_content(session_standard, entities):
         if len(clients) > 0:
             break
         input(
-            f"Please login to the accsyn Desktop app as {TestUtils.get_standard_ident()} and press Enter to continue..."
+            f"Please login to the accsyn Desktop app as {TestUtils.get_standard_ident(2)} and press Enter to continue..."
         )
         time.sleep(2)
 
@@ -241,7 +239,7 @@ def test_grant_write_access(session_admin):
     assert share1 is not None
     acl = session_admin.grant(
         "User",
-        TestUtils.get_standard_ident(),
+        TestUtils.get_standard_ident(2),
         "Folder",
         share1["id"],
         {

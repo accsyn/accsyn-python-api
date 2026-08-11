@@ -10,10 +10,11 @@ from conftest import TestUtils, TEST_FILE, TEST_FILE2
 
 TEMP_TRANSFER_NAME = "Jönssonligan dyker upp igen"
 
+# General transfer tests
 
 @pytest.mark.order(0)
 def test_prepare_transfer(session_admin, entities):
-    # Prepare tests, remove file at storage
+    print("Prepare tests, remove file at storage")
     for filename in [TEST_FILE, TEST_FILE2, TEST_FILE2]:
         if not session_admin.exists(filename):
             continue
@@ -24,7 +25,7 @@ def test_prepare_transfer(session_admin, entities):
 
 @pytest.mark.order(1)
 def test_upload_should_fail(session_admin, entities):
-    # Test upload if no client, should fail as no source client exists
+    print("Test upload if no client, should fail as no source client exists")
     if session_admin.find_one("App"):
         logging.info("A client exists, skipping upload failure test")
         return
@@ -38,7 +39,7 @@ def test_upload_should_fail(session_admin, entities):
 @pytest.mark.skipif(not sys.stdin.isatty(), reason="needs interactive terminal")
 @pytest.mark.order(2)
 def test_check_client(session_admin, entities):
-    # Check the admin has a client running
+    print("Check the admin has a client running")
     while True:
         clients = session_admin.find("App")
         if len(clients) > 0:
@@ -60,18 +61,18 @@ def test_check_client(session_admin, entities):
 
 @pytest.mark.order(3)
 def test_upload(session_admin, entities):
-    # Test upload to root at default volume
+    print("Test upload to root at default volume")
     transfer = session_admin.create(
         "Transfer",
         {
             "source": TestUtils.get_data_path(TEST_FILE),
             "destination": TEST_FILE,
-            "name": TEMP_TRANSFER_NAME,
+            "name": "Test workspace upload: " + TEMP_TRANSFER_NAME,
             "status": "paused",
         },
     )
     assert transfer is not None
-    entities.remember(kind="transfer", temp_name="t1", entity_id=transfer["id"])
+    entities.remember(kind="transfer", temp_name="u1", entity_id=transfer["id"])
     logging.info(f"Waiting for upload {transfer['name']}({transfer['id']}) to get size")
     while transfer["size"] is None or transfer["size"] <= 0:
         time.sleep(2)
@@ -85,8 +86,8 @@ def test_upload(session_admin, entities):
 
 @pytest.mark.order(4)
 def test_resume_upload(session_admin, entities):
-    # Test resume and finish upload
-    transfer_id = entities.get_id("transfer", "t1")
+    print("Test resume and finish upload")
+    transfer_id = entities.get_id("transfer", "u1")
     transfer = session_admin.get_entity("Transfer", transfer_id)
     assert transfer is not None
     transfer = session_admin.update("Transfer", transfer_id, {"status": "waiting"})
@@ -97,10 +98,11 @@ def test_resume_upload(session_admin, entities):
 
 @pytest.mark.order(5)
 def test_append_to_upload(session_admin, entities):
-    transfer_id = entities.get_id("transfer", "t1")
+    print("Test append file to upload")
+    transfer_id = entities.get_id("transfer", "u1")
     transfer = session_admin.get_entity("Transfer", transfer_id)  # Need to use get_entity to get the finished job
     assert transfer is not None
-    logging.info(f"Appendeding file upload to {transfer['name']}({transfer_id}), waiting for completion")
+    logging.info(f"Appending file upload to recent job ({transfer_id}), waiting for completion")
     result = session_admin.create(
         "Job", {"source": TestUtils.get_data_path(TEST_FILE2), "destination": TEST_FILE2, "append": True}
     )
@@ -112,7 +114,8 @@ def test_append_to_upload(session_admin, entities):
 
 @pytest.mark.order(6)
 def test_create_nonexistent_upload_task(session_admin, entities):
-    transfer_id = entities.get_id("transfer", "t1")
+    print("Test create nonexistent upload task")
+    transfer_id = entities.get_id("transfer", "u1")
     transfer = session_admin.get_entity("Transfer", transfer_id)
     assert transfer is not None
     result = session_admin.create(
@@ -155,8 +158,8 @@ def test_create_nonexistent_upload_task(session_admin, entities):
 
 @pytest.mark.order(7)
 def test_modify_task(session_admin, entities):
-    # Set the failing task to onhold
-    transfer_id = entities.get_id("transfer", "t1")
+    print("Test modify task - set failing task to onhold")
+    transfer_id = entities.get_id("transfer", "u1")
     transfer = session_admin.get_entity("Transfer", transfer_id)
     assert transfer is not None
     result = session_admin.update_many("Task", transfer["id"], [{"uri": "2", "status": "onhold"}])
@@ -184,7 +187,91 @@ def test_modify_task(session_admin, entities):
             raise AccsynException(f"Upload {transfer['name']} task update timed out!")
 
 
+# Employee tests
+
 @pytest.mark.order(20)
-def test_download_task(session_admin, entities):
-    # Set the failing task to onhold
-    pass
+@pytest.mark.skipif(not sys.stdin.isatty(), reason="needs interactive terminal")
+def test_ensure_employee_user_exists(session_admin, session_employee, entities):
+    print("Remove all access to default volume for employee")
+    employee_user = session_admin.find_one(f"User WHERE code='{TestUtils.get_employee_ident()}'")
+    default_volume = session_admin.find_one("Volume WHERE default=true")
+    revoked_count = TestUtils.revoke_all(session_admin, employee_user, default_volume)
+    if revoked_count > 0:
+        print(f"Revoked {revoked_count} ACL(s) from default volume for employee {TestUtils.get_employee_ident()} in this test")
+    print("Ensuring employee client is launched")
+    while True:
+        clients = session_employee.find("App")
+        if len(clients) > 0:
+            has_online = False
+            for client in clients:
+                if client["status"] == "online":
+                    has_online = True
+                    break
+        if has_online:
+            break
+        print(f"Please login to the accsyn Desktop as {TestUtils.get_employee_ident()} and press Enter to continue...")
+        input()
+        time.sleep(2)
+
+@pytest.mark.order(21)
+def test_download_employee_unauthorized(session_employee, entities):
+    print("Test employee download of file without any volume access")
+    with pytest.raises(AccsynException):
+        session_employee.create(
+            "Transfer",
+            {
+                "source": TEST_FILE,
+                "destination": TestUtils.get_tmp_path(TEST_FILE),
+                "name": "Test server download: " + TEMP_TRANSFER_NAME
+            },
+        )
+
+@pytest.mark.order(22)
+def test_grant_employee_write_only_access(session_admin):
+    print("Test grant employee write only access to default volume")
+    default_volume = session_admin.find_one("Volume WHERE default=true")
+    session_admin.grant(
+        "User", 
+        TestUtils.get_employee_ident(), "Volume", 
+        default_volume["id"], 
+        data=dict(read=False, write=True)
+    )
+
+@pytest.mark.order(23)
+def test_download_unauthorized_read(session_employee):
+    print("Test employee download of file without volume read access")
+    with pytest.raises(AccsynException):
+        session_employee.create(
+            "Transfer",
+            {
+                "source": TEST_FILE,
+                "destination": TestUtils.get_tmp_path(TEST_FILE),
+                "name": "Test server download: " + TEMP_TRANSFER_NAME
+            },
+        )
+
+@pytest.mark.order(24)
+def test_grant_employee_read_only_access(session_admin):
+    print("Test grant employee read only access to default volume")
+    default_volume = session_admin.find_one("Volume WHERE default=true")
+    session_admin.grant(
+        "User", 
+        TestUtils.get_employee_ident(), 
+        "Volume", 
+        default_volume["id"], 
+        data=dict(read=True, write=False))
+
+@pytest.mark.order(25)
+def test_download_employee(session_employee, entities):
+    print("Test download of file from server, relaxed notiation")
+    transfer = session_employee.create(
+        "Transfer",
+        {
+            "source": TEST_FILE,
+            "destination": TestUtils.get_tmp_path(TEST_FILE),
+            "name": "Test server download: " + TEMP_TRANSFER_NAME
+        },
+    )
+    assert transfer is not None
+    entities.remember(kind="transfer", temp_name="d1", entity_id=transfer["id"])
+    TestUtils.wait_transfer_done(session_employee, transfer)

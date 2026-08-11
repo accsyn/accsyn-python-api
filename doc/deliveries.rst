@@ -130,18 +130,19 @@ Return value will be a list of dictionaries with recipient data:
 
 .. note::
 
+    ``access`` Might return recipients that not yet is invited to the workspace (init delivery state), these entries will have no ID defined.
     A recipient may have started but not completed a download. To get the full picture, inspect all transfers beneath the delivery.
 
 
 Remove a recipient from a delivery
 ----------------------------------
 
-To remove a recipient from a delivery, use the deassign API function::
+To remove a recipient from a delivery, use the revoke function::
 
     retval = session.revoke("User", "6676f3e9c7ef4e27da254e57", "Delivery", delivery["id"])
 
 
-Returns ``True`` if the operation succeeded.
+Returns ``True`` if a recipient was removed, ``False`` if the user was not a recipient.
 
 .. note::
 

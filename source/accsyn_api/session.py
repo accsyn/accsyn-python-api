@@ -88,118 +88,12 @@ UNIQUE_ENTITY_TYPES = [
 ]
 # Entity types were code is unique and can be used to find the entity by its API identifier (code)
 
-
-class JSONEncoder(json.JSONEncoder):
-    """JSON serialiser."""
-
-    def default(self, obj: Any) -> Any:
-        if isinstance(obj, datetime.date) or isinstance(obj, datetime.datetime):
-            # Convert to UTC if datetime, otherwise use as-is for date
-            if isinstance(obj, datetime.datetime):
-                # If naive (no timezone), assume local timezone
-                if obj.tzinfo is None:
-                    # Get local timezone and apply it
-                    local_tz = datetime.datetime.now().astimezone().tzinfo
-                    obj = obj.replace(tzinfo=local_tz)
-                # Convert to UTC before sending to backend
-                obj = obj.astimezone(datetime.timezone.utc)
-            return obj.strftime("%Y-%m-%dT%H:%M:%S")
-        return super().default(obj)
-
-
-class JSONDecoder(json.JSONDecoder):
-    """JSON deserialize."""
-
-    def decode(self, json_string: str) -> Any:
-        json_data = json.loads(json_string)
-
-        def recursive_decode(d: Any) -> Any:
-            if isinstance(d, dict):
-                for key in d.keys():
-                    if isinstance(d[key], dict):
-                        d[key] = recursive_decode(d[key])
-                    elif isinstance(d[key], list):
-                        newlist = []
-                        for i in d[key]:
-                            newlist.append(recursive_decode(i))
-                        d[key] = newlist
-                    elif Session._is_str(d[key]):
-                        dt = None
-                        if d[key].startswith("ObjectId:"):
-                            d[key] = d[key].replace("ObjectId:", "")  # Just treat as string
-                        elif re.match(
-                            "^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$",
-                            str(Session._safely_printable(d[key])),
-                        ):
-                            if len(d[key].split("-")[0]) == 4:
-                                dt = datetime.datetime.strptime(d[key], "%Y-%m-%dT%H:%M:%S")
-                            else:
-                                dt = datetime.datetime.strptime(d[key], "%y-%m-%dT%H:%M:%S")
-                        # With millis
-                        elif re.match(
-                            "^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}$",
-                            str(Session._safely_printable(d[key])),
-                        ):
-                            if len(d[key].split("-")[0]) == 4:
-                                dt = datetime.datetime.strptime(d[key], "%Y-%m-%dT%H:%M:%S.%f")
-                            else:
-                                dt = datetime.datetime.strptime(d[key], "%y-%m-%dT%H:%M:%S.%f")
-                        if dt is not None:
-                            # Backend sends UTC, convert to local timezone
-                            dt = dt.replace(tzinfo=datetime.timezone.utc)
-                            d[key] = dt.astimezone()
-            return d
-
-        return recursive_decode(json_data)
-
-
-def _load_env_file(path: str, override: bool = False) -> None:
-    """
-    Load environment variables from a .env file.
-
-    :param path: Path to the .env file
-    :param override: If True, override existing environment variables. If False, only set if not already set.
-    """
-    if not os.path.exists(path):
-        return
-
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            for line in f:
-                # Strip whitespace and skip empty lines
-                line = line.strip()
-                if not line:
-                    continue
-
-                # Skip comments (lines starting with #)
-                if line.startswith("#"):
-                    continue
-
-                # Parse KEY=VALUE
-                if "=" in line:
-                    key, value = line.split("=", 1)
-                    key = key.strip()
-                    value = value.strip()
-
-                    # Remove quotes if present
-                    if len(value) >= 2:
-                        if (value.startswith('"') and value.endswith('"')) or (
-                            value.startswith("'") and value.endswith("'")
-                        ):
-                            value = value[1:-1]
-
-                    # Only set if not already set (unless override=True)
-                    if override or key not in os.environ:
-                        os.environ[key] = value
-    except (IOError, OSError) as e:
-        logging.error(traceback.format_exc())
+DEFAULT_CONNECT_TIMEOUT: int = 10  # Wait 10 seconds for connection
+DEFAULT_TIMEOUT: int = 2 * 60  # Wait 2 minutes for response
 
 
 class Session(object):
     """accsyn API session object."""
-
-    DEFAULT_CONNECT_TIMEOUT: int = 10  # Wait 10 seconds for connection
-    DEFAULT_TIMEOUT: int = 2 * 60  # Wait 2 minutes for response
 
     _p_logfile: Optional[str] = None
 
@@ -232,21 +126,29 @@ class Session(object):
         path_envfile: Optional[str] = None,
     ) -> None:
         """
-        Initiate a new API session object. Throws exception upon authentication failure.
+        Initialise a new API session object.
 
-        :param workspace: The accsyn workspace code (or read from ACCSYN_WORKSPACE environment variable)
-        :param username: The accsyn username (or read from ACCSYN_API_USER environment variable)
-        :param api_key: The secret API key for authentication (or read from ACCSYN_API_KEY environment variable)
+        Raises an exception on authentication failure.
+
+        :param workspace: accsyn workspace code (or read from
+            ``ACCSYN_WORKSPACE`` environment variable).
+        :param username: accsyn username (or read from ``ACCSYN_API_USER``
+            environment variable).
+        :param api_key: Secret API key for authentication (or read from
+            ``ACCSYN_API_KEY`` environment variable).
         :param hostname: Override the hostname/IP of the workspace to connect to.
-        :param port: Override default port (443/TCP)
+        :param port: Override default port (443/TCP).
         :param proxy: The proxy settings (or read from ACCSYN_PROXY environment variable).
-        :param verbose: Printing verbose debugging output to stdout.
-        :param pretty_json: (verbose) Print pretty formatted JSON.
+        :param verbose: Print verbose debug output to stdout.
+        :param pretty_json: (verbose) Print pretty-formatted JSON.
         :param path_logfile: Output all log messages to this logfile instead of stdout.
-        :param timeout: Timeout in seconds for API calls - waiting for response.
-        :param connect_timeout: Timeout in seconds for API calls - waiting for connection.
-        :param domain: (Backward compatibility) The accsyn domain (or read from ACCSYN_DOMAIN environment variable)
-        :param path_envfile: Path to .env file to load credentials from (or read from ACCSYN_CREDENTIALS_PATH environment variable)
+        :param timeout: Timeout in seconds for API calls while waiting for response.
+        :param connect_timeout: Timeout in seconds for API calls while waiting for
+            connection.
+        :param domain: (Backward compatibility) accsyn domain (or read from
+            ``ACCSYN_DOMAIN`` environment variable).
+        :param path_envfile: Path to ``.env`` file to load credentials from (or read
+            from ``ACCSYN_CREDENTIALS_PATH`` environment variable).
 
         .. note::
             Workspace backends apply per-IP rate limits on REST traffic. Reuse one
@@ -255,18 +157,18 @@ class Session(object):
             is returned. See :ref:`using` for limit details and retry guidance.
 
         .. deprecated:: 3.1.0
-            Use the :param workspace: parameter instead
+            Use the ``workspace`` parameter instead.
         """
         self._be_verbose = verbose
         # Load .env file if specified or if ACCSYN_CREDENTIALS_PATH is set
         env_file_path = path_envfile or os.environ.get("ACCSYN_CREDENTIALS_PATH")
         if env_file_path:
             self._verbose(f"Loading credentials from {env_file_path}")
-            _load_env_file(env_file_path, override=True)
+            Session._load_env_file(env_file_path, override=True)
         elif os.path.exists(".env"):
             self._verbose(f"Loading credentials from .env")
             # Also try loading .env from current directory if no path specified
-            _load_env_file(".env", override=True)
+            Session._load_env_file(".env", override=True)
 
         # Generate a session ID
         self.__version__ = __version__
@@ -287,7 +189,9 @@ class Session(object):
                     workspace = os.environ[key]
                     break
         if not workspace:
-            raise AccsynException("Please supply your accsyn workspace domain or set ACCSYN_WORKSPACE environment!")
+            raise AccsynException(
+                "Please supply your accsyn workspace code or set ACCSYN_WORKSPACE environment!"
+            )
         if not username:
             username = os.environ.get("ACCSYN_API_USER")
         if not username:
@@ -301,8 +205,8 @@ class Session(object):
             raise AccsynException("Please supply your accsyn API KEY or set ACCSYN_API_KEY environment!")
         self._hostname = hostname
         self._port = port
-        self._timeout = timeout or Session.DEFAULT_TIMEOUT
-        self._connect_timeout = connect_timeout or Session.DEFAULT_CONNECT_TIMEOUT
+        self._timeout = timeout or DEFAULT_TIMEOUT
+        self._connect_timeout = connect_timeout or DEFAULT_CONNECT_TIMEOUT
         if self._hostname is None:
             if self._dev:
                 self._hostname = "127.0.0.1"
@@ -318,7 +222,7 @@ class Session(object):
                 if "message" in response:
                     raise AccsynException(response["message"])
                 result = response.get('result', dict())
-                assert "hostname" in result, f"No API endpoint hostname were provided for workspace {workspace}!"
+                assert "hostname" in result, f"No API endpoint hostname was provided for workspace {workspace}!"
                 self._hostname = result["hostname"]
                 if self._port is None:
                     self._port = result["port"]
@@ -365,11 +269,11 @@ class Session(object):
         return s
 
     def get_last_message(self) -> Optional[str]:
-        """Retreive error message from last API call."""
+        """Retrieve error message from last API call."""
         return self._last_message
 
     def _login(self) -> bool:
-        """Attempt to authenticate with accsyn using the provided credentials, returns a session ID."""
+        """Authenticate with accsyn using the provided credentials and return a session ID."""
         assert self._uid is None, "Already logged in!"
         headers = {
             "Authorization": f"basic {Session._base64_encode(self._username)}:{Session._base64_encode(self._api_key)}",
@@ -386,7 +290,7 @@ class Session(object):
         # Store session key
         if 'message' in response:
             raise AccsynException(response["message"])
-        assert "result" in response, "No result were provided!"
+        assert "result" in response, "No result was provided!"
         result = response["result"]
         self._role = result["role"]
         self._uid = result["id"]
@@ -577,7 +481,7 @@ class Session(object):
         if single_entity_query:
             if retval and 0 < len(retval):
                 if 1 < len(retval):
-                    Session._warning(f"Multiple entities retreived({len(retval)}), returning first one.")
+                    Session._warning(f"Multiple entities retrieved({len(retval)}), returning first one.")
                 single_retval = retval[0]
                 return single_retval
             return None
@@ -641,7 +545,7 @@ class Session(object):
                 return None
             retval = result[0]
             if 1 < len(result):
-                Session._warning(f"Multiple entities retreived({len(result)}), returning first one.")
+                Session._warning(f"Multiple entities retrieved({len(result)}), returning first one.")
             return retval
         return None
 
@@ -661,14 +565,14 @@ class Session(object):
         self, query: str, attributes: Optional[List[str]] = None, time: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Return metrics for an entity (job)
+        Return metrics for an entity (job).
 
         .. versionadded:: 2.0
 
-        :param query:
-        :param attributes:
-        :param time:
-        :return:
+        :param query: Entity query in accsyn query format.
+        :param attributes: Optional list of metric attributes to include.
+        :param time: Optional time expression/filter as expected by backend.
+        :return: Dictionary containing metric data.
         """
         d = self._decode_query(query)
         data = dict(
@@ -754,7 +658,7 @@ class Session(object):
             raise AccsynException("ACLs cannot be updated, use the grant function to grant access.")
         assert 0 < len(entityid or "") and (
             Session._is_str(entityid)
-        ), "Entity ID must be provided and be of string type!"
+        ), "Entity ID must be provided and must be of string type!"
         if not re.match("^[a-z0-9]{24}$", (entityid or "")):
             raise AccsynException("Invalid parent entity ID supplied!")
         assert 0 < len(data or []) and isinstance(data, list), "Invalid data supplied, must be a list!"
@@ -776,14 +680,26 @@ class Session(object):
         data: Dict[str, Any],
     ) -> bool:
         """
-        Assign one entity to another.
+        Assign a server to a share or volume.
+
+        Currently supported operation:
+
+        * ``entitytype_parent`` in ``{"volume", "share"}``
+        * ``entitytype`` == ``"server"``
 
         .. versionadded:: 2.0
 
-        :param entitytype_parent: The parent entity type to assign entity to.
-        :param entitytype_other: The entity type to assign to parent entity.
-        :param data: Assignment data, should contain parent entity id and entity ids.
-        :return: True if assignment was a success, exception otherwise.
+        :param entitytype_parent: Parent entity type to assign to (``volume`` or
+            ``share``).
+        :param entitytype: Entity type to assign (must be ``server``).
+        :param data: Assignment payload containing the required IDs:
+
+            * ``volume`` or ``share``: Parent share/volume ID.
+            * ``server``: Server ID to assign.
+
+        :type data: dict[str, Any]
+        :return: ``True`` if assignment succeeded. Raises :exc:`AccsynException` on
+            unsupported operations or invalid identifiers.
         """
         assert 0 < len(entitytype_parent or "") and Session._is_str(
             entitytype_parent
@@ -815,56 +731,22 @@ class Session(object):
                 ),
                 entityid=share_id,
             )
-        elif entitytype_parent in ["delivery"] and entitytype in ["user"]:
-            # Assign a user to a delivery, expect delivery and user supplied
-            delivery_id = data.get("delivery")
-            assert re.match(
-                "^[a-z0-9]{24}$", (delivery_id or "")
-            ), "Please supply parent entity ID as 'delivery' with assignment data!"
-            user_id = data.get("user")
-            assert re.match(
-                "^[a-z0-9]{24}$", (user_id or "")
-            ), "Please supply entity ID as 'user' with assignment data!"
-            response = self._event(
-                "PUT",
-                f"job/recipient/add",
-                dict(recipient=user_id),
-                entityid=delivery_id,
-            )
-        elif entitytype_parent in ["volume", "folder", "home", "collection"] and entitytype in ["user"]:
-            # Assign an employee user to a volume
-            volume_id = data.get("volume")
-            assert re.match(
-                "^[a-z0-9]{24}$", (volume_id or "")
-            ), "Please supply parent entity ID as 'volume' with assignment data!"
-            user_id = data.get("user")
-            assert re.match(
-                "^[a-z0-9]{24}$", (user_id or "")
-            ), "Please supply entity ID as 'user' with assignment data!"
-            payload = dict(
-                entity=f"user:{user_id}",
-                target=f"share:{volume_id}",
-                read=data.get("read", True),
-                write=data.get("write", True),
-                notify=data.get("notify", True),
-                message=data.get("message", ""),
-            )
-            response = self._event("POST", f"acl/create", payload)
-        if response is not None:
-            return response["result"]
         else:
             raise AccsynException("Unsupported assignment operation!")
-
+        return response["result"]
+ 
     def assignments(self, entitytype: str, entityid: str) -> List[Dict[str, Any]]:
         """
-        Return list of assigned entities.
+        List entities assigned to a parent entity.
 
-        This can be used to list servers assigned to a volume.
+        This is primarily used to list servers assigned to a volume/share.
 
         .. versionadded:: 2.0
 
-        :param query:
-        :return: List of dictionaries.
+        :param entitytype: Parent entity type (``volume`` or ``share``).
+        :param entityid: Parent entity ID.
+        :return: List of dictionaries describing assigned servers/clients.
+            Raises :exc:`AccsynException` for unsupported entity types.
         """
         assert 0 < len(entitytype or "") and Session._is_str(
             entitytype
@@ -888,21 +770,33 @@ class Session(object):
         data: Dict[str, Any],
     ) -> bool:
         """
-        De-assign one entity from another.
+        Remove a server/client assignment from a share or volume.
+
+        Currently supported operation:
+
+        * ``entitytype_parent`` in ``{"volume", "share"}``
+        * ``entitytype`` == ``"server"``
 
         .. versionadded:: 2.0
 
-        :param entitytype_parent: The parent entity type to deassign entity from
-        :param entitytype: The entity type to deassign from parent entity
-        :param data: De-assignment data, should contain parent entity id and entity ids + additional information as required
-        :return: True if deassignment was a success, exception otherwise.
+        :param entitytype_parent: Parent entity type to deassign from
+            (``volume`` or ``share``).
+        :param entitytype: Entity type to deassign (currently ``server``).
+        :param data: De-assignment payload containing the required IDs:
+
+            * ``volume`` or ``share``: Parent share/volume ID.
+            * ``server``: Server ID to deassign.
+
+        :type data: dict[str, Any]
+        :return: ``True`` if de-assignment succeeded. Raises :exc:`AccsynException`
+            on unsupported operations or invalid identifiers.
         """
         assert 0 < len(entitytype_parent or "") and Session._is_str(
             entitytype_parent
         ), "Invalid parent entity type supplied, must be of string type!"
         assert 0 < len(entitytype or "") and Session._is_str(
             entitytype
-        ), "Invalid centity type supplied, must be of string type!"
+        ), "Invalid entity type supplied, must be of string type!"
         entitytype_parent = entitytype_parent.lower().strip()
         entitytype = entitytype.lower().strip()
         assert (
@@ -925,10 +819,9 @@ class Session(object):
                 dict(client=client_id),
                 entityid=share_id,
             )
-        if response is not None:
-            return response["result"]
         else:
-            raise AccsynException("Unsupported assignment operation!")
+            raise AccsynException("Unsupported de-assignment operation!")
+        return response["result"]
 
     # Entity access grant / revocation
 
@@ -939,18 +832,51 @@ class Session(object):
         targettype: str,
         targetid: str,
         data: Dict[str, Any] = None,
-    ) -> bool:
+    ) -> Union[bool, Dict[str, Any]]:
         """
-        Grant access to an entity.
+        Grant a user access to a delivery, request, stream, or share.
+
+        Creates or updates an ACL for share targets, or adds a recipient for job
+        targets.
+        Currently only ``entitytype="user"`` is supported.
 
         .. versionadded:: 3.2
 
-        :param entitytype: The entity type that should be granted access.
-        :param entityid: The id of the entity that should be granted access.
-        :param targettype: The entity type to grant access to.
-        :param targetid: The id of the entity to grant access to.
-        :param data: ACL data, should permissions and other data.
-        :return: True if assignment was a success, exception otherwise.
+        :param entitytype: Entity type to grant access to. Must be ``user``.
+        :param entityid: User ID or email address (code). If the user does not exist,
+            they are invited unless ``invite`` is set to ``False`` in ``data``.
+        :param targettype: Entity type to grant access on. Supported values:
+
+            * ``delivery``, ``request``, ``stream`` — add a recipient.
+            * ``volume``, ``folder``, ``home``, ``collection`` — create an ACL.
+
+        :param targetid: ID or code of the target entity.
+        :param data: Optional grant options. Supported keys depend on ``targettype``:
+
+            For share targets (``volume``, ``folder``, ``home``, ``collection``):
+
+            * ``read`` (``bool``, default ``False``): Grant read access.
+            * ``write`` (``bool``, default ``False``): Grant write access.
+            * ``notify`` (``bool``, default ``False``): Send a notification email.
+            * ``message`` (``str``, default ``""``): Message included in the notification.
+            * ``path`` (``str``, default ``"/"``): Relative path within the share.
+            * ``invite`` (``bool``, default ``True``): Invite the user if they are not
+              in the workspace.
+
+            If ``data`` is omitted for share targets, it defaults to
+            ``dict(read=True, write=True)``.
+
+            For job targets (``delivery``, ``request``, ``stream``):
+
+            * ``invite`` (``bool``, default ``True``): Invite the user if they are not
+              in the workspace. If ``False`` and the user does not exist, an exception
+              is raised.
+
+        :type data: dict[str, Any] | None
+        :return: For pending job targets, ``True``. For submitted job targets or share
+            targets, a dictionary with ACL/recipient attributes. Existing ACLs are
+            updated in place when needed (idempotent upsert). Raises an exception on
+            invalid input or permission failure.
         """
         # Validate entity type and id
         assert 0 < len(entitytype or "") and Session._is_str(
@@ -1003,6 +929,9 @@ class Session(object):
                 targetid = response["result"][0]["id"]
             else:
                 raise AccsynException(f"Please supply a valid {targettype} ID!")
+        assert (
+            data is None or isinstance(data, dict)
+        ), "Invalid grant access data supplied, must be a dict!"
         result = None
         if entitytype == "user":
             if targettype in ["delivery", "request", "stream"]:
@@ -1022,41 +951,58 @@ class Session(object):
                 result = response["result"]
             elif targettype in ["volume", "folder", "home", "collection"]:
                 # Assign an employee user to a volume
-                assert (
-                    data is not None and isinstance(data, dict) and (0 < len(data or dict()))
-                ), "Invalid grant access data supplied, must be a dict with values!"
+                if not data:
+                    data = dict(read=True, write=True)
                 user_id = entityid
                 volume_id = targetid
                 payload = dict(
                     entity=f"user:{user_id}",
                     target=f"share:{volume_id}",
-                    read=data.get("read", True),
-                    write=data.get("write", True),
-                    notify=data.get("notify", True),
+                    invite=data.get("invite", True),
+                    read=data.get("read", False),
+                    write=data.get("write", False),
+                    notify=data.get("notify", False),
                     message=data.get("message", ""),
                     path=data.get("path", "/"),
                 )
-                if (data or dict()).get("invite", True) is False:
-                    payload["invite"] = False
                 response = self._event("POST", f"acl/create", payload)
                 result = response["result"][0]
-        if result is not None:
-            return result
+            else:
+                raise AccsynException("Unsupported grant target type for user (supported: delivery, request, stream, job, volume, folder, home, collection, share)!")
         else:
-            raise AccsynException("Unsupported grant access operation!")
-
+            raise AccsynException("Unsupported grant entity type (supported: user)!")
+        return result
+  
     def access(self, targettype: str, targetid: str, recursive: bool = False) -> List[Dict[str, Any]]:
         """
-        Return list of ACLs for an entity.
+        List users with access to a delivery or share.
 
-        This can be used to list user with access to a delivery or a share (volume, folder, home, collection).
+        Returns recipients for delivery targets, or ACL records for share targets.
 
         .. versionadded:: 3.2
 
-        :param targettype: The entity type to list access for (delivery, volume, folder, home, collection).
-        :param targetid: The id of the entity to list access for.
-        :param recursive: If True, list ACLs for all shares beneath the target volume, folder or home.
-        :return: List of dictionaries.
+        :param targettype: Entity type to list access for. Supported values:
+
+            * ``delivery``, ``request``, ``stream`` — list recipients.
+            * ``volume``, ``folder``, ``home``, ``collection``, ``share`` — list ACLs.
+
+        :param targetid: ID of the target entity.
+        :param recursive: (Share targets only) If ``True``, include ACLs for all shares
+            beneath the target volume, folder, or home.
+        :return: List of dictionaries. For delivery targets, each entry holds recipient
+            attributes such as ``user``, ``user_hr``, and ``actioned``. For share
+            targets, each entry holds ACL attributes:
+
+            * ``user`` (``str``): User ID.
+            * ``user_hr`` (``str``): User, in human-readable form (code/email).
+            * ``share`` (``str``): Share ID.
+            * ``share_hr`` (``str``): Share, in human-readable form (name).
+            * ``read`` (``bool``): Whether read access is granted.
+            * ``write`` (``bool``): Whether write access is granted.
+            * ``acknowledged`` (``bool``): Whether the user has acknowledged access.
+            * ``path`` (``str``): Relative path within the share (default ``"/"``).
+
+            Raises an exception on failure or unsupported target type.
         """
         assert 0 < len(targettype or "") and Session._is_str(
             targettype
@@ -1068,8 +1014,8 @@ class Session(object):
         targetid = targetid.lower().strip()
         assert re.match("^[a-z0-9]{24}$", (targetid or "")), "Please supply a valid entity ID!"
 
-        if targettype.lower() in ["delivery"]:
-            # List recipients assigned to a delivery
+        if targettype.lower() in ["delivery", "request", "stream"]:
+            # List recipients assigned to a delivery/request/stream
             response = self._event(
                 "GET",
                 f"job/recipients",
@@ -1077,7 +1023,7 @@ class Session(object):
                 entityid=targetid,
             )
             return response["result"]
-        elif targettype.lower() in ["volume", "folder", "home", "collection"]:
+        elif targettype.lower() in ["volume", "folder", "home", "collection", "share"]:
             # List users with access to a share
             response = self._event(
                 "GET",
@@ -1105,16 +1051,25 @@ class Session(object):
 
     def revoke(self, entitytype: str, entityid: str, targettype: str, targetid: str) -> bool:
         """
-        Revoke access to an entity.
+        Revoke a user's access to a delivery or share.
+
+        Removes the recipient for delivery targets or access to a folder beneath a share, deleting the ACL record.
+        Currently only ``entitytype="user"`` is supported.
 
         .. versionadded:: 3.2
 
-        :param entity: The entity type to revoke access for.
-        :param entityid: The id of the entity to revoke access for.
-        :param target: The entity type to revoke access from.
-        :param targetid: The id of the entity to revoke access from.
-        :param data: ACL data, should contain parent entity id and entity ids.
-        :return: True if revocation was a success, exception otherwise.
+        :param entitytype: Entity type to revoke access for. Must be ``user``.
+        :param entityid: User ID or email address (code). An exception is raised if
+            no user is found.
+        :param targettype: Entity type to revoke access from. Supported values:
+
+            * ``delivery``, ``request`` or ``stream`` — remove a recipient.
+            * ``volume``, ``folder``, ``home``, ``collection`` — delete the ACL.
+
+        :param targetid: ID of the target entity.
+        :return: ``True`` if access was removed, ``False`` if no matching ACL/recipient
+            exists. Raises :exc:`AccsynException` only for invalid input, permission
+            failures, or unsupported operations.
         """
         assert 0 < len(entitytype or "") and Session._is_str(
             entitytype
@@ -1123,8 +1078,8 @@ class Session(object):
         assert 0 < len(entityid or "") and Session._is_str(
             entityid
         ), "Invalid entity id supplied, must be of string type!"
-        entityid = entityid.lower().strip()
-        if not re.match("^[a-z0-9]{24}$", (entityid or "")):
+        entityid = (entityid or "").lower().strip()
+        if not re.match("^[a-z0-9]{24}$", entityid):
             # Try to find entity by code if possible
             if entitytype in UNIQUE_ENTITY_TYPES:
                 response = self._event(
@@ -1135,11 +1090,11 @@ class Session(object):
                 if 0 < len(response.get("result", [])):
                     # Use the correct ID
                     entityid = response["result"][0]["id"]
-                else:
+                elif targettype.lower() not in ["delivery", "request", "stream", "job"]:
+                    # Job might be an init delivery with a pending user (not invited yet)
                     raise AccsynException(f"No {entitytype} found with code '{entityid}' found!")
             else:
-                raise AccsynException(f"Please supply a valid {entitytype} ID!")
-        assert re.match("^[a-z0-9]{24}$", (entityid or "")), "Please supply a valid entity ID!"
+                raise AccsynException(f"Please supply a valid {entitytype} ID! Hint: {entitytype} does not support unique API code attribute lookup!")
         assert 0 < len(targettype or "") and Session._is_str(
             targettype
         ), "Invalid target entity type supplied, must be of string type!"
@@ -1150,38 +1105,43 @@ class Session(object):
         targetid = targetid.lower().strip()
         assert re.match("^[a-z0-9]{24}$", (targetid or "")), "Please supply a valid entity ID!"
         response = None
-        if targettype in ["delivery"] and entitytype == "user":
-            # Revoke user access from a delivery, expect delivery and user supplied
-            delivery_id = targetid
-            user_id = entityid
-            response = self._event(
-                "DELETE",
-                f"job/recipient",
-                dict(recipient=user_id),
-                entityid=delivery_id,
-            )
-        elif targettype in ["volume", "folder", "home", "collection"] and entitytype == "user":
-            # Revoke user access from a share
-            share_id = targetid
-            user_id = entityid
-            # First, located the ACL
-            response = self._event(
-                "GET", f"acl/find", dict(), query=f"acl WHERE entity=user:{user_id} AND target=share:{share_id}"
-            )
-            acls = response["result"]
-            if len(acls) == 0:
-                raise AccsynException(f"No ACL found for user {user_id} and share {share_id}")
-            response = self._event(
-                "DELETE",
-                f"acl/delete",
-                dict(),
-                entityid=acls[0]["id"],
-            )
-        if response is not None:
-            return response["result"]
+        if entitytype == "user":
+            if targettype in ["delivery", "request", "stream", "job"]:
+                # Revoke user access from a delivery/request/stream.
+                delivery_id = targetid
+                user_id = entityid
+                recipients = self._event("GET", "job/recipients", dict(), entityid=delivery_id).get("result", [])
+                if not any(((recipient.get("user") == user_id or recipient.get("user_hr") == user_id) for recipient in recipients)):
+                    return False
+                response = self._event(
+                    "DELETE",
+                    f"job/recipient",
+                    dict(recipient=user_id),
+                    entityid=delivery_id,
+                )
+            elif targettype in ["volume", "folder", "home", "collection", "share"] and entitytype == "user":
+                # Revoke user access from a share
+                share_id = targetid
+                user_id = entityid
+                # First, located the ACL
+                response = self._event(
+                    "GET", f"acl/find", dict(), query=f"acl WHERE entity=user:{user_id} AND target=share:{share_id}"
+                )
+                acls = response["result"]
+                if len(acls) == 0:
+                    return False
+                response = self._event(
+                    "DELETE",
+                    f"acl/delete",
+                    dict(),
+                    entityid=acls[0]["id"],
+                )
+            else:
+                raise AccsynException("Unsupported revoke access target type!")
         else:
-            raise AccsynException("Unsupported revoke access operation!")
-
+            raise AccsynException("Unsupported revoke access entity type!")
+        return response["result"]
+    
     # Deactivate/Delete an entity
 
     def offline_one(self, entitytype: str, entityid: str) -> Any:
@@ -1226,19 +1186,20 @@ class Session(object):
 
         :param entitytype: The type of entity to delete (job, share, acl, ..)
         :param entityid: The id of the entity.
-        :param data: (Optional) The dictionary containing additional delete options, such as force=True to delete even if there are active related entities.
+        :param data: (Optional) Dictionary containing additional delete options, such
+            as ``force=True`` to delete even if active related entities exist.
 
         :return: True if deleted, an exception is thrown otherwise.
         """
         assert 0 < len(entitytype or "") and Session._is_str(
             entitytype
-        ), "Invalid entity type supplied, provided and be of string type!"
+        ), "Invalid entity type supplied, must be of string type!"
         entitytype = entitytype.lower().strip()
         if entitytype == "acl":
             raise AccsynException("ACLs cannot be deleted, use the revoke function to revoke access.")
         assert 0 < len(entityid or "") and (
             Session._is_str(entityid)
-        ), "Invalid entity ID supplied, provided and be of string type!"
+        ), "Invalid entity ID supplied, must be of string type!"
         response = self._event(
             "DELETE",
             f"{entitytype}/delete",
@@ -1716,14 +1677,14 @@ class Session(object):
         return self._event("GET", "user/api_key", dict())["api_key"]
 
     def gui_is_running(self) -> Optional[bool]:
-        """Backward compability"""
+        """Backward compatibility."""
         return self.app_is_running()
 
     def app_is_running(self) -> Optional[bool]:
         """
         Check if the accsyn desktop app is running on the same machine (code/hostname match) and with same user ID.
 
-        Equivalent to do client query with user, code and type.
+        Equivalent to a client query based on user, code, and type with status check.
 
         :return: True if found, False otherwise.
         """
@@ -1742,14 +1703,14 @@ class Session(object):
         return retval
 
     def server_is_running(self) -> Optional[bool]:
-        """Backward compatibility"""
+        """Backward compatibility."""
         return self.daemon_is_running()
 
     def daemon_is_running(self) -> Optional[bool]:
         """
         Check if a daemon is running on the same machine (code/hostname match) with same user ID.
 
-        Equivalent to do client query with user, code and type.
+        Equivalent to a client query based on user, code, and type with status check.
 
         :return: True if found, False otherwise.
         """
@@ -1792,7 +1753,7 @@ class Session(object):
     @staticmethod
     def str(d: Optional[Dict[str, Any]], indent: int = 4) -> str:
         """
-        Return a string representation of an dictionary.
+        Return a string representation of a dictionary.
 
         .. deprecated:: 3.2.0
             Use the :func:`dump` function instead
@@ -1803,7 +1764,7 @@ class Session(object):
     @staticmethod
     def dump(d: Optional[Dict[str, Any]], indent: int = 4) -> str:
         """
-        Return a string representation of an dictionary.
+        Return a string representation of a dictionary.
 
         .. versionchanged:: 3.2.0
             Was 'str' function.
@@ -1997,7 +1958,7 @@ class Session(object):
             raise AccsynException(message)
 
         if "exception" in retval:
-            message = f"{uri} caused an exception! Please contact {self._workspace} admin for more further support."
+            message = f"{uri} caused an exception! Please contact {self._workspace} admin for further support."
             Session._warning(message)
             if self._role in [CLEARANCE_ADMIN, CLEARANCE_SUPPORT]:
                 Session._warning(retval["exception"])
@@ -2097,11 +2058,11 @@ class Session(object):
         query = (query or "").replace("\t", " ").replace("\n", "").strip()
         parts = []
         idx_part_start = 0
-        paranthesis_depth = 0
+        parenthesis_depth = 0
         for idx in range(0, len(query)):
             do_append = True
             if query[idx] == " ":
-                if not is_escaped and paranthesis_depth == 0:
+                if not is_escaped and parenthesis_depth == 0:
                     if is_at_whitespace:
                         # Ignore this
                         do_append = False
@@ -2117,10 +2078,10 @@ class Session(object):
                     is_escaped = not is_escaped
                 elif query[idx] == "(":
                     if not is_escaped:
-                        paranthesis_depth += 1
+                        parenthesis_depth += 1
                 elif query[idx] == ")":
                     if not is_escaped:
-                        paranthesis_depth -= 1
+                        parenthesis_depth -= 1
             if do_append:
                 s += query[idx]
         if idx_part_start < len(query):
@@ -2192,6 +2153,114 @@ class Session(object):
     def _base64_encode(s: str) -> str:
         """Produce a BASE64 encoded string."""
         return (base64.b64encode(s.encode("utf-8"))).decode("ascii")
+
+    @staticmethod
+    def _load_env_file(path: str, override: bool = False) -> None:
+        """
+        Load environment variables from a .env file.
+
+        :param path: Path to the .env file
+        :param override: If True, override existing environment variables. If False, only set if not already set.
+        """
+        if not os.path.exists(path):
+            return
+
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                for line in f:
+                    # Strip whitespace and skip empty lines
+                    line = line.strip()
+                    if not line:
+                        continue
+
+                    # Skip comments (lines starting with #)
+                    if line.startswith("#"):
+                        continue
+
+                    # Parse KEY=VALUE
+                    if "=" in line:
+                        key, value = line.split("=", 1)
+                        key = key.strip()
+                        value = value.strip()
+
+                        # Remove quotes if present
+                        if len(value) >= 2:
+                            if (value.startswith('"') and value.endswith('"')) or (
+                                value.startswith("'") and value.endswith("'")
+                            ):
+                                value = value[1:-1]
+
+                        # Only set if not already set (unless override=True)
+                        if override or key not in os.environ:
+                            os.environ[key] = value
+        except (IOError, OSError) as e:
+            logging.error(traceback.format_exc())
+
+
+
+class JSONEncoder(json.JSONEncoder):
+    """JSON serialiser."""
+
+    def default(self, obj: Any) -> Any:
+        if isinstance(obj, datetime.date) or isinstance(obj, datetime.datetime):
+            # Convert to UTC if datetime, otherwise use as-is for date
+            if isinstance(obj, datetime.datetime):
+                # If naive (no timezone), assume local timezone
+                if obj.tzinfo is None:
+                    # Get local timezone and apply it
+                    local_tz = datetime.datetime.now().astimezone().tzinfo
+                    obj = obj.replace(tzinfo=local_tz)
+                # Convert to UTC before sending to backend
+                obj = obj.astimezone(datetime.timezone.utc)
+            return obj.strftime("%Y-%m-%dT%H:%M:%S")
+        return super().default(obj)
+
+
+class JSONDecoder(json.JSONDecoder):
+    """JSON deserialize."""
+
+    def decode(self, json_string: str) -> Any:
+        json_data = json.loads(json_string)
+
+        def recursive_decode(d: Any) -> Any:
+            if isinstance(d, dict):
+                for key in d.keys():
+                    if isinstance(d[key], dict):
+                        d[key] = recursive_decode(d[key])
+                    elif isinstance(d[key], list):
+                        newlist = []
+                        for i in d[key]:
+                            newlist.append(recursive_decode(i))
+                        d[key] = newlist
+                    elif Session._is_str(d[key]):
+                        dt = None
+                        if d[key].startswith("ObjectId:"):
+                            d[key] = d[key].replace("ObjectId:", "")  # Just treat as string
+                        elif re.match(
+                            "^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$",
+                            str(Session._safely_printable(d[key])),
+                        ):
+                            if len(d[key].split("-")[0]) == 4:
+                                dt = datetime.datetime.strptime(d[key], "%Y-%m-%dT%H:%M:%S")
+                            else:
+                                dt = datetime.datetime.strptime(d[key], "%y-%m-%dT%H:%M:%S")
+                        # With millis
+                        elif re.match(
+                            "^[0-9]{2,4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}$",
+                            str(Session._safely_printable(d[key])),
+                        ):
+                            if len(d[key].split("-")[0]) == 4:
+                                dt = datetime.datetime.strptime(d[key], "%Y-%m-%dT%H:%M:%S.%f")
+                            else:
+                                dt = datetime.datetime.strptime(d[key], "%y-%m-%dT%H:%M:%S.%f")
+                        if dt is not None:
+                            # Backend sends UTC, convert to local timezone
+                            dt = dt.replace(tzinfo=datetime.timezone.utc)
+                            d[key] = dt.astimezone()
+            return d
+
+        return recursive_decode(json_data)
+
 
 
 class AccsynException(Exception):

@@ -238,13 +238,18 @@ To grant access to an employee, use the session assign function::
 
 Return value will be a dictionary with same form as the access list query would return. 
 
+.. note::
+
+    ``grant()`` is idempotent for ACL targets. If an ACL already exists for the same
+    user/target/path, it is updated in place (or left unchanged if already matching).
+
 
 List volume access
 ------------------
 
 To list ACLs for a volume::
 
-    acl = session.access("Volume", "664b6d76e43eb396e5e55419")
+    acls = session.access("Volume", "664b6d76e43eb396e5e55419")
 
 Return value will be a list of dictionaries containing selected ACL attributes.
 
@@ -252,11 +257,11 @@ Return value will be a list of dictionaries containing selected ACL attributes.
 Revoke access to a volume
 --------------------------
 
-To revoke access to a volume::
+To remove an ACL, use the revoke function::
 
-    acl = session.revoke("User", "61779c54b80099ea066b0604", "Volume", "664b6d76e43eb396e5e55419")
+    session.revoke("User", "61779c54b80099ea066b0604", "Volume", "664b6d76e43eb396e5e55419")
 
-Return value will be true if operation was successful. False will be returned if the user did not have access to the volume.
+Returns ``True`` if access was removed, ``False`` if no matching ACL exists.
 
 
 Delete a volume
@@ -438,11 +443,11 @@ To list ACLs for a shared folder::
 Revoke access to a shared folder/home
 -------------------------------------
 
-To remove an ACL, use the session deassign function::
+To remove an ACL, use the revoke function::
 
-    acl = session.revoke("User", "61779c54b80099ea066b0604", "Folder", "673cb38dea344d0d17969018")
+    session.revoke("User", "61779c54b80099ea066b0604", "Folder", "673cb38dea344d0d17969018")
 
-Return value will be True if operation was successful, false if the user did not have access to the folder.
+Returns ``True`` if access was removed, ``False`` if no matching ACL exists.
 
 
 Modify a shared folder/home

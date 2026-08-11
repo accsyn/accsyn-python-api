@@ -1,6 +1,8 @@
+from ast import Dict
 import os
 import sys
 import time
+import accsyn_api
 import pytest
 import uuid
 import logging
@@ -70,6 +72,31 @@ from typing import Any, Callable, List, Optional
 
 # Session fixtures for different roles
 
+_TESTS_DIR = os.path.dirname(__file__)
+_PROJECT_ROOT = os.path.dirname(_TESTS_DIR)
+
+
+def get_env_path(role: str, number: int = 0) -> str:
+    """
+    Resolve absolute path to a role .env file.
+
+    Uses ``.env.{role}`` when *number* is 0, otherwise ``.env.{role}-{number}``
+    (e.g. ``.env.admin-2`` for the second admin user).
+    """
+    filename = f".env.{role}-{number}" if number > 0 else f".env.{role}"
+    return os.path.join(_PROJECT_ROOT, filename)
+
+
+def _make_session(role: str, number: int = 0):
+    """Create an accsyn_api Session for the given role and optional user number."""
+    import accsyn_api
+
+    path_envfile = get_env_path(role, number)
+    if not os.path.exists(path_envfile):
+        pytest.skip(f"Missing required .env file: {os.path.basename(path_envfile)}")
+
+    return accsyn_api.Session(path_envfile=path_envfile, connect_timeout=10, timeout=30)
+
 
 @pytest.fixture(scope="session")
 def session_admin():
@@ -78,12 +105,17 @@ def session_admin():
 
     Requires .env file: .env.admin
     """
-    import accsyn_api
+    return _make_session("admin")
 
-    if not os.path.exists(".env.admin"):
-        pytest.skip("Missing required .env file: .env.admin")
 
-    return accsyn_api.Session(path_envfile=".env.admin", connect_timeout=10, timeout=30)
+@pytest.fixture(scope="session")
+def session_admin2():
+    """
+    Integration test session with a second admin user.
+
+    Requires .env file: .env.admin-2
+    """
+    return _make_session("admin", 2)
 
 
 @pytest.fixture(scope="session")
@@ -93,12 +125,17 @@ def session_employee():
 
     Requires .env file: .env.employee
     """
-    import accsyn_api
+    return _make_session("employee")
 
-    if not os.path.exists(".env.employee"):
-        pytest.skip("Missing required .env file: .env.employee")
 
-    return accsyn_api.Session(path_envfile=".env.employee", connect_timeout=10, timeout=30)
+@pytest.fixture(scope="session")
+def session_employee2():
+    """
+    Integration test session with a second employee user.
+
+    Requires .env file: .env.employee-2
+    """
+    return _make_session("employee", 2)
 
 
 @pytest.fixture(scope="session")
@@ -108,12 +145,17 @@ def session_standard():
 
     Requires .env file: .env.standard
     """
-    import accsyn_api
+    return _make_session("standard")
 
-    if not os.path.exists(".env.standard"):
-        pytest.skip("Missing required .env file: .env.standard")
 
-    return accsyn_api.Session(path_envfile=".env.standard", connect_timeout=10, timeout=30)
+@pytest.fixture(scope="session")
+def session_standard2():
+    """
+    Integration test session with a second standard user.
+
+    Requires .env file: .env.standard-2
+    """
+    return _make_session("standard", 2)
 
 
 # Temp entity storage
@@ -141,11 +183,13 @@ class EntityRegistry:
         """Namespace temp names so we can safely operate in an existing workspace."""
         return f"pytest-{self.run_id}-{name}"
 
-    def remember(self, *, kind: str, temp_name: str, entity_id: str, **meta: Any) -> str:
+    def remember(self, *, kind: str, temp_name: str, entity_id: str, cleanup: bool = True, **meta: Any) -> str:
         ce = CreatedEntity(kind=kind, id=entity_id, meta=meta)
         self._by_key[(kind, temp_name)] = ce
-        self._created_stack.append(ce)  # LIFO cleanup helps with dependencies
-        logger.info(f"(Remember) Remembering {ce.kind} entity {ce.id} ({temp_name})")
+        if cleanup:
+            # LIFO cleanup helps with dependencies
+            self._created_stack.append(ce)
+        logger.info(f"(Remember) Remembering {ce.kind} entity {ce.id} ({temp_name}), cleanup={cleanup}")
         return entity_id
 
     def get_id(self, kind: str, temp_name: str) -> str:
@@ -160,7 +204,8 @@ class EntityRegistry:
                 break
         if key_to_remove is not None:
             ce = self._by_key.pop(key_to_remove)
-            self._created_stack.remove(ce)
+            if ce in self._created_stack:
+                self._created_stack.remove(ce)
 
     def cleanup(self, *, pause_on_failure: bool = False) -> None:
         # Best effort: delete everything we created, even if some deletes fail.
@@ -236,27 +281,28 @@ class TestUtils:
     """Shared test utilities"""
 
     @staticmethod
-    def get_user_ident(role: str) -> str:
-        """Read the .env files and return the user ident for the given role"""
-        path_envfile = os.path.join(os.path.dirname(os.path.dirname(__file__)), f".env.{role}")
+    def get_user_ident(role: str, number: int = 0) -> str:
+        """Read the .env file and return the user ident for the given role and user number."""
+        path_envfile = get_env_path(role, number)
         assert os.path.exists(path_envfile), f"Missing test .env file: {path_envfile}"
         with open(path_envfile, "r") as f:
             for line in f:
                 if line.startswith("ACCSYN_API_USER="):
                     return line.split("=")[1].strip()
-        raise ValueError(f"Missing user ident for role: {role}")
+        suffix = f"-{number}" if number > 0 else ""
+        raise ValueError(f"Missing user ident for role: {role}{suffix}")
 
     @staticmethod
-    def get_admin_ident() -> str:
-        return TestUtils.get_user_ident("admin")
+    def get_admin_ident(number: int = 0) -> str:
+        return TestUtils.get_user_ident("admin", number)
 
     @staticmethod
-    def get_employee_ident() -> str:
-        return TestUtils.get_user_ident("employee")
+    def get_employee_ident(number: int = 0) -> str:
+        return TestUtils.get_user_ident("employee", number)
 
     @staticmethod
-    def get_standard_ident() -> str:
-        return TestUtils.get_user_ident("standard")
+    def get_standard_ident(number: int = 0) -> str:
+        return TestUtils.get_user_ident("standard", number)
 
     @staticmethod
     def get_data_path(file_name: str) -> str:
@@ -265,6 +311,31 @@ class TestUtils:
     @staticmethod
     def get_tmp_path(file_name: str) -> str:
         return os.path.join(tempfile.gettempdir(), ".accsyn", file_name)
+
+    @staticmethod
+    def revoke_all(session: accsyn_api.Session, user: Dict, share: Dict) -> int:
+        """
+        Revoke all ACL entries for *user* on *share* using the provided session.
+
+        Args:
+            session: API session used to query/revoke ACLs.
+            user: User dict (with ``id``) or user ID string.
+            share: Share/volume dict (with ``id``) or share ID string.
+
+        Returns:
+            Number of ACL entries revoked.
+        """
+        user_id = user.get("id") if isinstance(user, dict) else user
+        share_id = share.get("id") if isinstance(share, dict) else share
+        assert isinstance(user_id, str) and user_id, "revoke_all: invalid user"
+        assert isinstance(share_id, str) and share_id, "revoke_all: invalid share"
+
+        revoked = 0
+        for acl in session.access("Volume", share_id):
+            if acl.get("user") == user_id:
+                if session.revoke("User", user_id, "Share", share_id):
+                    revoked += 1
+        return revoked
 
     @staticmethod
     def wait_transfer_done(session: Any, transfer: dict) -> None:

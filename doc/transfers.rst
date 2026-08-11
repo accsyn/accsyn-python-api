@@ -194,21 +194,23 @@ Source and destination notation
 
 An accsyn source/destination is a combination of a party and a path similar to standard rsync and scp notation, using this template::
   
-    <party definition>:<accsyn path|absolute path>
+    <party>:<path>
 
-If a party is not specified, accsyn attempts to resolve the party from the path. In the example above, accsyn resolves the source party as the workspace because accsyn path notation is used. 
-The destination is specified as an absolute path and no party is specified, so it is resolved as the invoking user party.
-
+* *Party*; Identifies the sending or receiving endpoint entity.
+* *Path*; The path to the file or directory to transfer, either on accsyn path notation or an absolute path.
 
 Party resolution
 ****************
 
-The following parties are supported:
+If a party is not specified, accsyn attempts to resolve the party from the path. In the example above, accsyn resolves the source party as the workspace because accsyn path notation is used. 
+The destination is specified as an absolute path and no party is specified, so it is resolved as the invoking user party.
+
+The following parties are acknowledged:
 
 * ``<workspace code|ID>``: The explicit accsyn workspace party — the main(default) site and server. For example: ``myworkspace:<accsyn path>``, where ``myworkspace`` is the unique API code/domain of the workspace.
 * ``<user email|ID>``: An accsyn user party. For example: ``emma@example.com:/path/to/file``, where ``emma@example.com`` is the user's email address.
 * ``<site=site code|ID>``: A site party — a site server. For example: ``site=my_site:<accsyn path>``, where ``my_site`` is the unique API code/domain of the site.
-* ``<client=client id>``: A client party — a desktop app or user server. For example: ``client=664f53b16aa9149860da9d9c:/path/to/file``, where ``664f53b16aa9149860da9d9c`` is the unique client ID. Code (hostname) can also be used instead of the ID, but may be ambiguous.
+* ``<client=client ID>``: A client party — a desktop app or user server. For example: ``client=664f53b16aa9149860da9d9c:/path/to/file``, where ``664f53b16aa9149860da9d9c`` is the unique client ID. Code (hostname) can also be used instead of the ID, but may be ambiguous.
 
 .. note::
 
@@ -237,6 +239,17 @@ Share types:
 * ``collection``: A set of arbitrary files and/or folders intended to be shared with standard users.
 * ``home``: A home folder — a shared folder dedicated to be a user's personal workspace.
 * ``share``: A generic entity type identifier for ``volume``, ``folder`` (shared folder), ``collection``, or ``home``.
+
+Simplified notation for a home share::
+
+  ~                    # Drop off to default dropoff folder, typically generated from current date: YYMMDD
+  ~/<relative_path>    # Drop off to a specific path relative to the home share
+
+Relative paths
+**************
+
+Supplying a relative path, in the workspace party context, will always resolve to the default volume.
+
 
 Mirror path concept
 *******************

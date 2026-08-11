@@ -17,16 +17,22 @@ DELIVERY_NAME_STANDARD = "Project references (STA)"
 
 @pytest.mark.order(1)
 def test_prepare_deliveries(session_admin, entities):
-    # Prepare tests, remove employee and standard user if they exist
+    # Prepare tests, remove transient employee and standard user if they exist
     admin_user = session_admin.find_one(f"User WHERE code='{TestUtils.get_admin_ident()}'")
-    employee_user = session_admin.find_one(f"User WHERE code='{TestUtils.get_employee_ident()}'")
-    if employee_user:
-        session_admin.delete_one("User", employee_user["id"])
-        entities.remove_from_cleanup(kind="e1", entity_id=employee_user["id"])
-    standard_user = session_admin.find_one(f"User WHERE code='{TestUtils.get_standard_ident()}'")
-    if standard_user:
-        session_admin.delete_one("User", standard_user["id"])
-        entities.remove_from_cleanup(kind="s1", entity_id=standard_user["id"])
+    employee = session_admin.find_one(f"User WHERE code='{TestUtils.get_employee_ident()}'")
+    default_volume = session_admin.find_one("Volume WHERE default=true")
+    if employee:
+        # Start without access
+        TestUtils.revoke_all(session_admin, employee, default_volume)
+    else:
+        # Invite it permanently to workspace
+        employee = session_admin.create("User", {"code": TestUtils.get_employee_ident(), "role": "employee"})
+    entities.remember(kind="user", temp_name="e1", entity_id=employee["id"])
+    # Remove transient standard user if it exists
+    transient_user = session_admin.find_one(f"User WHERE code='{TestUtils.get_standard_ident(2)}'")
+    if transient_user:
+        session_admin.delete_one("User", transient_user["id"])
+        entities.remove_from_cleanup(kind="s1", entity_id=transient_user["id"])
     # Make sure server is running
     server = session_admin.find_one(f"Server WHERE roles CONTAINS storage")
     assert server is not None, "No storage server found"
@@ -35,12 +41,6 @@ def test_prepare_deliveries(session_admin, entities):
     client = session_admin.find_one(f"App WHERE user={admin_user['id']} AND status=online")
     assert client is not None, "No desktop app client found for admin, please login app or setup a user server"
     assert client["status"] == "online", "Client is not online"
-    # Invite employee to workspace
-    employee = session_admin.create("User", {"code": TestUtils.get_employee_ident(), "role": "employee"})
-    entities.remember(kind="user", temp_name="e1", entity_id=employee["id"])
-
-
-# Employee user now exists
 
 
 # Create temp delivery
@@ -55,7 +55,7 @@ def test_create_temp_delivery_as_admin(session_admin, entities):
         session_admin.update("Delivery", delivery["id"], {"status": "pending"})
     # Add unknown recipient to delivery, with invitation not allowed should fail
     with pytest.raises(AccsynException):
-        session_admin.grant("User", TestUtils.get_standard_ident(), "Delivery", delivery["id"], {"invite": False})
+        session_admin.grant("User", TestUtils.get_standard_ident(2), "Delivery", delivery["id"], {"invite": False})
     # Submit now should fail - have no files or recipients yet
     with pytest.raises(AccsynException):
         session_admin.update("Delivery", delivery["id"], {"status": "pending"})
@@ -69,7 +69,6 @@ def test_create_temp_delivery_as_employee(session_employee, entities):
     # Should fail as employee have no access to any volumes
     with pytest.raises(AccsynException):
         session_employee.create("Delivery", {"name": TEMP_DELIVERY_NAME_EMPLOYEE})
-
 
 @pytest.mark.order(4)
 def test_read_temp_delivery_as_admin(session_admin, entities):
@@ -92,23 +91,51 @@ def test_read_temp_delivery_as_employee(session_employee, entities):
 @pytest.mark.order(6)
 def test_add_recipient_to_temp_delivery_as_admin(session_admin, entities):
     delivery_id = entities.get_id("delivery", "d1")
-    result = session_admin.grant("User", TestUtils.get_standard_ident(), "Delivery", delivery_id)
+    result = session_admin.grant("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
     assert result is True  # Delivery is pending, no actual ACL is created yet
     # Verify recipient is added
     recipients = session_admin.access("Delivery", delivery_id)
     assert len(recipients) == 1
-    assert recipients[0]["user_hr"] == TestUtils.get_standard_ident()
+    assert recipients[0]["user_hr"] == TestUtils.get_standard_ident(2)
     # Test submit, should fail - have no files uploaded yet
     with pytest.raises(AccsynException):
         session_admin.update("Delivery", delivery_id, {"status": "pending"})
 
+# 1 recipient added
 
 @pytest.mark.order(7)
+def test_add_recipient_to_temp_delivery_as_admin_repeat(session_admin, entities):
+    # Delivery is still in init/build phase, recipient already exists
+    delivery_id = entities.get_id("delivery", "d1")
+    result = session_admin.grant("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
+    assert result is False
+    # Still only one recipient
+    recipients = session_admin.access("Delivery", delivery_id)
+    assert len(recipients) == 1
+
+
+@pytest.mark.order(8)
 def test_add_recipient_to_temp_delivery_as_employee_should_fail(session_employee, entities):
     # Should fail as employee has no access to volume related to delivery
     delivery_id = entities.get_id("delivery", "d1")
     with pytest.raises(AccsynException):
-        session_employee.grant("User", TestUtils.get_standard_ident(), "Delivery", delivery_id)
+        session_employee.grant("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
+
+
+# Revoke in init/build mode
+@pytest.mark.order(9)
+def test_remove_recipient_from_temp_delivery_as_admin_in_init(session_admin, entities):
+    delivery_id = entities.get_id("delivery", "d1")
+    result = session_admin.revoke("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
+    assert result is True
+    recipients = session_admin.access("Delivery", delivery_id)
+    assert len(recipients) == 0
+    # Idempotent revoke: second removal should be a no-op
+    result = session_admin.revoke("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
+    assert result is False
+    # Add back so later submit flow remains valid
+    result = session_admin.grant("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
+    assert result is True
 
 
 # Upload and submit
@@ -161,7 +188,7 @@ def test_submit_temp_delivery(session_admin, entities):
 # Standard user now exists
 
 
-@pytest.mark.order(23)
+@pytest.mark.order(24)
 def test_upload_file_to_temp_delivery_as_standard(session_standard, entities):
     # Should fail as standard user have no access to deliveries
     delivery_id = entities.get_id("delivery", "d1")
@@ -171,15 +198,31 @@ def test_upload_file_to_temp_delivery_as_standard(session_standard, entities):
         )
 
 
-@pytest.mark.order(24)
+@pytest.mark.order(25)
+def test_remove_recipient_from_temp_delivery_as_admin_in_waiting(session_admin, entities):
+    # Delivery should be active (waiting) after submit
+    delivery_id = entities.get_id("delivery", "d1")
+    delivery = session_admin.get_entity("Delivery", delivery_id)
+    assert delivery is not None
+    assert delivery["status"] == "waiting"
+    result = session_admin.revoke("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
+    assert result is True
+    recipients = session_admin.access("Delivery", delivery_id)
+    assert len(recipients) == 0
+    # Idempotent revoke: second removal should be a no-op
+    result = session_admin.revoke("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
+    assert result is False
+
+
+@pytest.mark.order(26)
 def test_add_recipient_to_temp_delivery_as_standard(session_standard, entities):
     # Should fail as standard user has no access to deliveries
     delivery_id = entities.get_id("delivery", "d1")
     with pytest.raises(AccsynException):
-        session_standard.grant("User", TestUtils.get_standard_ident(), "Delivery", delivery_id)
+        session_standard.grant("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
 
 
-@pytest.mark.order(25)
+@pytest.mark.order(27)
 def test_read_temp_delivery2_as_standard(session_standard, entities):
     # Should fail as standard user have no access to delivery
     delivery2_id = entities.get_id("delivery", "d2")
@@ -187,21 +230,21 @@ def test_read_temp_delivery2_as_standard(session_standard, entities):
     assert delivery2 is None
 
 
-@pytest.mark.order(26)
+@pytest.mark.order(28)
 def test_create_temp_delivery_as_standard(session_standard, entities):
     # Should fail as standard user have no access to create deliveries
     with pytest.raises(AccsynException):
         session_standard.create("Delivery", {"name": TEMP_DELIVERY_NAME_STANDARD})
 
 
-@pytest.mark.order(27)
+@pytest.mark.order(29)
 def test_abort_temp_delivery_as_employee(session_employee, entities):
     delivery_id = entities.get_id("delivery", "d1")
     with pytest.raises(AccsynException):
         session_employee.update("Delivery", delivery_id, {"status": "aborted"})
 
 
-@pytest.mark.order(28)
+@pytest.mark.order(30)
 def test_pause_temp_delivery_as_standard(session_standard, entities):
     # Should fail as standard user have no access to deliveries
     delivery_id = entities.get_id("delivery", "d1")
@@ -209,7 +252,7 @@ def test_pause_temp_delivery_as_standard(session_standard, entities):
         session_standard.update("Delivery", delivery_id, {"status": "aborted"})
 
 
-@pytest.mark.order(29)
+@pytest.mark.order(31)
 def test_abort_temp_delivery_as_admin(session_admin, entities):
     delivery_id = entities.get_id("delivery", "d1")
     delivery = session_admin.update("Delivery", delivery_id, {"status": "aborted"})
@@ -217,7 +260,7 @@ def test_abort_temp_delivery_as_admin(session_admin, entities):
 
 
 # Delete delivery
-@pytest.mark.order(97)
+@pytest.mark.order(98)
 def test_delete_temp_delivery_as_employee(session_employee, entities):
     # Should fail as employee have no access to any volumes
     delivery_id = entities.get_id("delivery", "d1")
@@ -225,7 +268,7 @@ def test_delete_temp_delivery_as_employee(session_employee, entities):
         session_employee.delete_one("Delivery", delivery_id)
 
 
-@pytest.mark.order(98)
+@pytest.mark.order(99)
 def test_delete_temp_delivery_as_standard(session_standard, entities):
     # Should fail as standard user have no access to deliveries
     delivery_id = entities.get_id("delivery", "d1")
@@ -233,8 +276,7 @@ def test_delete_temp_delivery_as_standard(session_standard, entities):
         session_standard.delete_one("Delivery", delivery_id)
 
 
-# @pytest.mark.extended
-@pytest.mark.order(99)
+@pytest.mark.order(100)
 def test_delete_temp_delivery(session_admin, entities):
     # Delete delivery
     delivery_id = entities.get_id("delivery", "d1")
@@ -243,27 +285,3 @@ def test_delete_temp_delivery(session_admin, entities):
     # Remove from cache
     entities.remove_from_cleanup("delivery", delivery_id)
 
-
-"""
-
-@pytest.mark.order(100)
-def test_create_delivery(session_admin, entities):
-    # Create a pending delivery from an existing file
-    delivery = session_admin.create("Delivery",{
-        "name":DELIVERY_NAME,
-        "tasks":["bad_buck_bunny.png"],
-        "status":"init",
-    })
-    entities.remember(kind="delivery", temp_name="d2", entity_id=delivery["id"])
-    assert delivery["name"] == DELIVERY_NAME
-
-
-def test_create_delivery_form_existing_standard_should_fail(session_standard):
-    with pytest.raises(AccsynException):
-        session_standard.create("Delivery", {
-            "name": "Project files from standard user",
-            "tasks": ["projects/references"],
-            "recipients": [TEST_USER_EMAIL]
-        })
-
-"""

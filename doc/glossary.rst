@@ -22,6 +22,9 @@ Glossary
     role
         User access level defining base permissions, overridable for global API keys. Three roles exist: Admin, Employee, and Standard (restricted, default). See :ref:`users`.
 
+    operator
+        A user having the Admin or Employee base role applied.
+
     volume
         Base folder entity on a server from which accsyn serves files. See :ref:`filesharing`.
 
