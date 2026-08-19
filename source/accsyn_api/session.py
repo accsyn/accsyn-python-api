@@ -973,7 +973,7 @@ class Session(object):
             raise AccsynException("Unsupported grant entity type (supported: user)!")
         return result
   
-    def access(self, targettype: str, targetid: str, recursive: bool = False) -> List[Dict[str, Any]]:
+    def access(self, targettype: str, targetid: str, entitytype: str = None, entityid: str = None, recursive: bool = False) -> List[Dict[str, Any]]:
         """
         List users with access to a delivery or share.
 
@@ -987,6 +987,9 @@ class Session(object):
             * ``volume``, ``folder``, ``home``, ``collection``, ``share`` — list ACLs.
 
         :param targetid: ID of the target entity.
+        :param entitytype: (Optional) Filter on entity type. Supported values:
+            * ``user`` — list users with access to the target entity.
+        :param entityid: (Optional) Filter on entity id, requires entitytype supplied.
         :param recursive: (Share targets only) If ``True``, include ACLs for all shares
             beneath the target volume, folder, or home.
         :return: List of dictionaries. For delivery targets, each entry holds recipient
@@ -1025,11 +1028,17 @@ class Session(object):
             return response["result"]
         elif targettype.lower() in ["volume", "folder", "home", "collection", "share"]:
             # List users with access to a share
+            query = f"acl WHERE target=share:{targetid}"
+            if entitytype:
+                if entityid:
+                    query += f" AND entity={entitytype}:{entityid}"
+                else:
+                    query += f" AND entity={entitytype}:*"
             response = self._event(
                 "GET",
                 f"acl/find",
                 dict(recursive=recursive),
-                query=f"acl WHERE target=share:{targetid}",
+                query=query,
             )
             result = []
             for acl in response["result"]:

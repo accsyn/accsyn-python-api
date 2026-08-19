@@ -33,10 +33,10 @@ def test_create_users(session_admin, entities):
     if not employee:
         employee = session_admin.create("User", {"code": TestUtils.get_employee_ident(), "role": "employee"})
         assert employee is not None
-        entities.remember(kind="user", temp_name="e1", entity_id=employee["id"])
+        entities.remember(kind="user", temp_name="e1", entity_id=employee["id"], cleanup=False)
     standard = session_admin.find_one(f"User where code='{TestUtils.get_standard_ident()}'")
     if not standard:
-        standard = session_admin.create("User", {"code": TestUtils.get_standard_ident(), "role": "standard"})
+        standard = session_admin.create("User", {"code": TestUtils.get_standard_ident(), "role": "standard"}, cleanup=False)
         assert standard is not None
         entities.remember(kind="user", temp_name="s1", entity_id=standard["id"])
 

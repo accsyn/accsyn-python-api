@@ -254,6 +254,11 @@ To list ACLs for a volume::
 Return value will be a list of dictionaries containing selected ACL attributes.
 
 
+To list ACLs for a volume for a specific user::
+
+    acls = session.access("Volume", "664b6d76e43eb396e5e55419", entitytype="User", entityid="61779c54b80099ea066b0604")
+
+
 Revoke access to a volume
 --------------------------
 
@@ -521,8 +526,8 @@ To remove a file from a collection::
 Return value will be True if operation was successful, false if the file did not exist in the collection.
 
 
-Deactivate
-==========
+Deactivate a share
+==================
 
 A share (volume, folder, collection) can be deactivated — removed from accsyn but eligible for audit and restore if you recreate a share with the same name::
 

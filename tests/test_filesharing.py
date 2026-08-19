@@ -362,12 +362,12 @@ def test_admin_modify_deactivate_activate_delete_share2(session_admin):
     assert deactivated is True
 
     # Should not be returned by active query anymore
-    assert session_admin.find_one(f"Folder WHERE id={share['id']} AND inactive=False") is None
+    assert session_admin.find_one(f"Folder WHERE id={share['id']} AND inactive!=True") is None
 
     # Reactivate
     activated = session_admin.activate_one("Folder", share["id"])
     assert activated is True
-    assert session_admin.find_one(f"Folder WHERE id={share['id']} AND inactive=False") is not None
+    assert session_admin.find_one(f"Folder WHERE id={share['id']} AND inactive!=True") is not None
 
     # Verify ACLs were also re-activated
     acls = session_admin.access("Folder", share["id"])

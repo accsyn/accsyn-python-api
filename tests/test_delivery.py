@@ -27,7 +27,7 @@ def test_prepare_deliveries(session_admin, entities):
     else:
         # Invite it permanently to workspace
         employee = session_admin.create("User", {"code": TestUtils.get_employee_ident(), "role": "employee"})
-    entities.remember(kind="user", temp_name="e1", entity_id=employee["id"])
+    entities.remember(kind="user", temp_name="e1", entity_id=employee["id"], cleanup=False)
     # Remove transient standard user if it exists
     transient_user = session_admin.find_one(f"User WHERE code='{TestUtils.get_standard_ident(2)}'")
     if transient_user:
