@@ -27,12 +27,20 @@ def test_ensure_users(session_admin, entities):
     if not standard_user:
         standard_user = session_admin.create("User", {"code": TestUtils.get_standard_ident(), "role": "standard"})
         assert standard_user is not None
-        entities.remember(kind="user", temp_name="s1", entity_id=standard_user["id"], cleanup=False)
+    entities.remember(kind="user", temp_name="s1", entity_id=standard_user["id"], cleanup=False)
 
     # Temporary invite second employee
-    employee2 = session_admin.create("User", {"code": TestUtils.get_employee_ident(2), "role": "employee"})
-    assert employee2 is not None
+    employee2 = session_admin.find_one(f"User WHERE code='{TestUtils.get_employee_ident(2)}'")
+    if not employee2:
+        print(f"Creating temp employee {TestUtils.get_employee_ident(2)}.")
+        employee2 = session_admin.create("User", {"code": TestUtils.get_employee_ident(2), "role": "employee"})
+        assert employee2 is not None
     entities.remember(kind="user", temp_name="e2", entity_id=employee2["id"])
+    # Give volume access
+    acls = session_admin.access("Volume", volume["id"], entitytype="User", entityid=entities.get_id("user", "e2"))
+    if not acls:
+        print(f"Granting temp employee full access to default volume.")
+        session_admin.grant("User", entities.get_id("user", "e2"), "Volume", volume["id"])
 
 @pytest.mark.skipif(not sys.stdin.isatty(), reason="needs interactive terminal")
 @pytest.mark.order(1)
@@ -238,8 +246,7 @@ def test_pull_admin(session_admin, entities):
     session_admin.create(
         "Transfer",
         {
-            "source": f"client={entities.get_id('client', 'c')}:{TEST_FILE}",
-            "destination": "hq",
+            "source": f"client={entities.get_id('client', 'c')}:share=(default)/{TEST_FILE}",
             "test": True
         },
     )
@@ -250,8 +257,7 @@ def test_pull_employee(session_employee2, entities):
     session_employee2.create(
         "Transfer",
         {
-            "source": f"client={entities.get_id('client', 'c')}:{TEST_FILE}",
-            "destination": "hq",
+            "source": f"client={entities.get_id('client', 'c')}:share=(default)/{TEST_FILE}",
             "test": True
         }
     )
@@ -263,8 +269,7 @@ def test_pull_user_should_fail(session_standard, entities):
         session_standard.create(
             "Transfer",
             {
-                "source": f"client={entities.get_id('client', 'c')}:{TEST_FILE}",
-                "destination": "hq",
+                "source": f"client={entities.get_id('client', 'c')}:share=(default)/{TEST_FILE}",
                 "test": True
             },
         )
