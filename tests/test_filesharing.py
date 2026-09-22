@@ -24,6 +24,7 @@ UPLOAD_CHILD_SUBDIR = "TEST_SUBDIR"
 RENAMED_FILE = "renamed_bad_buck_bunny.png"
 
 SHARE_NAME_1 = "Shared Folder"
+SHARE_NAME_1_RENAMED = "Shared Folder Renamed"
 SHARE_NAME_2 = "Shared Folder 2"
 
 _state = {
@@ -44,26 +45,38 @@ def _list_result_names(ls_result):
 
 
 @pytest.mark.order(0)
-def test_cleanup_filesharing(session_admin, entities):
+def test_prepare_filesharing(session_admin, entities):
+    print("Prepare filesharing test - remove folders, users and shares")
     # Remove test folders recursively on default volume root
     for folder in [SHARED_FOLDER, SHARED_FOLDER2, TEST_FOLDER3]:
         if session_admin.exists(folder):
             session_admin.delete(folder, force=True)
 
-    # Remove employee user if it exists (invite tests rely on clean start)
-    employee_user = session_admin.find_one(f"User WHERE code='{TestUtils.get_employee_ident()}'")
-    if employee_user:
-        session_admin.delete_one("User", employee_user["id"])
-        entities.remove_from_cleanup(kind="user", entity_id=employee_user["id"])
+    # Remove transient employee user if it exists (invite tests rely on clean start)
+    transient_employee = session_admin.find_one(f"User WHERE code='{TestUtils.get_employee_ident(2)}'")
+    if transient_employee:
+        session_admin.delete_one("User", transient_employee["id"])
+        entities.remove_from_cleanup(kind="user", entity_id=transient_employee["id"])
 
-    # Remove standard user if it exists (invite tests rely on clean start)
+    # Remove transient standard user if it exists
     transient_user = session_admin.find_one(f"User WHERE code='{TestUtils.get_standard_ident(2)}'")
     if transient_user:
         session_admin.delete_one("User", transient_user["id"])
         entities.remove_from_cleanup(kind="user", entity_id=transient_user["id"])
 
+    # Ensure permanent standard user exists (used for download/upload client tests)
+    standard_user = session_admin.find_one(f"User WHERE code='{TestUtils.get_standard_ident()}'")
+    if not standard_user:
+        print(f"Creating permanent standard user {TestUtils.get_standard_ident()}.")
+        standard_user = session_admin.create(
+            "User",
+            {"code": TestUtils.get_standard_ident(), "role": "standard"},
+        )
+        assert standard_user is not None
+    entities.remember(kind="user", temp_name="s1", entity_id=standard_user["id"], cleanup=False)
+
     # Remove shares if they exist
-    for share_code in [SHARE_NAME_1, SHARE_NAME_2]:
+    for share_code in [SHARE_NAME_1, SHARE_NAME_2, SHARE_NAME_1_RENAMED]:
         share = session_admin.find_one(f"Folder WHERE name='{share_code}'")
         if share:
             session_admin.delete_one("Folder", share["id"])
@@ -72,6 +85,7 @@ def test_cleanup_filesharing(session_admin, entities):
 
 @pytest.mark.order(1)
 def test_create_folders(session_admin):
+    print("Create shared folder directory structure on default volume")
     session_admin.mkdir(SHARED_FOLDER)
     session_admin.mkdir(f"{SHARED_FOLDER}/{UPLOAD_SUBDIR}")
     session_admin.mkdir(f"{SHARED_FOLDER}/{DOWNLOAD_SUBDIR}")
@@ -83,6 +97,7 @@ def test_create_folders(session_admin):
 
 @pytest.mark.order(3)
 def test_create_shared_folders_and_grant(session_admin, entities):
+    print("Create shared folders and grant transient + permanent standard user read access")
     default_volume = session_admin.find_one("Volume WHERE default=True")
     assert default_volume is not None
 
@@ -98,24 +113,37 @@ def test_create_shared_folders_and_grant(session_admin, entities):
     entities.remember(kind="folder", temp_name="folder1", entity_id=share1["id"])
     TestUtils.validate_response(share1, EXPECTED_FOLDER_ATTRIBUTES)
 
+    download_acl = {
+        "path": DOWNLOAD_SUBDIR,
+        "read": True,
+        "write": False,
+    }
+
+    # Invite transient standard user via grant (cleaned up after the run)
     acl = session_admin.grant(
         "User",
         TestUtils.get_standard_ident(2),
         "Folder",
         share1["id"],
-        {
-            "path": DOWNLOAD_SUBDIR,
-            "read": True,
-            "write": False,
-        },
+        download_acl,
     )
     TestUtils.validate_response(acl, EXPECTED_ACL_ATTRIBUTES)
 
     standard_users = session_admin.find("User WHERE role=standard")
     assert isinstance(standard_users, list)
     std = next((u for u in standard_users if u.get("code") == TestUtils.get_standard_ident(2)), None)
-    assert std is not None, "Standard user should have been invited by grant call"
-    entities.remember(kind="user", temp_name="u-s1", entity_id=std["id"])
+    assert std is not None, "Transient standard user should have been invited by grant call"
+    entities.remember(kind="user", temp_name="u-s2", entity_id=std["id"])
+
+    # Also grant the permanent standard user (used for client transfer tests)
+    acl = session_admin.grant(
+        "User",
+        TestUtils.get_standard_ident(),
+        "Folder",
+        share1["id"],
+        download_acl,
+    )
+    TestUtils.validate_response(acl, EXPECTED_ACL_ATTRIBUTES)
 
     share2 = session_admin.create(
         "Folder",
@@ -131,6 +159,7 @@ def test_create_shared_folders_and_grant(session_admin, entities):
 
 @pytest.mark.order(4)
 def test_upload_files(session_admin, entities):
+    print("Upload test files into shared folder as admin")
     share1 = _state["share1"]
     assert share1 is not None
 
@@ -159,6 +188,7 @@ def test_upload_files(session_admin, entities):
 
 @pytest.mark.order(5)
 def test_list_shared_folders(session_admin):
+    print("List shared folders as admin")
     folders = session_admin.find("Folder")
     assert isinstance(folders, list)
     names = [f.get("name") for f in folders]
@@ -167,37 +197,52 @@ def test_list_shared_folders(session_admin):
 
 
 @pytest.mark.order(6)
-def test_list_shared_folders_and_content(session_standard):
+def test_list_shared_folders_and_content(session_standard2):
+    print("List shared folders and content as transient standard user (read ACL)")
     share1 = _state["share1"]
     assert share1 is not None
 
-    folders = session_standard.find("Folder")
+    folders = session_standard2.find("Folder")
     assert isinstance(folders, list)
     assert len([f for f in folders if f.get("name") == SHARE_NAME_1]) == 1
     assert len([f for f in folders if f.get("name") == SHARE_NAME_2]) == 0
 
-    root_ls = session_standard.ls(f"folder={share1['code']}")
+    root_ls = session_standard2.ls(f"folder={share1['code']}")
     root_names = _list_result_names(root_ls)
     assert DOWNLOAD_SUBDIR in root_names
     assert UPLOAD_SUBDIR not in root_names
     assert ADMIN_SUBDIR not in root_names
     assert TEST_FILE not in root_names
 
-    download_ls = session_standard.ls(f"folder={share1['code']}/{DOWNLOAD_SUBDIR}")
+    download_ls = session_standard2.ls(f"folder={share1['code']}/{DOWNLOAD_SUBDIR}")
     download_names = _list_result_names(download_ls)
     assert TEST_FILE2 in download_names
 
 
 @pytest.mark.order(7)
 def test_download_shared_content(session_standard, entities):
+    print("Download shared content as permanent standard user (client transfer)")
+    active_client = None
     while True:
-        clients = session_standard.find("App")
+        clients = session_standard.find(f"App WHERE user={entities.get_id('user', 's1')}")
         if len(clients) > 0:
-            break
-        input(
-            f"Please login to the accsyn Desktop app as {TestUtils.get_standard_ident(2)} and press Enter to continue..."
-        )
+            for client in clients:
+                if client["status"] == "online":
+                    active_client = client
+                    break
+            if active_client:
+                break
+            print(
+                f"Please launch the accsyn Desktop as {TestUtils.get_standard_ident()} and press Enter to continue..."
+            )
+        else:
+            print(
+                f"No client found, please login to the accsyn Desktop as {TestUtils.get_standard_ident()} and press Enter to continue..."
+            )
+        input()
         time.sleep(2)
+    entities.remember(kind="client", temp_name="c", entity_id=active_client["id"], cleanup=False)
+    print(f"Got permanent standard user active client: {active_client['id']}")
 
     share1 = _state["share1"]
     assert share1 is not None
@@ -219,11 +264,12 @@ def test_download_shared_content(session_standard, entities):
 
 
 @pytest.mark.order(8)
-def test_upload_content_should_fail(session_standard):
+def test_upload_content_should_fail(session_standard2):
+    print("Upload to read-only shared path should fail")
     share1 = _state["share1"]
     assert share1 is not None
     with pytest.raises(AccsynException):
-        session_standard.create(
+        session_standard2.create(
             "Transfer",
             {
                 "source": TestUtils.get_data_path(TEST_FILE),
@@ -235,24 +281,35 @@ def test_upload_content_should_fail(session_standard):
 
 @pytest.mark.order(9)
 def test_grant_write_access(session_admin):
+    print("Grant transient + permanent standard user write access to upload subdir")
     share1 = _state["share1"]
     assert share1 is not None
+    upload_acl = {
+        "path": UPLOAD_SUBDIR,
+        "read": False,
+        "write": True,
+    }
     acl = session_admin.grant(
         "User",
         TestUtils.get_standard_ident(2),
         "Folder",
         share1["id"],
-        {
-            "path": UPLOAD_SUBDIR,
-            "read": False,
-            "write": True,
-        },
+        upload_acl,
+    )
+    TestUtils.validate_response(acl, EXPECTED_ACL_ATTRIBUTES)
+    acl = session_admin.grant(
+        "User",
+        TestUtils.get_standard_ident(),
+        "Folder",
+        share1["id"],
+        upload_acl,
     )
     TestUtils.validate_response(acl, EXPECTED_ACL_ATTRIBUTES)
 
 
 @pytest.mark.order(10)
 def test_upload_content(session_standard, entities):
+    print("Upload content as permanent standard user to write-only path (client transfer)")
     share1 = _state["share1"]
     assert share1 is not None
     transfer = session_standard.create(
@@ -268,26 +325,29 @@ def test_upload_content(session_standard, entities):
 
 
 @pytest.mark.order(11)
-def test_read_upload_should_fail(session_standard):
+def test_read_upload_should_fail(session_standard2):
+    print("List write-only upload path should fail")
     share1 = _state["share1"]
     assert share1 is not None
     with pytest.raises(AccsynException):
-        session_standard.ls(f"folder={share1['code']}/{UPLOAD_SUBDIR}")
+        session_standard2.ls(f"folder={share1['code']}/{UPLOAD_SUBDIR}")
 
 
 @pytest.mark.order(12)
-def test_move_content_should_fail(session_standard):
+def test_move_content_should_fail(session_standard2):
+    print("Move content out of write-only path should fail")
     share1 = _state["share1"]
     assert share1 is not None
     with pytest.raises(AccsynException):
-        session_standard.mv(
+        session_standard2.mv(
             f"folder={share1['code']}/{UPLOAD_SUBDIR}/{TEST_FILE2}",
             f"folder={share1['code']}/{TEST_FILE2}",
         )
 
 
 @pytest.mark.order(13)
-def test_modify_content(session_standard):
+def test_modify_content(session_standard2):
+    print("Rename, mkdir, move and delete content in write path")
     share1 = _state["share1"]
     assert share1 is not None
 
@@ -296,14 +356,15 @@ def test_modify_content(session_standard):
     child_dir_path = f"folder={share1['code']}/{UPLOAD_SUBDIR}/{UPLOAD_CHILD_SUBDIR}"
     moved_path = f"folder={share1['code']}/{UPLOAD_SUBDIR}/{UPLOAD_CHILD_SUBDIR}/{RENAMED_FILE}"
 
-    session_standard.rename(source_path, renamed_path)
-    session_standard.mkdir(child_dir_path)
-    session_standard.mv(renamed_path, moved_path)
-    session_standard.delete(moved_path)
+    session_standard2.rename(source_path, renamed_path)
+    session_standard2.mkdir(child_dir_path)
+    session_standard2.mv(renamed_path, moved_path)
+    session_standard2.delete(moved_path)
 
 
 @pytest.mark.order(14)
-def test_modify_download_content_should_fail(session_standard):
+def test_modify_download_content_should_fail(session_standard2):
+    print("Modify content in read-only download path should fail")
     share1 = _state["share1"]
     assert share1 is not None
 
@@ -313,25 +374,26 @@ def test_modify_download_content_should_fail(session_standard):
     moved_path = f"folder={share1['code']}/{DOWNLOAD_SUBDIR}/{UPLOAD_CHILD_SUBDIR}/{RENAMED_FILE}"
 
     with pytest.raises(AccsynException):
-        session_standard.rename(source_path, renamed_path)
+        session_standard2.rename(source_path, renamed_path)
 
     with pytest.raises(AccsynException):
-        session_standard.mkdir(child_dir_path)
+        session_standard2.mkdir(child_dir_path)
 
     with pytest.raises(AccsynException):
-        session_standard.mv(source_path, moved_path)
+        session_standard2.mv(source_path, moved_path)
 
     with pytest.raises(AccsynException):
-        session_standard.delete(source_path)
+        session_standard2.delete(source_path)
 
 
 @pytest.mark.order(15)
-def test_standard_share_test_folder3_should_fail(session_admin, session_standard):
+def test_standard_share_test_folder3_should_fail(session_admin, session_standard2):
+    print("Standard user creating a share should fail")
     default_volume = session_admin.find_one("Volume WHERE default=True")
     assert default_volume is not None
 
     with pytest.raises(AccsynException):
-        session_standard.create(
+        session_standard2.create(
             "Folder",
             {
                 "parent": default_volume["id"],
@@ -343,6 +405,7 @@ def test_standard_share_test_folder3_should_fail(session_admin, session_standard
 
 @pytest.mark.order(16)
 def test_admin_modify_deactivate_activate_delete_share2(session_admin):
+    print("Rename, disable, deactivate and reactivate shared folder as admin")
     share = _state["share1"]
     assert share is not None
 
@@ -369,7 +432,7 @@ def test_admin_modify_deactivate_activate_delete_share2(session_admin):
     assert activated is True
     assert session_admin.find_one(f"Folder WHERE id={share['id']} AND inactive!=True") is not None
 
-    # Verify ACLs were also re-activated
+    # Verify ACLs were also re-activated (transient + permanent, download + upload)
     acls = session_admin.access("Folder", share["id"])
     assert isinstance(acls, list)
-    assert len(acls) == 2
+    assert len(acls) == 4

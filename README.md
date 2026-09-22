@@ -100,12 +100,9 @@ poetry run pytest -x -s --cov=accsyn_api --cov-report=term-missing
 # Run a specific test file
 poetry run pytest -x -s tests/test_find_entitytypes.py
 
-# Some tests have dependencies in form of running clients, run interactively:
-poetry run pytest -x -s tests/test_find_entitytypes.py
-
 ```
 
-**Categories:** Use `@pytest.mark.base` for tests that create entities; use `@pytest.mark.extended` and `@pytest.mark.order(2)` (or higher) for tests that depend on those entities. Run `pytest -m "base or extended"` to run both in order in one session.
+**Ordering:** `@pytest.mark.order(...)` applies within each test module only (`--order-scope=module`), so files are not interleaved. Use `@pytest.mark.base` for tests that create entities; use `@pytest.mark.extended` and `@pytest.mark.order(2)` (or higher) for tests that depend on those entities. Run `pytest -m "base or extended"` to run both in order in one session.
 
 **Note:** Tests that require a specific role will be skipped if the corresponding `.env` file is missing.
 

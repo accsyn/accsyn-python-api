@@ -8,7 +8,6 @@ from accsyn_api.session import AccsynException
 
 from conftest import TestUtils, TEST_FILE
 
-
 @pytest.mark.order(0)
 def test_ensure_users(session_admin, entities):
     print(f"Ensure employee users exists.")
@@ -65,6 +64,8 @@ def test_ensure_client(session_admin, session_employee, entities):
         time.sleep(2)
     entities.remember(kind="client", temp_name="c", entity_id=active_client["id"], cleanup=False)
     print(f"Got employee active client: {active_client['id']}")
+    print(f"Please remove local share mappings at employee client and press Enter to continue...")
+    input()
 
 # Test push and pull with no mapping
 

@@ -1,6 +1,7 @@
 import pytest
 import logging
 import time
+import sys
 
 from accsyn_api.session import AccsynException
 
@@ -14,7 +15,7 @@ DELIVERY_NAME = "Project references"
 DELIVERY_NAME_EMPLOYEE = "Project references (EMP)"
 DELIVERY_NAME_STANDARD = "Project references (STA)"
 
-
+@pytest.mark.skipif(not sys.stdin.isatty(), reason="needs interactive terminal")
 @pytest.mark.order(1)
 def test_prepare_deliveries(session_admin, entities):
     # Prepare tests, remove transient employee and standard user if they exist
@@ -37,11 +38,25 @@ def test_prepare_deliveries(session_admin, entities):
     server = session_admin.find_one(f"Server WHERE roles CONTAINS storage")
     assert server is not None, "No storage server found"
     assert server["status"] == "online", "Storage server is not online"
-    # Make sure admin has a client running, app or user server type
-    client = session_admin.find_one(f"App WHERE user={admin_user['id']} AND status=online")
-    assert client is not None, "No desktop app client found for admin, please login app or setup a user server"
-    assert client["status"] == "online", "Client is not online"
-
+    print("Check if the admin has a client running")
+    active_client = None
+    while True:
+        clients = session_admin.find(f"App WHERE user={admin_user['id']}")
+        if len(clients) > 0:
+            for client in clients:
+                if client["status"] == "online":
+                    active_client = client
+                    break
+            if active_client:
+                break
+            print(f"Please launch the accsyn Desktop as {TestUtils.get_admin_ident()} and press Enter to continue...")
+        else:
+            print(
+                f"No client found, please login to the accsyn Desktop as {TestUtils.get_admin_ident()} and press Enter to continue..."
+            )
+        input()
+        time.sleep(2)
+    print(f"Got admin active client: {active_client['id']}")
 
 # Create temp delivery
 @pytest.mark.order(2)
@@ -79,14 +94,12 @@ def test_read_temp_delivery_as_admin(session_admin, entities):
         delivery, ["name", "status", "public", "user"], should_exclude=["data", "config", "tasks"]
     )
 
-
 @pytest.mark.order(5)
 def test_read_temp_delivery_as_employee(session_employee, entities):
-    # Should fail as employee have no access to any volumes
+    print("Reading temp delivery as employee should fail, as employee have no access to any volumes")
     delivery_id = entities.get_id("delivery", "d1")
     delivery = session_employee.get_entity("Delivery", delivery_id)
     assert delivery is None
-
 
 @pytest.mark.order(6)
 def test_add_recipient_to_temp_delivery_as_admin(session_admin, entities):
