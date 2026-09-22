@@ -13,6 +13,16 @@ Release Notes
 
     `https://support.accsyn.com/changelog <https://support.accsyn.com/changelog>`_.
 
+
+.. release:: 3.4.0
+    :date: 2026-09-22
+
+    .. change:: changed
+
+        * Consolidated docstrings.
+        * Improved test coverage.
+        * Improved access grant and revoke, improved documentation. Consolidated docstrings. Expanded and improved test coverage.
+
 .. release:: 3.3.4
     :date: 2026-06-23
 

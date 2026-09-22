@@ -189,9 +189,7 @@ class Session(object):
                     workspace = os.environ[key]
                     break
         if not workspace:
-            raise AccsynException(
-                "Please supply your accsyn workspace code or set ACCSYN_WORKSPACE environment!"
-            )
+            raise AccsynException("Please supply your accsyn workspace code or set ACCSYN_WORKSPACE environment!")
         if not username:
             username = os.environ.get("ACCSYN_API_USER")
         if not username:
@@ -734,7 +732,7 @@ class Session(object):
         else:
             raise AccsynException("Unsupported assignment operation!")
         return response["result"]
- 
+
     def assignments(self, entitytype: str, entityid: str) -> List[Dict[str, Any]]:
         """
         List entities assigned to a parent entity.
@@ -929,9 +927,7 @@ class Session(object):
                 targetid = response["result"][0]["id"]
             else:
                 raise AccsynException(f"Please supply a valid {targettype} ID!")
-        assert (
-            data is None or isinstance(data, dict)
-        ), "Invalid grant access data supplied, must be a dict!"
+        assert data is None or isinstance(data, dict), "Invalid grant access data supplied, must be a dict!"
         result = None
         if entitytype == "user":
             if targettype in ["delivery", "request", "stream"]:
@@ -968,12 +964,16 @@ class Session(object):
                 response = self._event("POST", f"acl/create", payload)
                 result = response["result"][0]
             else:
-                raise AccsynException("Unsupported grant target type for user (supported: delivery, request, stream, job, volume, folder, home, collection, share)!")
+                raise AccsynException(
+                    "Unsupported grant target type for user (supported: delivery, request, stream, job, volume, folder, home, collection, share)!"
+                )
         else:
             raise AccsynException("Unsupported grant entity type (supported: user)!")
         return result
-  
-    def access(self, targettype: str, targetid: str, entitytype: str = None, entityid: str = None, recursive: bool = False) -> List[Dict[str, Any]]:
+
+    def access(
+        self, targettype: str, targetid: str, entitytype: str = None, entityid: str = None, recursive: bool = False
+    ) -> List[Dict[str, Any]]:
         """
         List users with access to a delivery or share.
 
@@ -1103,7 +1103,9 @@ class Session(object):
                     # Job might be an init delivery with a pending user (not invited yet)
                     raise AccsynException(f"No {entitytype} found with code '{entityid}' found!")
             else:
-                raise AccsynException(f"Please supply a valid {entitytype} ID! Hint: {entitytype} does not support unique API code attribute lookup!")
+                raise AccsynException(
+                    f"Please supply a valid {entitytype} ID! Hint: {entitytype} does not support unique API code attribute lookup!"
+                )
         assert 0 < len(targettype or "") and Session._is_str(
             targettype
         ), "Invalid target entity type supplied, must be of string type!"
@@ -1120,7 +1122,12 @@ class Session(object):
                 delivery_id = targetid
                 user_id = entityid
                 recipients = self._event("GET", "job/recipients", dict(), entityid=delivery_id).get("result", [])
-                if not any(((recipient.get("user") == user_id or recipient.get("user_hr") == user_id) for recipient in recipients)):
+                if not any(
+                    (
+                        (recipient.get("user") == user_id or recipient.get("user_hr") == user_id)
+                        for recipient in recipients
+                    )
+                ):
                     return False
                 response = self._event(
                     "DELETE",
@@ -1150,7 +1157,7 @@ class Session(object):
         else:
             raise AccsynException("Unsupported revoke access entity type!")
         return response["result"]
-    
+
     # Deactivate/Delete an entity
 
     def offline_one(self, entitytype: str, entityid: str) -> Any:
@@ -2206,7 +2213,6 @@ class Session(object):
             logging.error(traceback.format_exc())
 
 
-
 class JSONEncoder(json.JSONEncoder):
     """JSON serialiser."""
 
@@ -2269,7 +2275,6 @@ class JSONDecoder(json.JSONDecoder):
             return d
 
         return recursive_decode(json_data)
-
 
 
 class AccsynException(Exception):

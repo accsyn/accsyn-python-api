@@ -15,6 +15,7 @@ DELIVERY_NAME = "Project references"
 DELIVERY_NAME_EMPLOYEE = "Project references (EMP)"
 DELIVERY_NAME_STANDARD = "Project references (STA)"
 
+
 @pytest.mark.skipif(not sys.stdin.isatty(), reason="needs interactive terminal")
 @pytest.mark.order(1)
 def test_prepare_deliveries(session_admin, entities):
@@ -58,6 +59,7 @@ def test_prepare_deliveries(session_admin, entities):
         time.sleep(2)
     print(f"Got admin active client: {active_client['id']}")
 
+
 # Create temp delivery
 @pytest.mark.order(2)
 def test_create_temp_delivery_as_admin(session_admin, entities):
@@ -85,6 +87,7 @@ def test_create_temp_delivery_as_employee(session_employee, entities):
     with pytest.raises(AccsynException):
         session_employee.create("Delivery", {"name": TEMP_DELIVERY_NAME_EMPLOYEE})
 
+
 @pytest.mark.order(4)
 def test_read_temp_delivery_as_admin(session_admin, entities):
     delivery_id = entities.get_id("delivery", "d1")
@@ -94,12 +97,14 @@ def test_read_temp_delivery_as_admin(session_admin, entities):
         delivery, ["name", "status", "public", "user"], should_exclude=["data", "config", "tasks"]
     )
 
+
 @pytest.mark.order(5)
 def test_read_temp_delivery_as_employee(session_employee, entities):
     print("Reading temp delivery as employee should fail, as employee have no access to any volumes")
     delivery_id = entities.get_id("delivery", "d1")
     delivery = session_employee.get_entity("Delivery", delivery_id)
     assert delivery is None
+
 
 @pytest.mark.order(6)
 def test_add_recipient_to_temp_delivery_as_admin(session_admin, entities):
@@ -114,7 +119,9 @@ def test_add_recipient_to_temp_delivery_as_admin(session_admin, entities):
     with pytest.raises(AccsynException):
         session_admin.update("Delivery", delivery_id, {"status": "pending"})
 
+
 # 1 recipient added
+
 
 @pytest.mark.order(7)
 def test_add_recipient_to_temp_delivery_as_admin_repeat(session_admin, entities):
@@ -297,4 +304,3 @@ def test_delete_temp_delivery(session_admin, entities):
     assert result is True
     # Remove from cache
     entities.remove_from_cleanup("delivery", delivery_id)
-

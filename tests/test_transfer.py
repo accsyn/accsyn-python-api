@@ -12,6 +12,7 @@ TEMP_TRANSFER_NAME = "Jönssonligan dyker upp igen"
 
 # General transfer tests
 
+
 @pytest.mark.order(0)
 def test_prepare_transfer(session_admin, entities):
     print("Prepare tests, remove file at storage")
@@ -189,6 +190,7 @@ def test_modify_task(session_admin, entities):
 
 # Employee tests
 
+
 @pytest.mark.order(20)
 @pytest.mark.skipif(not sys.stdin.isatty(), reason="needs interactive terminal")
 def test_ensure_employee_user_exists(session_admin, session_employee, entities):
@@ -197,7 +199,9 @@ def test_ensure_employee_user_exists(session_admin, session_employee, entities):
     default_volume = session_admin.find_one("Volume WHERE default=true")
     revoked_count = TestUtils.revoke_all(session_admin, employee_user, default_volume)
     if revoked_count > 0:
-        print(f"Revoked {revoked_count} ACL(s) from default volume for employee {TestUtils.get_employee_ident()} in this test")
+        print(
+            f"Revoked {revoked_count} ACL(s) from default volume for employee {TestUtils.get_employee_ident()} in this test"
+        )
     print("Ensuring employee client is launched")
     while True:
         clients = session_employee.find("App")
@@ -213,6 +217,7 @@ def test_ensure_employee_user_exists(session_admin, session_employee, entities):
         input()
         time.sleep(2)
 
+
 @pytest.mark.order(21)
 def test_download_employee_unauthorized(session_employee, entities):
     print("Test employee download of file without any volume access")
@@ -222,20 +227,19 @@ def test_download_employee_unauthorized(session_employee, entities):
             {
                 "source": TEST_FILE,
                 "destination": TestUtils.get_tmp_path(TEST_FILE),
-                "name": "Test server download: " + TEMP_TRANSFER_NAME
+                "name": "Test server download: " + TEMP_TRANSFER_NAME,
             },
         )
+
 
 @pytest.mark.order(22)
 def test_grant_employee_write_only_access(session_admin):
     print("Test grant employee write only access to default volume")
     default_volume = session_admin.find_one("Volume WHERE default=true")
     session_admin.grant(
-        "User", 
-        TestUtils.get_employee_ident(), "Volume", 
-        default_volume["id"], 
-        data=dict(read=False, write=True)
+        "User", TestUtils.get_employee_ident(), "Volume", default_volume["id"], data=dict(read=False, write=True)
     )
+
 
 @pytest.mark.order(23)
 def test_download_unauthorized_read(session_employee):
@@ -246,20 +250,19 @@ def test_download_unauthorized_read(session_employee):
             {
                 "source": TEST_FILE,
                 "destination": TestUtils.get_tmp_path(TEST_FILE),
-                "name": "Test server download: " + TEMP_TRANSFER_NAME
+                "name": "Test server download: " + TEMP_TRANSFER_NAME,
             },
         )
+
 
 @pytest.mark.order(24)
 def test_grant_employee_read_only_access(session_admin):
     print("Test grant employee read only access to default volume")
     default_volume = session_admin.find_one("Volume WHERE default=true")
     session_admin.grant(
-        "User", 
-        TestUtils.get_employee_ident(), 
-        "Volume", 
-        default_volume["id"], 
-        data=dict(read=True, write=False))
+        "User", TestUtils.get_employee_ident(), "Volume", default_volume["id"], data=dict(read=True, write=False)
+    )
+
 
 @pytest.mark.order(25)
 def test_download_employee(session_employee, entities):
@@ -269,7 +272,7 @@ def test_download_employee(session_employee, entities):
         {
             "source": TEST_FILE,
             "destination": TestUtils.get_tmp_path(TEST_FILE),
-            "name": "Test server download: " + TEMP_TRANSFER_NAME
+            "name": "Test server download: " + TEMP_TRANSFER_NAME,
         },
     )
     assert transfer is not None
