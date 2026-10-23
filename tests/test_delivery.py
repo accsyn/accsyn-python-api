@@ -67,6 +67,7 @@ def test_create_temp_delivery_as_admin(session_admin, entities):
     delivery = session_admin.create("Delivery", {"name": TEMP_DELIVERY_NAME})
     entities.remember(kind="delivery", temp_name="d1", entity_id=delivery["id"])
     assert delivery["name"] == TEMP_DELIVERY_NAME
+    print(f"Created delivery {TEMP_DELIVERY_NAME}({delivery['id']})")
     # Submit delivery now should fail
     with pytest.raises(AccsynException):
         session_admin.update("Delivery", delivery["id"], {"status": "pending"})
@@ -79,6 +80,7 @@ def test_create_temp_delivery_as_admin(session_admin, entities):
     # Create a second temp delivery
     delivery2 = session_admin.create("Delivery", {"name": TEMP_DELIVERY_NAME_2})
     entities.remember(kind="delivery", temp_name="d2", entity_id=delivery2["id"])
+    print(f"Created second delivery {TEMP_DELIVERY_NAME_2}({delivery2['id']})")
 
 
 @pytest.mark.order(3)
@@ -115,6 +117,7 @@ def test_add_recipient_to_temp_delivery_as_admin(session_admin, entities):
     recipients = session_admin.access("Delivery", delivery_id)
     assert len(recipients) == 1
     assert recipients[0]["user_hr"] == TestUtils.get_standard_ident(2)
+    print(f"Added recipient {TestUtils.get_standard_ident(2)} to delivery {delivery_id}")
     # Test submit, should fail - have no files uploaded yet
     with pytest.raises(AccsynException):
         session_admin.update("Delivery", delivery_id, {"status": "pending"})
@@ -150,12 +153,14 @@ def test_remove_recipient_from_temp_delivery_as_admin_in_init(session_admin, ent
     assert result is True
     recipients = session_admin.access("Delivery", delivery_id)
     assert len(recipients) == 0
+    print(f"Removed recipient {TestUtils.get_standard_ident(2)} from delivery {delivery_id}")
     # Idempotent revoke: second removal should be a no-op
     result = session_admin.revoke("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
     assert result is False
     # Add back so later submit flow remains valid
     result = session_admin.grant("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
     assert result is True
+    print(f"Added recipient {TestUtils.get_standard_ident(2)} back to delivery {delivery_id}")
 
 
 # Upload and submit
@@ -179,7 +184,7 @@ def test_upload_file_to_temp_delivery(session_admin, entities):
         logging.info(f"Transfer {transfer['name']} is {transfer['status']}")
         if transfer["status"] in ["failed"]:
             raise AccsynException(f"{transfer['name']} derailed!")
-    logging.info(f"Upload {transfer['name']} completed")
+    logging.info(f"Upload {transfer['name']} to delivery {delivery['name']} completed")
     entities.remember(kind="transfer", temp_name="t1", entity_id=transfer["id"])
 
 
@@ -195,7 +200,7 @@ def test_upload_file_to_temp_delivery_as_employee(session_employee, entities):
 def test_submit_temp_delivery(session_admin, entities):
     delivery_id = entities.get_id("delivery", "d1")
     delivery = session_admin.update("Delivery", delivery_id, {"status": "pending"})
-    # Make sure it is on the move
+    # Make sure it is in init phase
     assert delivery["status"] != "init"
     # Wait for delivery to enter waiting state
     while delivery["status"] in ["pending"]:

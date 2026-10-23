@@ -111,7 +111,7 @@ def test_pull_admin_should_fail(session_admin, entities):
     with pytest.raises(AccsynException):
         session_admin.create(
             "Transfer",
-            {"source": f"client={entities.get_id('client', 'c')}:{TEST_FILE}", "destination": "hq", "test": True},
+            {"source": f"client={entities.get_id('client', 'c')}:volume=(default)/{TEST_FILE}", "test": True},
         )
 
 
@@ -121,7 +121,7 @@ def test_pull_employee_should_fail(session_employee2, entities):
     with pytest.raises(AccsynException):
         session_employee2.create(
             "Transfer",
-            {"source": f"client={entities.get_id('client', 'c')}:{TEST_FILE}", "destination": "hq", "test": True},
+            {"source": f"client={entities.get_id('client', 'c')}:volume=(default)/{TEST_FILE}", "destination": "hq", "test": True},
         )
 
 
@@ -131,46 +131,71 @@ def test_pull_user_should_fail(session_standard, entities):
     with pytest.raises(AccsynException):
         session_standard.create(
             "Transfer",
-            {"source": f"client={entities.get_id('client', 'c')}:{TEST_FILE}", "destination": "hq", "test": True},
+            {"source": f"client={entities.get_id('client', 'c')}:volume=(default)/{TEST_FILE}", "test": True},
         )
 
 
-@pytest.mark.order(20)
+@pytest.mark.order(10)
 def test_grant_read_access_to_share(session_admin, entities):
     print(f"Please map default volume locally and grant read only access, press Enter to continue...")
     input()
 
+# Test pull with read access
+
+
+@pytest.mark.order(20)
+def test_pull_from_read_only_share_admin(session_admin, entities):
+    print("Pull file from employee mapped share as admin")
+    session_admin.create(
+        "Transfer",
+        {"source": f"client={entities.get_id('client', 'c')}:volume=(default)/{TEST_FILE}", "test": True},
+    )
+
+@pytest.mark.order(21)
+def test_pull_from_read_only_share_employee(session_employee2, entities):
+    print("Pull file from employee mapped share as other employee")
+    session_employee2.create(
+        "Transfer",
+        {"source": f"client={entities.get_id('client', 'c')}:volume=(default)/{TEST_FILE}", "test": True},
+    )
+
+@pytest.mark.order(22)
+def test_pull_from_read_only_share_user_should_fail(session_standard, entities):
+    print("Pull file from employee mapped share as standard user, should fail")
+    with pytest.raises(AccsynException):
+        session_standard.create(
+            "Transfer",
+            {"source": f"client={entities.get_id('client', 'c')}:volume=(default)/{TEST_FILE}", "test": True},
+        )
 
 # Test push with no write access
 
-
-@pytest.mark.order(21)
+@pytest.mark.order(23)
 def test_push_to_read_only_share_admin_should_fail(session_admin, entities):
     print("Push file to user mapped share (read only) as admin, should fail")
     with pytest.raises(AccsynException):
         session_admin.create(
             "Transfer",
-            {"source": TEST_FILE, "destination": f"client={entities.get_id('client', 'c')}", "test": True},
+            {"source": f"volume=(default)/{TEST_FILE}", "destination": f"client={entities.get_id('client', 'c')}", "test": True},
         )
 
-
-@pytest.mark.order(22)
+@pytest.mark.order(24)
 def test_push_to_read_only_share_employee_should_fail(session_employee2, entities):
     print("Push file to user mapped share (read only) as otheremployee, should fail")
     with pytest.raises(AccsynException):
         session_employee2.create(
             "Transfer",
-            {"source": TEST_FILE, "destination": f"client={entities.get_id('client', 'c')}", "test": True},
+            {"source": f"volume=(default)/{TEST_FILE}", "destination": f"client={entities.get_id('client', 'c')}", "test": True},
         )
 
 
-@pytest.mark.order(23)
+@pytest.mark.order(25)
 def test_push_to_read_only_share_user_should_fail(session_standard, entities):
     print("Push file to user mapped share (read only) as user, should fail")
     with pytest.raises(AccsynException):
         session_standard.create(
             "Transfer",
-            {"source": TEST_FILE, "destination": f"client={entities.get_id('client', 'c')}", "test": True},
+            {"source": f"volume=(default)/{TEST_FILE}", "destination": f"client={entities.get_id('client', 'c')}", "test": True},
         )
 
 
@@ -188,7 +213,7 @@ def test_push_admin(session_admin, entities):
     print("Push file to user local mapped share as admin")
     session_admin.create(
         "Transfer",
-        {"source": TEST_FILE, "destination": f"client={entities.get_id('client', 'c')}", "test": True},
+        {"source": f"volume=(default)/{TEST_FILE}", "destination": f"client={entities.get_id('client', 'c')}", "test": True},
     )
 
 
@@ -197,7 +222,7 @@ def test_push_employee(session_employee2, entities):
     print("Push file to user local mapped share as other employee")
     session_employee2.create(
         "Transfer",
-        {"source": TEST_FILE, "destination": f"client={entities.get_id('client', 'c')}", "test": True},
+        {"source": f"volume=(default)/{TEST_FILE}", "destination": f"client={entities.get_id('client', 'c')}", "test": True},
     )
 
 
@@ -207,7 +232,7 @@ def test_push_user_should_fail(session_standard, entities):
     with pytest.raises(AccsynException):
         session_standard.create(
             "Transfer",
-            {"source": TEST_FILE, "destination": f"client={entities.get_id('client', 'c')}", "test": True},
+            {"source": f"volume=(default)/{TEST_FILE}", "destination": f"client={entities.get_id('client', 'c')}", "test": True},
         )
 
 
@@ -232,7 +257,7 @@ def test_pull_employee(session_employee2, entities):
 
 
 @pytest.mark.order(42)
-def test_pull_user_should_fail(session_standard, entities):
+def test_pull_user_should_fail2(session_standard, entities):
     print("Pull file back to workspace as user")
     with pytest.raises(AccsynException):
         session_standard.create(

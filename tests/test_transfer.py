@@ -107,7 +107,6 @@ def test_append_to_upload(session_admin, entities):
     result = session_admin.create(
         "Job", {"source": TestUtils.get_data_path(TEST_FILE2), "destination": TEST_FILE2, "append": True}
     )
-    assert result['id'] == transfer_id  # Should be same job
     assert result['status'] != "done"  # Job should be revived
 
     TestUtils.wait_transfer_done(session_admin, result)

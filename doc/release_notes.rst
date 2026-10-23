@@ -14,6 +14,18 @@ Release Notes
     `https://support.accsyn.com/changelog <https://support.accsyn.com/changelog>`_.
 
 
+.. release:: 3.8.8
+    :date: upcoming
+
+    .. change:: changed
+
+        * Aligned API version with rest of accsyn.
+
+    .. change:: fix
+
+        * Fixed loose path definitions in the test suite.
+
+
 .. release:: 3.4.0
     :date: 2026-09-22
 
