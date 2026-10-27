@@ -1687,10 +1687,14 @@ class Session(object):
         response = self._event("GET", "log/find", payload, entityid=entityid)
         return cast(Dict[str, Any], response or dict(result=[]))
 
-    def processlogs(self, 
-            entityid: str, uri: Optional[str] = None, 
-            try_num: Optional[int] = None, 
-            master: Optional[bool] = True, slave: Optional[bool] = None) -> Dict[str, Any]:
+    def processlogs(
+        self,
+        entityid: str,
+        uri: Optional[str] = None,
+        try_num: Optional[int] = None,
+        master: Optional[bool] = True,
+        slave: Optional[bool] = None,
+    ) -> Dict[str, Any]:
         """
         Return the detailed process log (console output) of a job task, for example the detailed transfer log.
 
@@ -1700,11 +1704,13 @@ class Session(object):
         :param try_num: Optional zero-based try (attempt) number, defaults to the latest try.
         :param master: Optional flag to fetch the master process log - the main process. Defaults to True.
         :param slave: Optional flag to fetch the slave process log - the file server party process.
-        :return: Raw backend response dictionary. The log console output is in ``text_master`` for the master process, 
+        :return: Raw backend response dictionary. The log console output is in ``text_master`` for the master process,
         ``text_slave`` for the slave process, the try is returned in ``try``,
             the total number of tries in ``try_count`` and previous tries in ``process_history`` (if any).
         """
-        assert 0 < len(entityid or "") and Session._is_str(entityid), "Invalid job ID supplied, must be of string type!"
+        assert 0 < len(entityid or "") and Session._is_str(
+            entityid
+        ), "Invalid job ID supplied, must be of string type!"
         payload: Dict[str, Any] = dict()
         if uri:
             payload["uri"] = uri

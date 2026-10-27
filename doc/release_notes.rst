@@ -15,7 +15,7 @@ Release Notes
 
 
 .. release:: 3.6.8
-    :date: upcoming
+    :date: 2026-10-27
 
     .. change:: new
 
