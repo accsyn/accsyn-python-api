@@ -105,7 +105,7 @@ def test_append_to_upload(session_admin, entities):
     assert transfer is not None
     logging.info(f"Appending file upload to recent job ({transfer_id}), waiting for completion")
     result = session_admin.create(
-        "Job", {"source": TestUtils.get_data_path(TEST_FILE2), "destination": TEST_FILE2, "append": True}
+        "Job", {"source": TestUtils.get_data_path(TEST_FILE2), "destination": TEST_FILE2, "append": transfer_id}
     )
     assert result['status'] != "done"  # Job should be revived
 

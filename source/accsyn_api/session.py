@@ -1687,6 +1687,38 @@ class Session(object):
         response = self._event("GET", "log/find", payload, entityid=entityid)
         return cast(Dict[str, Any], response or dict(result=[]))
 
+    def processlogs(self, 
+            entityid: str, uri: Optional[str] = None, 
+            try_num: Optional[int] = None, 
+            master: Optional[bool] = True, slave: Optional[bool] = None) -> Dict[str, Any]:
+        """
+        Return the detailed process log (console output) of a job task, for example the detailed transfer log.
+
+        :param entityid: ID of the job to fetch process log for.
+        :param uri: Optional task URI identifying the task to read log for. If omitted, the backend uses the first
+            task found that has been processed (has a log).
+        :param try_num: Optional zero-based try (attempt) number, defaults to the latest try.
+        :param master: Optional flag to fetch the master process log - the main process. Defaults to True.
+        :param slave: Optional flag to fetch the slave process log - the file server party process.
+        :return: Raw backend response dictionary. The log console output is in ``text_master`` for the master process, 
+        ``text_slave`` for the slave process, the try is returned in ``try``,
+            the total number of tries in ``try_count`` and previous tries in ``process_history`` (if any).
+        """
+        assert 0 < len(entityid or "") and Session._is_str(entityid), "Invalid job ID supplied, must be of string type!"
+        payload: Dict[str, Any] = dict()
+        if uri:
+            payload["uri"] = uri
+        if try_num is not None:
+            if not isinstance(try_num, int):
+                raise AccsynException("try_num must be an integer!")
+            payload["try"] = try_num
+        if master is True:
+            payload["master"] = True
+        if slave is True:
+            payload["slave"] = True
+        response = self._event("GET", "job/process_log", payload, entityid=entityid)
+        return cast(Dict[str, Any], response or dict())
+
     # Misc
     def get_api_key(self) -> str:
         """Fetch API key, by default disabled in backend."""
@@ -2121,7 +2153,7 @@ class Session(object):
             }
 
     @staticmethod
-    def _warning(s: str, standout: bool = True) -> str:
+    def _warning(s: str, standout: bool = False) -> str:
         """
         Utility; Print warning message to logfile or stdout.
 

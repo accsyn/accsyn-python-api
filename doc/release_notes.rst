@@ -14,12 +14,17 @@ Release Notes
     `https://support.accsyn.com/changelog <https://support.accsyn.com/changelog>`_.
 
 
-.. release:: 3.8.8
+.. release:: 3.6.8
     :date: upcoming
+
+    .. change:: new
+
+        * Added support for reading process logs for a job task.
 
     .. change:: changed
 
         * Aligned API version with rest of accsyn.
+        * Create transfer now supports supplying the ID of the job to append task(s) to.
 
     .. change:: fix
 

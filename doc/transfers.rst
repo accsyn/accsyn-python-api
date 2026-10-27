@@ -505,3 +505,21 @@ Delete task
 
 Tasks cannot be deleted for audit and security reasons. Set task status to ``excluded`` to skip it during transfer/execution.
 
+
+Append job
+**********
+
+To have a new job append to an existing job, pass the existing job ID as the ``append`` attribute when creating the new job::
+
+    transfer = session.find('Transfer where id=5a7325f8b7ef72f5f9d74bf4')
+
+    transfer = session.create("Transfer",{
+        "source":"share=myproject/delivery/TRAILED_subtitles_EN.srt",
+        "destination":"/Volumes/EDIT/from_client",
+        "append": "6adb14441cc2ae8d0a95e9ec"
+    })
+
+You can also specify the ``append`` as boolean value ``True``, this will append to the most recent job found, if found.
+
+Recall the existing job must match the source and destination parties, not be paused and be submitted within the same day.
+
