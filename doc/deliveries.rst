@@ -171,10 +171,13 @@ To create and submit a file delivery with two files, supply the source files as 
     delivery = session.create("Delivery",{
         "name":"Project reference",
         "tasks":["myproject/reference.png", "logo.jpeg"],
-        "recipients":["lisa@example.com"]
+        "recipients":["lisa@example.com"],
+        "description":"Please find the project reference and logo in the delivery."
     })
 
-Files are assumed to be on the default accsyn storage volume. To specify a different folder or volume::
+Paths are relative to the default accsyn storage volume, and they will not be validated on submission. 
+
+To specify a explicit folder or volume on accsyn path notation::
 
     delivery = session.create("Delivery",{
         "name":"Project reference",
@@ -182,8 +185,22 @@ Files are assumed to be on the default accsyn storage volume. To specify a diffe
         "recipients":["lisa@example.com"]
     })
 
-The delivery will be submitted and the user will receive an email with a link to the delivery. 
-The files will be available for download for the default duration of one month.
+The delivery will be submitted and the user will receive an email with a link to the delivery, with the message from the description and
+clear instructions on how to action the delivery.
+
+The files will be available for download for the default duration of one month by default, to set an expiry date other than the default::
+
+    delivery = session.create("Delivery",{
+        "name":"Project reference",
+        "tasks":["myproject/reference.png", "logo.jpeg"],
+        "recipients":["lisa@example.com"],
+        "description":"Please find the project reference and logo in the delivery.",
+        "expires":dateutil.parser.parse("2026-12-06T08:23:08.629+0000")
+    })
+
+.. note:: 
+    
+    accsyn accepts datetime objects.
 
 
 List files and folders associated with a delivery
@@ -238,7 +255,7 @@ Modifying a delivery
 Abort a delivery
 ----------------
 
-To abort a delivery, update its status to aborted:
+To abort a delivery, update its status to aborted::
 
     delivery = session.update("Delivery", delivery["id"], {"status": "aborted"})
 
@@ -246,7 +263,7 @@ To abort a delivery, update its status to aborted:
 Finish up a delivery
 --------------------
 
-To finish up a delivery, update its status to finished:
+To finish up a delivery, update its status to finished::
 
     delivery = session.update("Delivery", delivery["id"], {"status": "done"})
 
@@ -305,12 +322,16 @@ Create upload request to a storage folder
 To create an upload request to a folder on the default volume, supply the folder path and recipients::
 
     upload_request = session.create("Request",{
-        "name":"Provide project material",
-        "destination":"share=(default)/source/from_client",
-        "recipients":["lisa@example.com"]
+        "name":"Provide pitch material",
+        "destination":"FROM_CLIENTS/Heaven_Pitch/",
+        "recipients":["lisa@example.com"],
+        "message":"Please upload the pitch material to us using this link."
     })
 
-Returns the created upload request in the same form as a find query. The request is
-submitted immediately and the user will receive an email with a link to the request.
+Returns the created upload request in the same form as a find query. The destination folder set relative the default volume in this example, 
+use accsyn path notation to set an explicit folder/home or volume.
 
-To create a request that will be submitted later, supply with the 'init' status (see above)
+The request is submitted immediately and the user will receive an email with a link to the request.
+
+
+To create a request that will be submitted later, supply with the 'init' status (see above). Add recipients and submit the request by setting status to ``pending`` (see above).
