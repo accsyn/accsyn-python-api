@@ -1,15 +1,15 @@
 ..
     :copyright: Copyright (c) 2021 accsyn
 
-.. _filesharing:
+.. _collaboration:
 
-************
-File Sharing
-************
+*************
+Collaboration
+*************
 
 Files and folders residing on accsyn storage volumes can be shared with other users, either through a delivery or through the accsyn file sharing engine.
 
-Documentation: `https://support.accsyn.com/file-sharing <https://support.accsyn.com/file-sharing>`_
+Documentation: `https://support.accsyn.com/collaboration <https://support.accsyn.com/collaboration>`_
 
 
 An accsyn ``share`` is the base entity for the following storage entities available through the API:
@@ -383,6 +383,15 @@ the folder and the name of the share (employee clearance required)::
         "name":"Shared project assets",
     })
 
+To assign the share to a project at creation, supply the project ID (see `Assigning shares to projects`_)::
+
+    share = session.create("Folder",{
+        "parent": "664b6d76e43eb396e5e55419",
+        "path":"projects/theproject",
+        "name":"Shared project assets",
+        "project": "<project id>"
+    })
+
 In both cases, if creation was successful, a dictionary will be returned on the same format as a share query would return.
 
 Create a home
@@ -524,6 +533,41 @@ To remove a file from a collection::
     })
 
 Return value will be True if operation was successful, false if the file did not exist in the collection.
+
+
+Assigning shares to projects
+============================
+
+A share can be assigned to a project by supplying the project ID as ``project`` when creating the share (or later, when updating it).
+Projects can be queried with::
+
+    projects = session.find("Project")
+
+This returns a list of projects, use the ``id`` of the wanted project::
+
+    project = session.find_one("Project WHERE name='The Project'")
+
+    share = session.create("Folder",{
+        "parent": "664b6d76e43eb396e5e55419",
+        "path":"projects/theproject",
+        "name":"Shared project assets",
+        "project": project["id"]
+    })
+
+To assign or change the project of an existing share::
+
+    session.update("Folder", share["id"], {"project": project["id"]})
+
+To remove the share from its project, supply an empty string::
+
+    session.update("Folder", share["id"], {"project": ""})
+
+.. note::
+
+    * An error is raised if the project cannot be found.
+    * The ``project`` attribute is also returned when querying shares.
+    * Deliveries can also be assigned to projects, see :ref:`deliveries`.
+
 
 
 Deactivate a share

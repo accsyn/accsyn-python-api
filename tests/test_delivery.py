@@ -111,26 +111,26 @@ def test_read_temp_delivery_as_employee(session_employee, entities):
 @pytest.mark.order(6)
 def test_add_recipient_to_temp_delivery_as_admin(session_admin, entities):
     delivery_id = entities.get_id("delivery", "d1")
-    result = session_admin.grant("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
+    result = session_admin.grant("User", TestUtils.get_standard_ident(), "Delivery", delivery_id)
     assert result is True  # Delivery is pending, no actual ACL is created yet
     # Verify recipient is added
     recipients = session_admin.access("Delivery", delivery_id)
     assert len(recipients) == 1
-    assert recipients[0]["user_hr"] == TestUtils.get_standard_ident(2)
-    print(f"Added recipient {TestUtils.get_standard_ident(2)} to delivery {delivery_id}")
+    assert recipients[0]["user_hr"] == TestUtils.get_standard_ident()
+    print(f"Added recipient {TestUtils.get_standard_ident()} to delivery {delivery_id}")
     # Test submit, should fail - have no files uploaded yet
     with pytest.raises(AccsynException):
         session_admin.update("Delivery", delivery_id, {"status": "pending"})
 
 
-# 1 recipient added
+# 1 recipients added
 
 
 @pytest.mark.order(7)
 def test_add_recipient_to_temp_delivery_as_admin_repeat(session_admin, entities):
     # Delivery is still in init/build phase, recipient already exists
     delivery_id = entities.get_id("delivery", "d1")
-    result = session_admin.grant("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
+    result = session_admin.grant("User", TestUtils.get_standard_ident(), "Delivery", delivery_id)
     assert result is False
     # Still only one recipient
     recipients = session_admin.access("Delivery", delivery_id)
@@ -145,14 +145,24 @@ def test_add_recipient_to_temp_delivery_as_employee_should_fail(session_employee
         session_employee.grant("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
 
 
-# Revoke in init/build mode
 @pytest.mark.order(9)
+def test_add_second_recipient(session_admin, entities):
+    delivery_id = entities.get_id("delivery", "d1")
+    result = session_admin.grant("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
+    assert result is True
+
+
+# 2 recipients added
+
+
+# Revoke in init/build mode
+@pytest.mark.order(10)
 def test_remove_recipient_from_temp_delivery_as_admin_in_init(session_admin, entities):
     delivery_id = entities.get_id("delivery", "d1")
     result = session_admin.revoke("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
     assert result is True
     recipients = session_admin.access("Delivery", delivery_id)
-    assert len(recipients) == 0
+    assert len(recipients) == 1
     print(f"Removed recipient {TestUtils.get_standard_ident(2)} from delivery {delivery_id}")
     # Idempotent revoke: second removal should be a no-op
     result = session_admin.revoke("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
@@ -233,7 +243,7 @@ def test_remove_recipient_from_temp_delivery_as_admin_in_waiting(session_admin, 
     result = session_admin.revoke("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
     assert result is True
     recipients = session_admin.access("Delivery", delivery_id)
-    assert len(recipients) == 0
+    assert len(recipients) == 1
     # Idempotent revoke: second removal should be a no-op
     result = session_admin.revoke("User", TestUtils.get_standard_ident(2), "Delivery", delivery_id)
     assert result is False

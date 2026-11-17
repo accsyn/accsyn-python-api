@@ -26,16 +26,16 @@ Glossary
         A user having the Admin or Employee base role applied.
 
     volume
-        Base folder entity on a server from which accsyn serves files. See :ref:`filesharing`.
+        Base folder entity on a server from which accsyn serves files. See :ref:`collaboration`.
 
     folder
-        Folder beneath a volume where standard/restricted users receive access through a :term:`acl`. See :ref:`filesharing`.
+        Folder beneath a volume where standard/restricted users receive access through a :term:`acl`. See :ref:`collaboration`.
 
     home
-        Dedicated user folder beneath a volume, with access granted through a :term:`acl`. See :ref:`filesharing`.
+        Dedicated user folder beneath a volume, with access granted through a :term:`acl`. See :ref:`collaboration`.
 
     collection
-        Collection of files and/or folders across one or more volumes, with access granted through a :term:`acl`. See :ref:`filesharing`.
+        Collection of files and/or folders across one or more volumes, with access granted through a :term:`acl`. See :ref:`collaboration`.
 
     acl
         Access Control List entity defining share (or directory) access for a standard/restricted user.
@@ -65,7 +65,7 @@ Glossary
         accsyn desktop GUI for receiving, submitting, and monitoring jobs. Represents a :term:`client` that connects to a remote :term:`server` during transfer.
 
     server
-        accsyn server daemon for unattended data transmission and computation. Runs a :term:`client` configured to serve one or more volumes (see :ref:`filesharing`), listening for connections from another :term:`client` — desktop app, web browser, :term:`site server`, or :term:`user server`.
+        accsyn server daemon for unattended data transmission and computation. Runs a :term:`client` configured to serve one or more volumes (see :ref:`collaboration`), listening for connections from another :term:`client` — desktop app, web browser, :term:`site server`, or :term:`user server`.
 
     site server
         Server type managing file transfer to and from a main :term:`server` at a remote site for one or more volumes.

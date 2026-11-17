@@ -17,7 +17,7 @@ Welcome to the accsyn :term:`Python` :term:`API` documentation — a reference f
     datatypes
     transfers
     deliveries
-    filesharing
+    collaboration
     users
     queues
     clients

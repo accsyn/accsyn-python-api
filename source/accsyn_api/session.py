@@ -1699,14 +1699,12 @@ class Session(object):
         Return the detailed process log (console output) of a job task, for example the detailed transfer log.
 
         :param entityid: ID of the job to fetch process log for.
-        :param uri: Optional task URI identifying the task to read log for. If omitted, the backend uses the first
-            task found that has been processed (has a log).
+        :param uri: Optional task URI identifying the task to read log for. If omitted, the backend uses the first task found that has been processed (has a log).
         :param try_num: Optional zero-based try (attempt) number, defaults to the latest try.
         :param master: Optional flag to fetch the master process log - the main process. Defaults to True.
         :param slave: Optional flag to fetch the slave process log - the file server party process.
-        :return: Raw backend response dictionary. The log console output is in ``text_master`` for the master process,
-        ``text_slave`` for the slave process, the try is returned in ``try``,
-            the total number of tries in ``try_count`` and previous tries in ``process_history`` (if any).
+
+        :return: Raw backend response dictionary. The log console output is in ``text_master`` for the master process, ``text_slave`` for the slave process, the try is returned in ``try``, the total number of tries in ``try_count`` and previous tries in ``process_history`` (if any).
         """
         assert 0 < len(entityid or "") and Session._is_str(
             entityid

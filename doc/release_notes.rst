@@ -288,7 +288,7 @@ Release Notes
     .. change:: new
 
         * (Session init) Support for logging to file.
-        * (Session init) Tell Accsyn to log JSON indented in verbose mode.
+        * (Session init) Tell accsyn to log JSON indented in verbose mode.
         * (find attributes) Choose which type of attributes to query: find (default), create (allowed when creating an entity), and update (allowed when updating).
 
 .. release:: 1.2.5

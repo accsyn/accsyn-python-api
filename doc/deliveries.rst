@@ -56,7 +56,6 @@ To fetch a delivery by its name, use the find_one API function::
 Returns the delivery in the same form as a find query.
 
 
-
 Create a temporary delivery
 ===========================
 
@@ -183,6 +182,15 @@ To specify a explicit folder or volume on accsyn path notation::
         "name":"Project reference",
         "tasks":["folder=myproject/reference.png", "volume=assets/logo.jpeg"],
         "recipients":["lisa@example.com"]
+    })
+
+To assign the delivery to a project, supply the project ID (see `Assign a delivery to a project`_)::
+
+    delivery = session.create("Delivery",{
+        "name":"Project reference",
+        "tasks":["myproject/reference.png", "logo.jpeg"],
+        "recipients":["lisa@example.com"],
+        "project": "<project id>"
     })
 
 The delivery will be submitted and the user will receive an email with a link to the delivery, with the message from the description and
@@ -333,5 +341,47 @@ use accsyn path notation to set an explicit folder/home or volume.
 
 The request is submitted immediately and the user will receive an email with a link to the request.
 
+To assign the upload request to a project, supply the project ID (see `Assign a delivery to a project`_)::
+
+    upload_request = session.create("Request",{
+        "name":"Provide pitch material",
+        "destination":"FROM_CLIENTS/Heaven_Pitch/",
+        "recipients":["lisa@example.com"],
+        "project": project["id"]
+    })
+
 
 To create a request that will be submitted later, supply with the 'init' status (see above). Add recipients and submit the request by setting status to ``pending`` (see above).
+
+
+Assign a delivery to a project
+==============================
+
+A delivery (or upload request) can be assigned to a project by supplying the project ID as ``project`` when creating it.
+Projects can be queried with::
+
+    projects = session.find("Project")
+
+This returns a list of projects, use the ``id`` of the wanted project::
+
+    project = session.find_one("Project WHERE name='The Project'")
+
+    delivery = session.create("Delivery",{
+        "name":"Project references",
+        "recipients":["lisa@example.com"],
+        "project": project["id"]
+    })
+
+The same ``project`` attribute can be supplied when creating a delivery from existing files or an upload request (see below).
+
+To assign or change the project of an existing delivery::
+
+    session.update("Delivery", delivery["id"], {"project": project["id"]})
+
+To remove the delivery from its project, supply an empty string::
+
+    session.update("Delivery", delivery["id"], {"project": ""})
+
+.. note::
+
+    An error is raised if the project cannot be found.
